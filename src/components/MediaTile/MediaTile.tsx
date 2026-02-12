@@ -1,8 +1,12 @@
 import { IconButton } from "@dashboard/components/IconButton";
-import { CircularProgress } from "@material-ui/core";
-import { DeleteIcon, EditIcon, makeStyles } from "@saleor/macaw-ui";
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { makeStyles } from "@saleor/macaw-ui";
+import { vars } from "@saleor/macaw-ui-next";
 import clsx from "clsx";
-import React from "react";
+import { Pencil, Trash2 } from "lucide-react";
+import * as React from "react";
+
+import { SaleorThrobber } from "../Throbber";
 
 const useStyles = makeStyles(
   theme => ({
@@ -23,7 +27,7 @@ const useStyles = makeStyles(
       borderRadius: theme.spacing(),
       height: 148,
       overflow: "hidden",
-      padding: theme.spacing(2),
+      padding: vars.spacing[1],
       position: "relative",
       width: 148,
     },
@@ -38,8 +42,13 @@ const useStyles = makeStyles(
       top: 0,
       width: 148,
     },
+    disableOverlay: {
+      "&$mediaOverlay": {
+        display: "none !important",
+      },
+    },
     mediaOverlayShadow: {
-      "&mediaOverlay": {
+      $mediaOverlay: {
         alignItems: "center",
         display: "flex",
         justifyContent: "center",
@@ -70,17 +79,18 @@ const useStyles = makeStyles(
 
 interface MediaTileBaseProps {
   media: {
-    alt: string;
+    alt: string | null;
     url: string;
     type?: string;
     oembedData?: string;
   };
+  disableOverlay?: boolean;
   loading?: boolean;
   onDelete?: () => void;
   onEdit?: (event: React.ChangeEvent<any>) => void;
 }
 
-export type MediaTileProps = MediaTileBaseProps &
+type MediaTileProps = MediaTileBaseProps &
   (
     | {
         onEdit?: React.MouseEventHandler<HTMLButtonElement>;
@@ -92,12 +102,10 @@ export type MediaTileProps = MediaTileBaseProps &
       }
   );
 
-const MediaTile: React.FC<MediaTileProps> = props => {
-  const { loading, onDelete, onEdit, editHref, media } = props;
+const MediaTile = (props: MediaTileProps) => {
+  const { loading, onDelete, onEdit, editHref, media, disableOverlay = false } = props;
   const classes = useStyles(props);
-  const parsedMediaOembedData = media?.oembedData
-    ? JSON.parse(media.oembedData)
-    : null;
+  const parsedMediaOembedData = media?.oembedData ? JSON.parse(media.oembedData) : null;
   const mediaUrl = parsedMediaOembedData?.thumbnail_url || media.url;
 
   return (
@@ -105,10 +113,11 @@ const MediaTile: React.FC<MediaTileProps> = props => {
       <div
         className={clsx(classes.mediaOverlay, {
           [classes.mediaOverlayShadow]: loading,
+          [classes.disableOverlay]: disableOverlay,
         })}
       >
         {loading ? (
-          <CircularProgress size={32} />
+          <SaleorThrobber size={32} />
         ) : (
           <div className={classes.mediaOverlayToolbar}>
             {(onEdit || editHref) && (
@@ -119,7 +128,7 @@ const MediaTile: React.FC<MediaTileProps> = props => {
                 className={classes.controlButton}
                 onClick={onEdit}
               >
-                <EditIcon />
+                <Pencil size={iconSize.small} strokeWidth={iconStrokeWidthBySize.small} />
               </IconButton>
             )}
             {onDelete && (
@@ -129,15 +138,16 @@ const MediaTile: React.FC<MediaTileProps> = props => {
                 className={classes.controlButton}
                 onClick={onDelete}
               >
-                <DeleteIcon />
+                <Trash2 size={iconSize.small} strokeWidth={iconStrokeWidthBySize.small} />
               </IconButton>
             )}
           </div>
         )}
       </div>
-      <img className={classes.media} src={mediaUrl} alt={media.alt} />
+      <img className={classes.media} src={mediaUrl} alt={media.alt!} />
     </div>
   );
 };
+
 MediaTile.displayName = "MediaTile";
 export default MediaTile;

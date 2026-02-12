@@ -1,19 +1,23 @@
-import { buttonMessages, commonMessages } from "@dashboard/intl";
-import CircularProgress from "@material-ui/core/CircularProgress";
-import CheckIcon from "@material-ui/icons/Check";
-import { Button, ButtonProps, sprinkles } from "@saleor/macaw-ui/next";
-import React, { useEffect, useRef, useState } from "react";
-import { useIntl } from "react-intl";
+import { SaleorThrobber } from "@dashboard/components/Throbber";
+import { buttonMessages } from "@dashboard/intl";
+import { Button, ButtonProps, sprinkles } from "@saleor/macaw-ui-next";
+import { Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { defineMessages, useIntl } from "react-intl";
 
 const DEFAULT_NOTIFICATION_SHOW_TIME = 3000;
 
-export type ConfirmButtonTransitionState =
-  | "default"
-  | "loading"
-  | "success"
-  | "error";
+const messages = defineMessages({
+  tryAgain: {
+    id: "Oy1LhB",
+    defaultMessage: "Try again",
+    description: "button error state label",
+  },
+});
 
-export type ConfirmButtonLabels = Partial<Record<"confirm" | "error", string>>;
+export type ConfirmButtonTransitionState = "default" | "loading" | "success" | "error";
+
+type ConfirmButtonLabels = Partial<Record<"confirm" | "error", string>>;
 
 export interface ConfirmButtonProps extends ButtonProps {
   labels?: ConfirmButtonLabels;
@@ -37,21 +41,14 @@ export const ConfirmButton = ({
   ...props
 }: ConfirmButtonProps) => {
   const intl = useIntl();
-  const [displayCompletedActionState, setDisplayCompletedActionState] =
-    useState(false);
+  const [displayCompletedActionState, setDisplayCompletedActionState] = useState(false);
   const timeout = useRef<number>();
-
-  const isCompleted = noTransition
-    ? transitionState !== "default"
-    : displayCompletedActionState;
-
+  const isCompleted = noTransition ? transitionState !== "default" : displayCompletedActionState;
   const isError = transitionState === "error" && isCompleted;
-
   const defaultLabels: ConfirmButtonLabels = {
     confirm: intl.formatMessage(buttonMessages.save),
-    error: intl.formatMessage(commonMessages.error),
+    error: intl.formatMessage(messages.tryAgain),
   };
-
   const componentLabels: ConfirmButtonLabels = {
     ...defaultLabels,
     ...labels,
@@ -62,19 +59,15 @@ export const ConfirmButton = ({
       setDisplayCompletedActionState(true);
     }
   }, [transitionState, noTransition]);
-
   useEffect(() => {
     if (noTransition) {
       return;
     }
 
-    if (
-      (["error", "success"] as ConfirmButtonTransitionState[]).includes(
-        transitionState,
-      )
-    ) {
+    if ((["error", "success"] as ConfirmButtonTransitionState[]).includes(transitionState)) {
       timeout.current = setTimeout(() => {
         setDisplayCompletedActionState(false);
+
         if (onTransitionToDefault) {
           onTransitionToDefault();
         }
@@ -94,9 +87,8 @@ export const ConfirmButton = ({
     if (transitionState === "loading") {
       return (
         // TODO: Replace with new component when it will be ready https://github.com/saleor/macaw-ui/issues/443
-        <CircularProgress
+        <SaleorThrobber
           size={20}
-          color="inherit"
           data-test-id="button-progress"
           className={sprinkles({
             position: "absolute",
@@ -108,7 +100,7 @@ export const ConfirmButton = ({
     if (transitionState === "success" && isCompleted) {
       return (
         // TODO: Replace with new component when it will be ready https://github.com/saleor/macaw-ui/issues/443
-        <CheckIcon
+        <Check
           data-test-id="button-success"
           className={sprinkles({
             position: "absolute",
@@ -119,7 +111,6 @@ export const ConfirmButton = ({
 
     return null;
   };
-
   const getByLabelText = () => {
     if (isError) {
       return componentLabels.error;
@@ -139,10 +130,7 @@ export const ConfirmButton = ({
       {renderContent()}
       <span
         className={sprinkles({
-          opacity:
-            ["loading", "success"].includes(transitionState) && isCompleted
-              ? "0"
-              : "1",
+          opacity: ["loading", "success"].includes(transitionState) && isCompleted ? "0" : "1",
           transition: "ease",
         })}
       >

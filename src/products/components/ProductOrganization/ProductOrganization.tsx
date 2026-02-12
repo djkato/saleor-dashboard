@@ -1,12 +1,7 @@
 // @ts-strict-ignore
 import { DashboardCard } from "@dashboard/components/Card";
+import { Multiselect } from "@dashboard/components/Combobox";
 import Link from "@dashboard/components/Link";
-import MultiAutocompleteSelectField, {
-  MultiAutocompleteChoiceType,
-} from "@dashboard/components/MultiAutocompleteSelectField";
-import SingleAutocompleteSelectField, {
-  SingleAutocompleteChoiceType,
-} from "@dashboard/components/SingleAutocompleteSelectField";
 import {
   ProductChannelListingErrorFragment,
   ProductErrorCode,
@@ -16,8 +11,8 @@ import { ChangeEvent } from "@dashboard/hooks/useForm";
 import { productTypeUrl } from "@dashboard/productTypes/urls";
 import { FetchMoreProps } from "@dashboard/types";
 import { getFormErrors, getProductErrorMessage } from "@dashboard/utils/errors";
-import { Box, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, DynamicCombobox, Option, Text } from "@saleor/macaw-ui-next";
+import { cloneElement, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 interface ProductType {
@@ -28,20 +23,20 @@ interface ProductType {
 
 interface ProductOrganizationProps {
   canChangeType: boolean;
-  categories?: SingleAutocompleteChoiceType[];
+  categories?: Option[];
   categoryInputDisplayValue: string;
-  collections?: MultiAutocompleteChoiceType[];
-  collectionsInputDisplayValue: MultiAutocompleteChoiceType[];
+  collections?: Option[];
+  collectionsInputDisplayValue: Option[];
   data: {
     category: string;
-    collections: string[];
+    collections: Option[];
     productType?: ProductType;
   };
   disabled: boolean;
   errors: Array<ProductErrorFragment | ProductChannelListingErrorFragment>;
   productType?: ProductType;
   productTypeInputDisplayValue?: string;
-  productTypes?: SingleAutocompleteChoiceType[];
+  productTypes?: Option[];
   fetchCategories: (query: string) => void;
   fetchCollections: (query: string) => void;
   fetchMoreCategories: FetchMoreProps;
@@ -51,11 +46,10 @@ interface ProductOrganizationProps {
   onCategoryChange: (event: ChangeEvent) => void;
   onCollectionChange: (event: ChangeEvent) => void;
   onProductTypeChange?: (event: ChangeEvent) => void;
+  selectedProductCategory?: Option;
 }
 
-export const ProductOrganization: React.FC<
-  ProductOrganizationProps
-> = props => {
+export const ProductOrganization = (props: ProductOrganizationProps) => {
   const {
     canChangeType,
     categories,
@@ -77,14 +71,18 @@ export const ProductOrganization: React.FC<
     onCategoryChange,
     onCollectionChange,
     onProductTypeChange,
+    selectedProductCategory,
   } = props;
-
   const intl = useIntl();
-
   const formErrors = getFormErrors(
     ["productType", "category", "collections", "isPublished"],
     errors,
   );
+  const [categoryInputActive, setCategoryInputActive] = useState(false);
+
+  // Input is hide to proper handle showing nested category structure
+  const hideInput = !categoryInputActive && data.category && !disabled;
+
   const noCategoryError =
     formErrors.isPublished?.code === ProductErrorCode.PRODUCT_WITHOUT_CATEGORY
       ? formErrors.isPublished
@@ -92,93 +90,185 @@ export const ProductOrganization: React.FC<
 
   return (
     <DashboardCard>
-      <DashboardCard.Title>
-        {intl.formatMessage({
-          id: "JjeZEG",
-          defaultMessage: "Organize Product",
-          description: "section header",
-        })}
-      </DashboardCard.Title>
-      <DashboardCard.Content gap={5} display="flex" flexDirection="column">
+      <DashboardCard.Header>
+        <DashboardCard.Title>
+          {intl.formatMessage({
+            id: "JjeZEG",
+            defaultMessage: "Organize Product",
+            description: "section header",
+          })}
+        </DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content gap={2} display="flex" flexDirection="column">
         {canChangeType ? (
-          <SingleAutocompleteSelectField
-            displayValue={productTypeInputDisplayValue}
+          <DynamicCombobox
+            disabled={disabled}
+            data-test-id="product-type"
+            options={productTypes}
+            value={
+              data.productType?.id
+                ? {
+                    value: data.productType.id,
+                    label: productTypeInputDisplayValue,
+                  }
+                : /**
+                   * This hack creates a blink, so it should be fixed
+                   * 1. When value is changed, URL is updated
+                   * 2. For a moment data.productType is not provided
+                   * 3. Select resets value
+                   *
+                   * This component should preserve previous value without race condition with URL
+                   */
+                  {
+                    value: "",
+                    label: "",
+                  }
+            }
             error={!!formErrors.productType}
             helperText={getProductErrorMessage(formErrors.productType, intl)}
+            onChange={o => {
+              onProductTypeChange({
+                /**
+                 * Fake change event
+                 * 1. Upper handlers rely on event, not values
+                 * 2. Macaw's select doesn't expose inner event
+                 *
+                 * TODO: Expose native events from Macaw for interoperability
+                 */
+                target: {
+                  value: o?.value ?? "",
+                  name: "productType",
+                },
+              });
+            }}
             name="productType"
-            disabled={disabled}
+            onScrollEnd={() => {
+              if (fetchMoreProductTypes.hasMore) {
+                fetchMoreProductTypes.onFetchMore();
+              }
+            }}
+            onFocus={() => fetchProductTypes("")}
             label={intl.formatMessage({
               id: "anK7jD",
               defaultMessage: "Product Type",
             })}
-            choices={productTypes}
-            value={data.productType?.id}
-            onChange={onProductTypeChange}
-            fetchChoices={fetchProductTypes}
-            data-test-id="product-type"
-            {...fetchMoreProductTypes}
+            loading={fetchMoreProductTypes?.loading}
           />
         ) : (
           <Box display="flex" flexDirection="column" gap={3}>
             <Box display="flex" flexDirection="column">
-              <Text variant="bodyEmp">
+              <Text size={4} fontWeight="bold">
                 <FormattedMessage id="anK7jD" defaultMessage="Product Type" />
               </Text>
-              <Text variant="caption">
-                <Link
-                  href={productTypeUrl(productType?.id) ?? ""}
-                  disabled={!productType?.id}
-                >
-                  {productType?.name ?? "..."}
-                </Link>
-              </Text>
+              {productType?.id ? (
+                <Text size={2}>
+                  <Link href={productTypeUrl(productType?.id) ?? ""}>
+                    {productType?.name ?? "..."}
+                  </Link>
+                </Text>
+              ) : (
+                <Text size={2}>{productType?.name ?? "..."}</Text>
+              )}
             </Box>
           </Box>
         )}
-        <SingleAutocompleteSelectField
-          displayValue={categoryInputDisplayValue}
-          error={!!(formErrors.category || noCategoryError)}
-          helperText={getProductErrorMessage(
-            formErrors.category || noCategoryError,
-            intl,
-          )}
+
+        <Box data-test-id="category">
+          <DynamicCombobox
+            disabled={disabled}
+            options={disabled ? [] : categories}
+            value={
+              data.category
+                ? {
+                    value: data.category,
+                    label: categoryInputDisplayValue,
+                  }
+                : null
+            }
+            error={!!(formErrors.category || noCategoryError)}
+            helperText={getProductErrorMessage(formErrors.category || noCategoryError, intl)}
+            loading={fetchMoreCategories?.loading}
+            onChange={o => {
+              onCategoryChange({
+                /**
+                 * Fake change event
+                 * 1. Upper handlers rely on event, not values
+                 * 2. Macaw's select doesn't expose inner event
+                 *
+                 * TODO: Expose native events from Macaw for interoperability
+                 */
+                target: {
+                  value: o?.value ?? "",
+                  name: "category",
+                },
+              });
+            }}
+            onScrollEnd={() => {
+              if (fetchMoreCategories.hasMore) {
+                fetchMoreCategories.onFetchMore();
+              }
+            }}
+            onFocus={() => {
+              setCategoryInputActive(true);
+              fetchCategories("");
+            }}
+            name="category"
+            label={intl.formatMessage({
+              id: "ccXLVi",
+              defaultMessage: "Category",
+            })}
+            {...(hideInput && {
+              width: "100%",
+              __opacity: 0,
+              position: "absolute",
+            })}
+            onBlur={() => {
+              setCategoryInputActive(false);
+            }}
+            startAdornment={val => {
+              if (categoryInputActive || disabled) {
+                return undefined;
+              }
+
+              const availableCategories = selectedProductCategory
+                ? [...categories, selectedProductCategory]
+                : categories;
+
+              const adornment = val
+                ? availableCategories.find(category => category.value === val.value)?.startAdornment
+                : null;
+
+              if (!adornment) {
+                return <Text size={3}>{categoryInputDisplayValue}</Text>;
+              }
+
+              return (
+                <>
+                  {cloneElement(adornment as React.ReactElement, {
+                    size: 3,
+                  })}
+                  <Text size={3}>{categoryInputDisplayValue}</Text>
+                </>
+              );
+            }}
+            id="category-list"
+          />
+        </Box>
+        <Multiselect
           disabled={disabled}
-          label={intl.formatMessage({
-            id: "ccXLVi",
-            defaultMessage: "Category",
-          })}
-          choices={disabled ? [] : categories}
-          name="category"
-          value={data.category}
-          onChange={onCategoryChange}
-          fetchChoices={fetchCategories}
-          data-test-id="category"
-          {...fetchMoreCategories}
-        />
-        <MultiAutocompleteSelectField
-          displayValues={collectionsInputDisplayValue}
+          options={collections}
+          data-test-id="collections"
+          value={collectionsInputDisplayValue}
           error={!!formErrors.collections}
+          name="collections"
+          onChange={onCollectionChange}
+          fetchOptions={fetchCollections}
+          fetchMore={fetchMoreCollections}
           label={intl.formatMessage({
             id: "ulh3kf",
             defaultMessage: "Collections",
           })}
-          choices={disabled ? [] : collections}
-          name="collections"
-          value={data.collections}
-          helperText={
-            getProductErrorMessage(formErrors.collections, intl) ||
-            intl.formatMessage({
-              id: "v+Pkm+",
-              defaultMessage:
-                "*Optional. Adding product to collection helps users find it.",
-              description: "field is optional",
-            })
-          }
-          onChange={onCollectionChange}
-          fetchChoices={fetchCollections}
-          data-test-id="collections"
-          testId="collection"
-          {...fetchMoreCollections}
+          helperText={getProductErrorMessage(formErrors.collections, intl)}
         />
       </DashboardCard.Content>
     </DashboardCard>

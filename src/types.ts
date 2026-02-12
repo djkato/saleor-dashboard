@@ -1,9 +1,9 @@
 import { FetchResult, MutationResult } from "@apollo/client";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import { UserPermissionFragment } from "@dashboard/graphql";
+import { Option } from "@saleor/macaw-ui-next";
 
-import { FilterElement, IFilter } from "./components/Filter";
-import { MultiAutocompleteChoiceType } from "./components/MultiAutocompleteSelectField";
+import { FilterElement, IFilter } from "./components/Filter/types";
 
 export interface UserError {
   field: string | null;
@@ -26,6 +26,7 @@ export enum ListViews {
   ATTRIBUTE_VALUE_LIST = "ATTRIBUTE_VALUE_LIST",
   CATEGORY_LIST = "CATEGORY_LIST",
   COLLECTION_LIST = "COLLECTION_LIST",
+  COLLECTION_PRODUCTS_LIST = "COLLECTION_PRODUCTS_LIST",
   CUSTOMER_LIST = "CUSTOMER_LIST",
   DRAFT_LIST = "DRAFT_LIST",
   NAVIGATION_LIST = "NAVIGATION_LIST",
@@ -39,6 +40,7 @@ export enum ListViews {
   PERMISSION_GROUP_LIST = "PERMISSION_GROUP_LIST",
   PRODUCT_TYPE_LIST = "PRODUCT_TYPE_LIST",
   SALES_LIST = "SALES_LIST",
+  DISCOUNTS_LIST = "DISCOUNTS_LIST",
   SHIPPING_METHODS_LIST = "SHIPPING_METHODS_LIST",
   STAFF_MEMBERS_LIST = "STAFF_MEMBERS_LIST",
   VOUCHER_LIST = "VOUCHER_LIST",
@@ -46,6 +48,11 @@ export enum ListViews {
   WEBHOOK_LIST = "WEBHOOK_LIST",
   TRANSLATION_ATTRIBUTE_VALUE_LIST = "TRANSLATION_ATTRIBUTE_VALUE_LIST",
   GIFT_CARD_LIST = "GIFT_CARD_LIST",
+  // Not strictly a list view, but there's a list of variants
+  PRODUCT_DETAILS = "PRODUCT_DETAILS",
+  VOUCHER_CODES = "VOUCHER_CODES",
+  ORDER_REFUNDS = "ORDER_REFUNDS",
+  ORDER_TRANSACTION_REFUNDS = "ORDER_TRANSACTION_REFUNDS",
 }
 
 export interface ListProps<TColumns extends string = string> {
@@ -82,17 +89,15 @@ export interface SortPage<TSortKey extends string> {
 export interface ListActionsWithoutToolbar {
   toggle: (id: string) => void;
   toggleAll: (items: Node[], selected: number) => void;
-  isChecked: (id: string) => boolean;
+  isChecked: (id: string) => boolean | undefined;
   selected: number;
 }
-export type TabListActions<TToolbars extends string> =
-  ListActionsWithoutToolbar &
-    Record<TToolbars, React.ReactNode | React.ReactNodeArray>;
+export type TabListActions<TToolbars extends string> = ListActionsWithoutToolbar &
+  Record<TToolbars, React.ReactNode | React.ReactNodeArray>;
 export interface ListActions extends ListActionsWithoutToolbar {
   toolbar: React.ReactNode | React.ReactNodeArray;
 }
-export interface PageListProps<TColumns extends string = string>
-  extends ListProps<TColumns> {
+export interface PageListProps<TColumns extends string = string> extends ListProps<TColumns> {
   defaultSettings?: ListSettings<TColumns>;
 }
 
@@ -109,10 +114,8 @@ export interface FilterPageProps<TKeys extends string, TOpts extends {}>
   filterOpts: TOpts;
 }
 
-export interface FilterPagePropsWithPresets<
-  TKeys extends string,
-  TOpts extends {},
-> extends FilterProps<TKeys>,
+export interface FilterPagePropsWithPresets<TKeys extends string, TOpts extends {}>
+  extends FilterProps<TKeys>,
     SearchPageProps,
     FilterPresetsProps {
   filterOpts: TOpts;
@@ -148,10 +151,7 @@ export interface ChannelProps {
   selectedChannelId: string;
 }
 
-export interface PartialMutationProviderOutput<
-  TData extends {} = {},
-  TVariables extends {} = {},
-> {
+export interface PartialMutationProviderOutput<TData extends {} = {}, TVariables extends {} = {}> {
   opts: MutationResult<TData> & MutationResultAdditionalProps;
   mutate: (variables: TVariables) => Promise<FetchResult<TData>>;
 }
@@ -159,12 +159,11 @@ export interface PartialMutationProviderOutput<
 export interface Node {
   id: string;
 }
+export interface Container extends Node {
+  name: string;
+}
 export interface SlugNode {
   slug: string;
-}
-
-export interface TagNode {
-  tag: string;
 }
 
 export type Pagination = Partial<{
@@ -178,9 +177,7 @@ export type Dialog<TDialog extends string> = Partial<{
 export type ActiveTab<TTab extends string = string> = Partial<{
   activeTab: TTab;
 }>;
-export type Filters<TFilters extends string> = Partial<
-  Record<TFilters, string>
->;
+export type Filters<TFilters extends string> = Partial<Record<TFilters, string>>;
 export type FiltersWithMultipleValues<TFilters extends string> = Partial<
   Record<TFilters, string[]>
 >;
@@ -239,11 +236,9 @@ export interface FilterOpts<T> {
   value: T;
 }
 
-export interface AutocompleteFilterOpts
-  extends Partial<FetchMoreProps>,
-    Partial<SearchPageProps> {
-  choices: MultiAutocompleteChoiceType[];
-  displayValues: MultiAutocompleteChoiceType[];
+export interface AutocompleteFilterOpts extends Partial<FetchMoreProps>, Partial<SearchPageProps> {
+  choices: Option[];
+  displayValues: Option[];
 }
 
 export type Ids = string[];
@@ -253,8 +248,12 @@ export enum StatusType {
   ERROR = "error",
   WARNING = "warning",
   SUCCESS = "success",
+  NEUTRAL = "neutral",
+  ATTENTION = "attention",
 }
 
-export type RelayToFlat<T extends { edges: Array<{ node: any }> }> = Array<
-  T["edges"][0]["node"]
->;
+export type RelayToFlat<T extends { edges: Array<{ node: any }> } | null> = T extends {
+  edges: Array<{ node: infer U }>;
+}
+  ? U[]
+  : null;

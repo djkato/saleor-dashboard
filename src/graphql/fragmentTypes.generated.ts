@@ -1,4 +1,3 @@
-/* eslint-disable */
 
       export interface PossibleTypesResultData {
         possibleTypes: {
@@ -7,6 +6,40 @@
       }
       const result: PossibleTypesResultData = {
   "possibleTypes": {
+    "AppExtensionPossibleOptions": [
+      "AppExtensionOptionsNewTab",
+      "AppExtensionOptionsWidget"
+    ],
+    "AssignedAttribute": [
+      "AssignedBooleanAttribute",
+      "AssignedDateAttribute",
+      "AssignedDateTimeAttribute",
+      "AssignedFileAttribute",
+      "AssignedMultiCategoryReferenceAttribute",
+      "AssignedMultiChoiceAttribute",
+      "AssignedMultiCollectionReferenceAttribute",
+      "AssignedMultiPageReferenceAttribute",
+      "AssignedMultiProductReferenceAttribute",
+      "AssignedMultiProductVariantReferenceAttribute",
+      "AssignedNumericAttribute",
+      "AssignedPlainTextAttribute",
+      "AssignedSingleCategoryReferenceAttribute",
+      "AssignedSingleChoiceAttribute",
+      "AssignedSingleCollectionReferenceAttribute",
+      "AssignedSinglePageReferenceAttribute",
+      "AssignedSingleProductReferenceAttribute",
+      "AssignedSingleProductVariantReferenceAttribute",
+      "AssignedSwatchAttribute",
+      "AssignedTextAttribute"
+    ],
+    "CheckoutLineProblem": [
+      "CheckoutLineProblemInsufficientStock",
+      "CheckoutLineProblemVariantNotAvailable"
+    ],
+    "CheckoutProblem": [
+      "CheckoutLineProblemInsufficientStock",
+      "CheckoutLineProblemVariantNotAvailable"
+    ],
     "DeliveryMethod": [
       "ShippingMethod",
       "Warehouse"
@@ -16,6 +49,9 @@
       "AccountConfirmationRequested",
       "AccountConfirmed",
       "AccountDeleteRequested",
+      "AccountDeleted",
+      "AccountEmailChanged",
+      "AccountSetPasswordRequested",
       "AddressCreated",
       "AddressDeleted",
       "AddressUpdated",
@@ -40,6 +76,7 @@
       "ChannelUpdated",
       "CheckoutCreated",
       "CheckoutFilterShippingMethods",
+      "CheckoutFullyAuthorized",
       "CheckoutFullyPaid",
       "CheckoutMetadataUpdated",
       "CheckoutUpdated",
@@ -57,8 +94,10 @@
       "FulfillmentCanceled",
       "FulfillmentCreated",
       "FulfillmentMetadataUpdated",
+      "FulfillmentTrackingNumberUpdated",
       "GiftCardCreated",
       "GiftCardDeleted",
+      "GiftCardExportCompleted",
       "GiftCardMetadataUpdated",
       "GiftCardSent",
       "GiftCardStatusChanged",
@@ -66,6 +105,7 @@
       "InvoiceDeleted",
       "InvoiceRequested",
       "InvoiceSent",
+      "ListStoredPaymentMethods",
       "MenuCreated",
       "MenuDeleted",
       "MenuItemCreated",
@@ -95,7 +135,10 @@
       "PaymentCaptureEvent",
       "PaymentConfirmEvent",
       "PaymentGatewayInitializeSession",
+      "PaymentGatewayInitializeTokenizationSession",
       "PaymentListGateways",
+      "PaymentMethodInitializeTokenizationSession",
+      "PaymentMethodProcessTokenizationSession",
       "PaymentProcessEvent",
       "PaymentRefundEvent",
       "PaymentVoidEvent",
@@ -104,6 +147,7 @@
       "PermissionGroupUpdated",
       "ProductCreated",
       "ProductDeleted",
+      "ProductExportCompleted",
       "ProductMediaCreated",
       "ProductMediaDeleted",
       "ProductMediaUpdated",
@@ -116,6 +160,14 @@
       "ProductVariantOutOfStock",
       "ProductVariantStockUpdated",
       "ProductVariantUpdated",
+      "PromotionCreated",
+      "PromotionDeleted",
+      "PromotionEnded",
+      "PromotionRuleCreated",
+      "PromotionRuleDeleted",
+      "PromotionRuleUpdated",
+      "PromotionStarted",
+      "PromotionUpdated",
       "SaleCreated",
       "SaleDeleted",
       "SaleToggle",
@@ -131,7 +183,9 @@
       "ShopMetadataUpdated",
       "StaffCreated",
       "StaffDeleted",
+      "StaffSetPasswordRequested",
       "StaffUpdated",
+      "StoredPaymentMethodDeleteRequested",
       "ThumbnailCreated",
       "TransactionCancelationRequested",
       "TransactionChargeRequested",
@@ -141,6 +195,9 @@
       "TransactionRefundRequested",
       "TranslationCreated",
       "TranslationUpdated",
+      "VoucherCodeExportCompleted",
+      "VoucherCodesCreated",
+      "VoucherCodesDeleted",
       "VoucherCreated",
       "VoucherDeleted",
       "VoucherMetadataUpdated",
@@ -219,6 +276,19 @@
       "ProductVariantChannelListing",
       "ProductVariantTranslatableContent",
       "ProductVariantTranslation",
+      "Promotion",
+      "PromotionCreatedEvent",
+      "PromotionEndedEvent",
+      "PromotionRule",
+      "PromotionRuleCreatedEvent",
+      "PromotionRuleDeletedEvent",
+      "PromotionRuleTranslatableContent",
+      "PromotionRuleTranslation",
+      "PromotionRuleUpdatedEvent",
+      "PromotionStartedEvent",
+      "PromotionTranslatableContent",
+      "PromotionTranslation",
+      "PromotionUpdatedEvent",
       "Sale",
       "SaleChannelListing",
       "SaleTranslatableContent",
@@ -246,6 +316,11 @@
       "Warehouse",
       "Webhook"
     ],
+    "ObjectWithAttributes": [
+      "Page",
+      "Product",
+      "ProductVariant"
+    ],
     "ObjectWithMetadata": [
       "Address",
       "App",
@@ -270,6 +345,7 @@
       "ProductMedia",
       "ProductType",
       "ProductVariant",
+      "Promotion",
       "Sale",
       "ShippingMethod",
       "ShippingMethodType",
@@ -285,6 +361,37 @@
     "OrderOrCheckout": [
       "Checkout",
       "Order"
+    ],
+    "PaymentMethodDetails": [
+      "CardPaymentMethodDetails",
+      "OtherPaymentMethodDetails"
+    ],
+    "PromotionEvent": [
+      "PromotionCreatedEvent",
+      "PromotionEndedEvent",
+      "PromotionRuleCreatedEvent",
+      "PromotionRuleDeletedEvent",
+      "PromotionRuleUpdatedEvent",
+      "PromotionStartedEvent",
+      "PromotionUpdatedEvent"
+    ],
+    "PromotionEventInterface": [
+      "PromotionCreatedEvent",
+      "PromotionEndedEvent",
+      "PromotionRuleCreatedEvent",
+      "PromotionRuleDeletedEvent",
+      "PromotionRuleUpdatedEvent",
+      "PromotionStartedEvent",
+      "PromotionUpdatedEvent"
+    ],
+    "PromotionRuleEventInterface": [
+      "PromotionRuleCreatedEvent",
+      "PromotionRuleDeletedEvent",
+      "PromotionRuleUpdatedEvent"
+    ],
+    "ReferenceType": [
+      "PageType",
+      "ProductType"
     ],
     "TaxSourceLine": [
       "CheckoutLine",
@@ -303,6 +410,8 @@
       "PageTranslatableContent",
       "ProductTranslatableContent",
       "ProductVariantTranslatableContent",
+      "PromotionRuleTranslatableContent",
+      "PromotionTranslatableContent",
       "SaleTranslatableContent",
       "ShippingMethodTranslatableContent",
       "VoucherTranslatableContent"
@@ -316,6 +425,8 @@
       "PageTranslation",
       "ProductTranslation",
       "ProductVariantTranslation",
+      "PromotionRuleTranslation",
+      "PromotionTranslation",
       "SaleTranslation",
       "ShippingMethodTranslation",
       "VoucherTranslation"

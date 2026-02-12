@@ -1,22 +1,20 @@
 import { newPasswordUrl } from "@dashboard/auth/urls";
+import { useConditionalFilterContext } from "@dashboard/components/ConditionalFilter";
+import { createStaffMembersQueryVariables } from "@dashboard/components/ConditionalFilter/queryVariables";
 import DeleteFilterTabDialog from "@dashboard/components/DeleteFilterTabDialog";
 import SaveFilterTabDialog from "@dashboard/components/SaveFilterTabDialog";
 import { useShopLimitsQuery } from "@dashboard/components/Shop/queries";
 import { DEFAULT_INITIAL_SEARCH_DATA } from "@dashboard/config";
-import {
-  useStaffListQuery,
-  useStaffMemberAddMutation,
-} from "@dashboard/graphql";
+import { useStaffListQuery, useStaffMemberAddMutation } from "@dashboard/graphql";
 import { useFilterPresets } from "@dashboard/hooks/useFilterPresets";
 import useListSettings from "@dashboard/hooks/useListSettings";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import { usePaginationReset } from "@dashboard/hooks/usePaginationReset";
 import usePaginator, {
   createPaginationState,
   PaginatorContext,
 } from "@dashboard/hooks/usePaginator";
-import { commonMessages } from "@dashboard/intl";
 import usePermissionGroupSearch from "@dashboard/searches/usePermissionGroupSearch";
 import { ListViews } from "@dashboard/types";
 import createDialogActionHandlers from "@dashboard/utils/handlers/dialogActionHandlers";
@@ -25,13 +23,12 @@ import createSortHandler from "@dashboard/utils/handlers/sortHandler";
 import { mapEdgesToItems } from "@dashboard/utils/maps";
 import { getSortParams } from "@dashboard/utils/sort";
 import { getAppMountUriForRedirect } from "@dashboard/utils/urls";
-import React from "react";
+import { useOnboarding } from "@dashboard/welcomePage/WelcomePageOnboarding/onboardingContext";
+import { useMemo } from "react";
 import { useIntl } from "react-intl";
 import urlJoin from "url-join";
 
-import StaffAddMemberDialog, {
-  AddMemberFormData,
-} from "../../components/StaffAddMemberDialog";
+import StaffAddMemberDialog, { AddMemberFormData } from "../../components/StaffAddMemberDialog";
 import StaffListPage from "../../components/StaffListPage";
 import {
   staffListUrl,
@@ -39,67 +36,64 @@ import {
   StaffListUrlQueryParams,
   staffMemberDetailsUrl,
 } from "../../urls";
-import {
-  getFilterOpts,
-  getFilterQueryParam,
-  getFilterVariables,
-  storageUtils,
-} from "./filters";
+import { getFilterOpts, getFilterQueryParam, storageUtils } from "./filters";
 import { getSortQueryVariables } from "./sort";
 
 interface StaffListProps {
   params: StaffListUrlQueryParams;
 }
 
-export const StaffList: React.FC<StaffListProps> = ({ params }) => {
+const StaffList = ({ params }: StaffListProps) => {
   const navigate = useNavigator();
   const notify = useNotifier();
-  const { updateListSettings, settings } = useListSettings(
-    ListViews.STAFF_MEMBERS_LIST,
-  );
+  const { updateListSettings, settings } = useListSettings(ListViews.STAFF_MEMBERS_LIST);
   const intl = useIntl();
+  const { markOnboardingStepAsCompleted } = useOnboarding();
+  const { valueProvider } = useConditionalFilterContext();
+  const filters = createStaffMembersQueryVariables(valueProvider.value);
 
   usePaginationReset(staffListUrl, params, settings.rowNumber);
 
   const paginationState = createPaginationState(settings.rowNumber, params);
-  const queryVariables = React.useMemo(
+
+  const newQueryVariables = useMemo(
     () => ({
       ...paginationState,
-      filter: getFilterVariables(params),
+      filter: {
+        ...filters,
+        search: params.query,
+      },
       sort: getSortQueryVariables(params),
     }),
-    [params, settings.rowNumber],
+    [params, settings.rowNumber, valueProvider.value],
   );
   const { data: staffQueryData, loading } = useStaffListQuery({
     displayLoader: true,
-    variables: queryVariables,
+    variables: newQueryVariables,
   });
   const limitOpts = useShopLimitsQuery({
     variables: {
       staffUsers: true,
     },
   });
-
   const [addStaffMember, addStaffMemberData] = useStaffMemberAddMutation({
     onCompleted: data => {
       if (data?.staffCreate?.errors?.length === 0) {
+        markOnboardingStepAsCompleted("invite-staff");
         notify({
           status: "success",
-          text: intl.formatMessage(commonMessages.savedChanges),
+          text: intl.formatMessage({ id: "8a7vg2", defaultMessage: "Staff member invited" }),
         });
         navigate(staffMemberDetailsUrl(data?.staffCreate?.user?.id ?? ""));
       }
     },
   });
-
   const paginationValues = usePaginator({
     pageInfo: staffQueryData?.staffUsers?.pageInfo,
     paginationState,
     queryString: params,
   });
-
   const handleSort = createSortHandler(navigate, staffListUrl, params);
-
   const {
     hasPresetsChanged,
     onPresetChange,
@@ -115,21 +109,17 @@ export const StaffList: React.FC<StaffListProps> = ({ params }) => {
     params,
     storageUtils,
   });
-
-  const [changeFilters, resetFilters, handleSearchChange] =
-    createFilterHandlers({
-      createUrl: staffListUrl,
-      getFilterQueryParam,
-      navigate,
-      params,
-      keepActiveTab: true,
-    });
-
+  const [changeFilters, resetFilters, handleSearchChange] = createFilterHandlers({
+    createUrl: staffListUrl,
+    getFilterQueryParam,
+    navigate,
+    params,
+    keepActiveTab: true,
+  });
   const [openModal, closeModal] = createDialogActionHandlers<
     StaffListUrlDialog,
     StaffListUrlQueryParams
   >(navigate, staffListUrl, params);
-
   const {
     loadMore: loadMorePermissionGroups,
     search: searchPermissionGroups,
@@ -137,7 +127,6 @@ export const StaffList: React.FC<StaffListProps> = ({ params }) => {
   } = usePermissionGroupSearch({
     variables: DEFAULT_INITIAL_SEARCH_DATA,
   });
-
   const handleStaffMemberAdd = (variables: AddMemberFormData) =>
     addStaffMember({
       variables: {
@@ -184,9 +173,7 @@ export const StaffList: React.FC<StaffListProps> = ({ params }) => {
       />
 
       <StaffAddMemberDialog
-        availablePermissionGroups={
-          mapEdgesToItems(searchPermissionGroupsOpts?.data?.search) ?? []
-        }
+        availablePermissionGroups={mapEdgesToItems(searchPermissionGroupsOpts?.data?.search) ?? []}
         confirmButtonState={addStaffMemberData.status}
         initialSearch=""
         disabled={loading}
@@ -195,9 +182,7 @@ export const StaffList: React.FC<StaffListProps> = ({ params }) => {
         onClose={closeModal}
         onConfirm={handleStaffMemberAdd}
         fetchMorePermissionGroups={{
-          hasMore:
-            searchPermissionGroupsOpts.data?.search?.pageInfo?.hasNextPage ??
-            false,
+          hasMore: searchPermissionGroupsOpts.data?.search?.pageInfo?.hasNextPage ?? false,
           loading: searchPermissionGroupsOpts.loading,
           onFetchMore: loadMorePermissionGroups,
         }}

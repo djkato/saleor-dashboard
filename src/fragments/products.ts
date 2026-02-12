@@ -46,7 +46,7 @@ export const fragmentProductMedia = gql`
     id
     alt
     sortOrder
-    url
+    url(size: 1024)
     type
     oembedData
   }
@@ -54,14 +54,16 @@ export const fragmentProductMedia = gql`
 
 export const channelListingProductWithoutPricingFragment = gql`
   fragment ChannelListingProductWithoutPricing on ProductChannelListing {
+    id
     isPublished
-    publicationDate
+    publishedAt
     isAvailableForPurchase
-    availableForPurchase
+    availableForPurchaseAt
     visibleInListings
     channel {
       id
       name
+      slug
       currencyCode
     }
   }
@@ -110,6 +112,14 @@ export const productFragment = gql`
       name
       hasVariants
     }
+    category @include(if: $includeCategories) {
+      id
+      name
+    }
+    collections @include(if: $includeCollections) {
+      id
+      name
+    }
     channelListings {
       ...ChannelListingProductWithoutPricing
       pricing @include(if: $hasChannel) {
@@ -126,21 +136,7 @@ export const productVariantAttributesFragment = gql`
     id
     attributes {
       attribute {
-        id
-        slug
-        name
-        inputType
-        entityType
-        valueRequired
-        unit
-        choices(
-          first: $firstValues
-          after: $afterValues
-          last: $lastValues
-          before: $beforeValues
-        ) {
-          ...AttributeValueList
-        }
+        ...AttributeDetails
       }
       values {
         ...AttributeValueDetails
@@ -149,19 +145,13 @@ export const productVariantAttributesFragment = gql`
     productType {
       id
       variantAttributes {
-        id
-        name
-        inputType
-        valueRequired
-        unit
-        choices(
-          first: $firstValues
-          after: $afterValues
-          last: $lastValues
-          before: $beforeValues
-        ) {
-          ...AttributeValueList
-        }
+        ...VariantAttribute
+      }
+      selectionVariantAttributes: variantAttributes(variantSelection: VARIANT_SELECTION) {
+        ...VariantAttribute
+      }
+      nonSelectionVariantAttributes: variantAttributes(variantSelection: NOT_VARIANT_SELECTION) {
+        ...VariantAttribute
       }
     }
     channelListings {
@@ -185,8 +175,7 @@ export const productDetailsVariant = gql`
         name
       }
       values {
-        id
-        name
+        ...AttributeValueDetails
       }
     }
     media {
@@ -241,6 +230,7 @@ export const productFragmentDetails = gql`
       id
       name
       hasVariants
+      isShippingRequired
     }
     weight {
       ...Weight
@@ -261,12 +251,17 @@ export const variantAttributeFragment = gql`
     entityType
     valueRequired
     unit
-    choices(
-      first: $firstValues
-      after: $afterValues
-      last: $lastValues
-      before: $beforeValues
-    ) {
+    referenceTypes {
+      ... on ProductType {
+        id
+        name
+      }
+      ... on PageType {
+        id
+        name
+      }
+    }
+    choices(first: $firstValues, after: $afterValues, last: $lastValues, before: $beforeValues) {
       ...AttributeValueList
     }
   }
@@ -290,9 +285,7 @@ export const fragmentVariant = gql`
     selectionAttributes: attributes(variantSelection: VARIANT_SELECTION) {
       ...SelectedVariantAttribute
     }
-    nonSelectionAttributes: attributes(
-      variantSelection: NOT_VARIANT_SELECTION
-    ) {
+    nonSelectionAttributes: attributes(variantSelection: NOT_VARIANT_SELECTION) {
       ...SelectedVariantAttribute
     }
     media {
@@ -314,9 +307,14 @@ export const fragmentVariant = gql`
       thumbnail {
         url
       }
+      productType {
+        id
+        name
+        hasVariants
+      }
       channelListings {
         id
-        publicationDate
+        publishedAt
         isPublished
         channel {
           id
@@ -330,13 +328,10 @@ export const fragmentVariant = gql`
         sku
         media {
           id
-          url
+          url(size: 200)
           type
           oembedData
         }
-      }
-      defaultVariant {
-        id
       }
     }
     channelListings {
@@ -354,6 +349,56 @@ export const fragmentVariant = gql`
       ...Weight
     }
     quantityLimitPerCustomer
+  }
+`;
+
+export const searchProduct = gql`
+  fragment SearchProduct on Product {
+    id
+    name
+    productType {
+      id
+      name
+    }
+    thumbnail {
+      url
+    }
+    channelListings {
+      ...ChannelListingProductWithoutPricing
+    }
+    variants {
+      id
+      name
+      sku
+      product {
+        id
+        name
+        thumbnail {
+          url
+          __typename
+        }
+        productType {
+          id
+          name
+          __typename
+        }
+      }
+      channelListings {
+        channel {
+          id
+          isActive
+          name
+          currencyCode
+        }
+        price {
+          amount
+          currency
+        }
+      }
+    }
+    collections {
+      id
+    }
   }
 `;
 

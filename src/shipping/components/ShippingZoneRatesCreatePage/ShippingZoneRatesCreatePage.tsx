@@ -6,7 +6,7 @@ import ChannelsAvailabilityCard from "@dashboard/components/ChannelsAvailability
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import { WithFormId } from "@dashboard/components/Form";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
-import Savebar from "@dashboard/components/Savebar";
+import { Savebar } from "@dashboard/components/Savebar";
 import {
   PermissionEnum,
   PostalCodeRuleInclusionTypeEnum,
@@ -29,14 +29,14 @@ import { createChannelsChangeHandler } from "@dashboard/shipping/handlers";
 import { FetchMoreProps } from "@dashboard/types";
 import { RichTextContext } from "@dashboard/utils/richText/context";
 import useRichText from "@dashboard/utils/richText/useRichText";
-import React, { FormEventHandler } from "react";
+import { FormEventHandler, useState } from "react";
 import { useIntl } from "react-intl";
 
-import ShippingMethodTaxes from "../ShippingMethodTaxes";
+import { ShippingMethodTaxes } from "../ShippingMethodTaxes/ShippingMethodTaxes";
 import ShippingZonePostalCodes from "../ShippingZonePostalCodes";
 import { ShippingZoneRateCommonFormData } from "../ShippingZoneRatesPage/types";
 
-export interface ShippingZoneRatesCreatePageProps extends WithFormId {
+interface ShippingZoneRatesCreatePageProps extends WithFormId {
   allChannelsCount?: number;
   shippingChannels: ChannelShippingData[];
   disabled: boolean;
@@ -47,9 +47,7 @@ export interface ShippingZoneRatesCreatePageProps extends WithFormId {
   backUrl: string;
   onDelete?: () => void;
   onSubmit: (data: ShippingZoneRateCommonFormData) => SubmitPromise;
-  onPostalCodeInclusionChange: (
-    inclusion: PostalCodeRuleInclusionTypeEnum,
-  ) => void;
+  onPostalCodeInclusionChange: (inclusion: PostalCodeRuleInclusionTypeEnum) => void;
   onPostalCodeAssign: () => void;
   onPostalCodeUnassign: (code: any) => void;
   onChannelsChange: (data: ChannelShippingData[]) => void;
@@ -59,9 +57,7 @@ export interface ShippingZoneRatesCreatePageProps extends WithFormId {
   fetchMoreTaxClasses: FetchMoreProps;
 }
 
-export const ShippingZoneRatesCreatePage: React.FC<
-  ShippingZoneRatesCreatePageProps
-> = ({
+const ShippingZoneRatesCreatePage = ({
   allChannelsCount,
   shippingChannels,
   channelErrors,
@@ -81,10 +77,9 @@ export const ShippingZoneRatesCreatePage: React.FC<
   formId,
   taxClasses,
   fetchMoreTaxClasses,
-}) => {
+}: ShippingZoneRatesCreatePageProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
-
   const isPriceVariant = variant === ShippingMethodTypeEnum.PRICE;
   const initialForm: ShippingZoneRateCommonFormData = {
     channelListings: shippingChannels,
@@ -98,52 +93,42 @@ export const ShippingZoneRatesCreatePage: React.FC<
     type: null,
     taxClassId: "",
   };
-
-  const [taxClassDisplayName, setTaxClassDisplayName] = React.useState("");
-
+  const [taxClassDisplayName, setTaxClassDisplayName] = useState("");
   const {
     change,
     data: formData,
     setIsSubmitDisabled,
     triggerChange,
   } = useForm(initialForm, undefined, { confirmLeave: true, formId });
-
   const handleFormSubmit = useHandleFormSubmit({
     formId,
     onSubmit,
   });
-
   const richText = useRichText({
     initial: null,
     triggerChange,
   });
-
   const data: ShippingZoneRateCommonFormData = {
     ...formData,
     description: null,
   };
-
   const getData = async (): Promise<ShippingZoneRateCommonFormData> => ({
     ...formData,
     description: await richText.getValue(),
   });
-
   const handleFormElementSubmit: FormEventHandler = async event => {
     event.preventDefault();
     handleFormSubmit(await getData());
   };
-
   const handleSubmit = async () => handleFormSubmit(await getData());
-
   const handleChannelsChange = createChannelsChangeHandler(
     shippingChannels,
     onChannelsChange,
     triggerChange,
   );
-  const isValid = !data.channelListings?.some(channel =>
-    validatePrice(channel.price),
-  );
+  const isValid = !data.channelListings?.some(channel => validatePrice(channel.price));
   const isSaveDisabled = disabled || !isValid;
+
   setIsSubmitDisabled(isSaveDisabled);
 
   return (
@@ -167,12 +152,7 @@ export const ShippingZoneRatesCreatePage: React.FC<
             }
           />
           <DetailPageLayout.Content>
-            <ShippingRateInfo
-              data={data}
-              disabled={disabled}
-              errors={errors}
-              onChange={change}
-            />
+            <ShippingRateInfo data={data} disabled={disabled} errors={errors} onChange={change} />
             <CardSpacer />
             {isPriceVariant ? (
               <OrderValue
@@ -208,6 +188,7 @@ export const ShippingZoneRatesCreatePage: React.FC<
               onPostalCodeRangeAdd={onPostalCodeAssign}
               postalCodes={postalCodes}
             />
+            <CardSpacer />
           </DetailPageLayout.Content>
           <DetailPageLayout.RightSidebar>
             <ChannelsAvailabilityCard
@@ -223,23 +204,29 @@ export const ShippingZoneRatesCreatePage: React.FC<
               taxClasses={taxClasses}
               disabled={false}
               onChange={event =>
-                handleTaxClassChange(
-                  event,
-                  taxClasses,
-                  change,
-                  setTaxClassDisplayName,
-                )
+                handleTaxClassChange(event, taxClasses, change, setTaxClassDisplayName)
               }
               onFetchMore={fetchMoreTaxClasses}
             />
           </DetailPageLayout.RightSidebar>
-          <Savebar
-            disabled={isSaveDisabled}
-            onCancel={() => navigate(backUrl)}
-            onDelete={onDelete}
-            onSubmit={handleSubmit}
-            state={saveButtonBarState}
-          />
+          <Savebar>
+            {onDelete && <Savebar.DeleteButton onClick={onDelete} />}
+            <Savebar.Spacer />
+            <Savebar.CancelButton onClick={() => navigate(backUrl)} />
+            <Savebar.ConfirmButton
+              transitionState={saveButtonBarState}
+              onClick={handleSubmit}
+              disabled={isSaveDisabled}
+              tooltip={
+                !isValid &&
+                intl.formatMessage({
+                  id: "lCEp2/",
+                  defaultMessage: "Set prices for all channels to save",
+                  description: "save button disabled tooltip",
+                })
+              }
+            />
+          </Savebar>
         </DetailPageLayout>
       </form>
     </RichTextContext.Provider>

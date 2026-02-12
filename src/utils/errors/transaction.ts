@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import {
   TransactionCreateErrorCode,
   TransactionCreateErrorFragment,
@@ -12,16 +11,24 @@ import { getCommonFormFieldErrorMessage } from "./common";
 export const transactionRequestMessages = defineMessages({
   missingWebhook: {
     defaultMessage:
-      "No app or plugin is configured to handle requested transaction action",
-    id: "qDfaDI",
+      "No extension (app or plugin) is configured to handle requested transaction action",
+    id: "BxuhWZ",
   },
   notFound: {
     defaultMessage: "Transaction wasn't found",
     id: "B06DG8",
   },
-  success: {
-    defaultMessage: "Transaction action requested successfully",
-    id: "gr1BBC",
+  refundSuccess: {
+    defaultMessage: "Refund request sent to payment provider",
+    id: "CQTTke",
+  },
+  chargeSuccess: {
+    defaultMessage: "Capture request sent to payment provider",
+    id: "fqXQq6",
+  },
+  cancelSuccess: {
+    defaultMessage: "Cancel request sent to payment provider",
+    id: "5oVmhu",
   },
 });
 
@@ -37,8 +44,10 @@ export function getOrderTransactionErrorMessage(
         return intl.formatMessage(transactionRequestMessages.notFound);
     }
 
-    return getCommonFormFieldErrorMessage(err, intl);
+    return getCommonFormFieldErrorMessage(err, intl) || "";
   }
+
+  return "";
 }
 
 export const transactionCreateMessages = defineMessages({
@@ -74,6 +83,8 @@ export function getTransactionCreateErrorMessage(
         return intl.formatMessage(transactionCreateMessages.incorrectCurrency);
     }
 
-    return getCommonFormFieldErrorMessage(err, intl);
+    return getCommonFormFieldErrorMessage(err, intl) || "";
   }
+
+  return "";
 }

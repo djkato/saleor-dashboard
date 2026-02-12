@@ -1,10 +1,8 @@
-// @ts-strict-ignore
-import { parse as parseQs } from "qs";
-import React, { useContext } from "react";
-import { Route, RouteComponentProps, Switch } from "react-router-dom";
+import { Route } from "@dashboard/components/Router";
+import { parseQs } from "@dashboard/url-utils";
+import { Switch } from "react-router-dom";
 
 import Layout from "./components/Layout";
-import { UserContext as Context } from "./types";
 import {
   LoginUrlQueryParams,
   newPasswordPath,
@@ -16,25 +14,14 @@ import NewPassword from "./views/NewPassword";
 import ResetPassword from "./views/ResetPassword";
 import ResetPasswordSuccess from "./views/ResetPasswordSuccess";
 
-const LoginView: React.FC<RouteComponentProps<any>> = () => {
+const LoginView = () => {
   const qs = parseQs(location.search.substr(1)) as any;
   const params: LoginUrlQueryParams = qs;
 
   return <LoginViewComponent params={params} />;
 };
 
-export const UserContext = React.createContext<Context>({
-  login: undefined,
-  loginByExternalPlugin: undefined,
-  logout: undefined,
-  requestLoginByExternalPlugin: undefined,
-  authenticating: false,
-  authenticated: false,
-  errors: [],
-  refetchUser: undefined,
-});
-
-const AuthRouter: React.FC = () => (
+const AuthRouter = () => (
   <Layout>
     <Switch>
       <Route path={passwordResetSuccessPath} component={ResetPasswordSuccess} />
@@ -47,6 +34,3 @@ const AuthRouter: React.FC = () => (
 
 AuthRouter.displayName = "AuthRouter";
 export default AuthRouter;
-
-export * from "./utils";
-export const useUser = () => useContext(UserContext);

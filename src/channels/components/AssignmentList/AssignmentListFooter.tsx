@@ -1,12 +1,11 @@
-// @ts-strict-ignore
-import SingleAutocompleteSelectField from "@dashboard/components/SingleAutocompleteSelectField";
-import CardAddItemsFooter from "@dashboard/products/components/ProductStocks/CardAddItemsFooter";
+import { ChangeEvent } from "@dashboard/hooks/useForm";
+import CardAddItemsFooter from "@dashboard/products/components/ProductStocks/components/CardAddItemsFooter";
 import { mapNodeToChoice } from "@dashboard/utils/maps";
 import { ClickAwayListener } from "@material-ui/core";
-import React, { useEffect, useRef, useState } from "react";
+import { Box, DynamicCombobox } from "@saleor/macaw-ui-next";
+import { useEffect, useRef, useState } from "react";
 import { defineMessages, useIntl } from "react-intl";
 
-import { useStyles } from "./styles";
 import { AssignItem, AssignmentListProps } from "./types";
 
 const messages = defineMessages({
@@ -19,7 +18,7 @@ const messages = defineMessages({
 
 type AssignmentListFooterProps = AssignmentListProps;
 
-const AssignmentListFooter: React.FC<AssignmentListFooterProps> = ({
+export const AssignmentListFooter = ({
   items,
   itemsChoices,
   itemsName,
@@ -28,10 +27,8 @@ const AssignmentListFooter: React.FC<AssignmentListFooterProps> = ({
   addItem,
   searchItems,
   fetchMoreItems,
-}) => {
+}: AssignmentListFooterProps) => {
   const intl = useIntl();
-  const classes = useStyles();
-
   const [isChoicesSelectShown, setIsChoicesSelectShown] = useState(false);
   const itemsRef = useRef<AssignItem[]>(items);
 
@@ -45,11 +42,14 @@ const AssignmentListFooter: React.FC<AssignmentListFooterProps> = ({
     itemsRef.current = items;
   }, [items]);
 
-  const handleChoice = ({ target }) => {
+  const handleChoice = ({ target }: ChangeEvent) => {
+    if (!target.value) {
+      return;
+    }
+
     setIsChoicesSelectShown(false);
     addItem(target.value);
   };
-
   const handleFooterClickAway = () => {
     setIsChoicesSelectShown(false);
     searchItems("");
@@ -57,19 +57,31 @@ const AssignmentListFooter: React.FC<AssignmentListFooterProps> = ({
 
   return isChoicesSelectShown ? (
     <ClickAwayListener onClickAway={handleFooterClickAway}>
-      <div className={classes.root}>
-        <SingleAutocompleteSelectField
+      <Box marginTop={3}>
+        <DynamicCombobox
           data-test-id={`${dataTestId}-auto-complete-select`}
-          value=""
-          displayValue=""
-          nakedInput
           name={inputName}
-          choices={mapNodeToChoice(itemsChoices)}
-          fetchChoices={searchItems}
-          onChange={handleChoice}
-          {...fetchMoreItems}
+          onChange={v =>
+            handleChoice({
+              target: {
+                value: v?.value ?? "",
+                name: inputName,
+              },
+            })
+          }
+          onFocus={() => searchItems("")}
+          options={mapNodeToChoice(itemsChoices)}
+          onScrollEnd={() => {
+            if (fetchMoreItems.hasMore) {
+              fetchMoreItems.onFetchMore();
+            }
+          }}
+          value={{
+            value: "",
+            label: "",
+          }}
         />
-      </div>
+      </Box>
     </ClickAwayListener>
   ) : (
     <CardAddItemsFooter
@@ -84,5 +96,3 @@ const AssignmentListFooter: React.FC<AssignmentListFooterProps> = ({
     />
   );
 };
-
-export default AssignmentListFooter;

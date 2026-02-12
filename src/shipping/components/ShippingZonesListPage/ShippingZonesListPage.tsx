@@ -1,68 +1,90 @@
+import SearchInput from "@dashboard/components/AppLayout/ListFilters/components/SearchInput";
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
-import { DetailPageLayout } from "@dashboard/components/Layouts";
+import { BulkDeleteButton } from "@dashboard/components/BulkDeleteButton";
 import RequirePermissions from "@dashboard/components/RequirePermissions";
-import { configurationMenuUrl } from "@dashboard/configuration";
-import {
-  PermissionEnum,
-  ShippingZoneFragment,
-  WeightUnitsEnum,
-} from "@dashboard/graphql";
+import { configurationMenuUrl } from "@dashboard/configuration/urls";
+import { PermissionEnum, ShippingZoneFragment, WeightUnitsEnum } from "@dashboard/graphql";
 import { SubmitPromise } from "@dashboard/hooks/useForm";
-import {
-  ListActions,
-  PageListProps,
-  UserPermissionProps,
-} from "@dashboard/types";
-import React from "react";
-import { useIntl } from "react-intl";
+import useNavigator from "@dashboard/hooks/useNavigator";
+import { shippingZoneAddUrl } from "@dashboard/shipping/urls";
+import { PageListProps, SearchPageProps, UserPermissionProps } from "@dashboard/types";
+import { Box, Button } from "@saleor/macaw-ui-next";
+import { FormattedMessage, useIntl } from "react-intl";
 
-import ShippingWeightUnitForm from "../ShippingWeightUnitForm";
-import ShippingZonesList from "../ShippingZonesList";
+import { ShippingZoneListDatagrid } from "../ShippingZonesListDatagrid";
+import { messages } from "./messages";
 
-export interface ShippingZonesListPageProps
-  extends PageListProps,
-    ListActions,
-    UserPermissionProps {
-  defaultWeightUnit: WeightUnitsEnum;
-  shippingZones: ShippingZoneFragment[];
-  onRemove: (id: string) => void;
-  onSubmit: (unit: WeightUnitsEnum) => SubmitPromise;
+interface ShippingZonesListPageProps extends PageListProps, SearchPageProps, UserPermissionProps {
+  defaultWeightUnit: WeightUnitsEnum | undefined;
+  shippingZones: ShippingZoneFragment[] | undefined;
+  selectedShippingZonesIds: string[];
+  onSelectShippingZones: (rows: number[], clearSelection: () => void) => void;
+  onRemove: () => void;
+  onSubmit: (unit: WeightUnitsEnum | undefined) => SubmitPromise;
+  onWeightUnitChange: () => void;
 }
 
-const ShippingZonesListPage: React.FC<ShippingZonesListPageProps> = ({
-  defaultWeightUnit,
+const ShippingZonesListPage = ({
   disabled,
-  onSubmit,
+  onRemove,
+  selectedShippingZonesIds,
+  initialSearch,
+  onSearchChange,
+  onWeightUnitChange,
   ...listProps
-}) => {
+}: ShippingZonesListPageProps) => {
   const intl = useIntl();
+  const navigate = useNavigator();
 
   return (
-    <DetailPageLayout withSavebar={false}>
+    <>
       <TopNav
         href={configurationMenuUrl}
-        title={intl.formatMessage({
-          id: "uULcph",
-          defaultMessage: "Shipping",
-          description: "header",
-        })}
-      />
-      <DetailPageLayout.Content>
-        <ShippingZonesList disabled={disabled} {...listProps} />
-      </DetailPageLayout.Content>
-      <DetailPageLayout.RightSidebar>
-        <RequirePermissions
-          requiredPermissions={[PermissionEnum.MANAGE_SETTINGS]}
-        >
-          <ShippingWeightUnitForm
-            defaultWeightUnit={defaultWeightUnit}
-            disabled={disabled}
-            onSubmit={onSubmit}
+        title={intl.formatMessage(messages.shippingZonesHeader)}
+        withoutBorder
+      >
+        <Box display="flex" alignItems="end" gap={2}>
+          <RequirePermissions requiredPermissions={[PermissionEnum.MANAGE_SETTINGS]}>
+            <TopNav.Menu
+              dataTestId="shipping-zones-menu"
+              items={[
+                {
+                  label: intl.formatMessage(messages.shippingZonesConfig),
+                  onSelect: onWeightUnitChange,
+                  testId: "weight-unit-configuration",
+                },
+              ]}
+            />
+          </RequirePermissions>
+          <Button data-test-id="add-shipping-zone" onClick={() => navigate(shippingZoneAddUrl)}>
+            <FormattedMessage {...messages.createShippingZone} />
+          </Button>
+        </Box>
+      </TopNav>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        paddingX={6}
+        marginY={2}
+      >
+        <Box __width="320px">
+          <SearchInput
+            initialSearch={initialSearch}
+            placeholder={intl.formatMessage(messages.searchShippingZones)}
+            onSearchChange={onSearchChange}
           />
-        </RequirePermissions>
-      </DetailPageLayout.RightSidebar>
-    </DetailPageLayout>
+        </Box>
+        {selectedShippingZonesIds.length > 0 && (
+          <BulkDeleteButton onClick={onRemove}>
+            <FormattedMessage {...messages.bulkDelete} />
+          </BulkDeleteButton>
+        )}
+      </Box>
+      <ShippingZoneListDatagrid disabled={disabled} {...listProps} />
+    </>
   );
 };
+
 ShippingZonesListPage.displayName = "ShippingZonesListPage";
 export default ShippingZonesListPage;

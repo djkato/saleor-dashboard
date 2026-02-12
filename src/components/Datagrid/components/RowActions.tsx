@@ -1,5 +1,6 @@
-import { IconButton, MoreHorizontalIcon } from "@saleor/macaw-ui";
-import React from "react";
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { IconButton } from "@saleor/macaw-ui";
+import { EllipsisVertical } from "lucide-react";
 
 import CardMenu, { CardMenuItem } from "../../CardMenu";
 import useStyles from "../styles";
@@ -13,7 +14,6 @@ export const RowActions = ({ menuItems, disabled }: RowActionsProps) => {
   const classes = useStyles({});
   const hasSingleMenuItem = menuItems.length === 1;
   const firstMenuItem = menuItems[0];
-
   const handleIconClick = () => {
     firstMenuItem.onSelect();
   };
@@ -39,9 +39,12 @@ export const RowActions = ({ menuItems, disabled }: RowActionsProps) => {
           disabled={disabled}
           autoFocusItem={false}
           showMenuIcon={true}
-          Icon={MoreHorizontalIcon}
+          Icon={() => (
+            <EllipsisVertical size={iconSize.small} strokeWidth={iconStrokeWidthBySize.small} />
+          )}
           IconButtonProps={{
             className: classes.ghostIcon,
+            variant: "ghost",
             hoverOutline: false,
             state: "default",
           }}

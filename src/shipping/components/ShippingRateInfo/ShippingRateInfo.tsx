@@ -1,6 +1,6 @@
 // @ts-strict-ignore
+import { DashboardCard } from "@dashboard/components/Card";
 import CardSpacer from "@dashboard/components/CardSpacer";
-import CardTitle from "@dashboard/components/CardTitle";
 import RichTextEditor from "@dashboard/components/RichTextEditor";
 import { RichTextEditorLoading } from "@dashboard/components/RichTextEditor/RichTextEditorLoading";
 import { ShippingErrorFragment } from "@dashboard/graphql";
@@ -9,9 +9,9 @@ import { getFormErrors } from "@dashboard/utils/errors";
 import getShippingErrorMessage from "@dashboard/utils/errors/shipping";
 import { useRichTextContext } from "@dashboard/utils/richText/context";
 import { OutputData } from "@editorjs/editorjs";
-import { Card, CardContent, TextField } from "@material-ui/core";
+import { TextField } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import * as React from "react";
 import { defineMessages, useIntl } from "react-intl";
 
 const messages = defineMessages({
@@ -36,7 +36,6 @@ const messages = defineMessages({
     description: "label",
   },
 });
-
 const useStyles = makeStyles(
   theme => ({
     deliveryTimeFields: {
@@ -55,9 +54,9 @@ const useStyles = makeStyles(
   { name: "ShippingRateInfo" },
 );
 
-export interface ShippingRateInfoProps {
+interface ShippingRateInfoProps {
   data: {
-    description: OutputData;
+    description: OutputData | null;
     name: string;
     maxDays: string;
     minDays: string;
@@ -67,26 +66,21 @@ export interface ShippingRateInfoProps {
   onChange: (event: React.ChangeEvent<any>) => void;
 }
 
-const ShippingRateInfo: React.FC<ShippingRateInfoProps> = props => {
+const ShippingRateInfo = (props: ShippingRateInfoProps) => {
   const { data, disabled, errors, onChange } = props;
-
   const intl = useIntl();
   const classes = useStyles(props);
-
-  const { defaultValue, editorRef, isReadyForMount, handleChange } =
-    useRichTextContext();
-
-  const formErrors = getFormErrors(
-    ["name", "description", "minDays", "maxDays"],
-    errors,
-  );
+  const { defaultValue, editorRef, isReadyForMount, handleChange } = useRichTextContext();
+  const formErrors = getFormErrors(["name", "description", "minDays", "maxDays"], errors);
 
   return (
-    <Card>
-      <CardTitle
-        title={intl.formatMessage(commonMessages.generalInformations)}
-      />
-      <CardContent>
+    <DashboardCard>
+      <DashboardCard.Header>
+        <DashboardCard.Title>
+          {intl.formatMessage(commonMessages.generalInformations)}
+        </DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
         <TextField
           disabled={disabled}
           error={!!formErrors.name}
@@ -94,6 +88,7 @@ const ShippingRateInfo: React.FC<ShippingRateInfoProps> = props => {
           helperText={getShippingErrorMessage(formErrors.name, intl)}
           label={intl.formatMessage(messages.name)}
           name="name"
+          data-test-id="shipping-rate-name-input"
           value={data.name}
           onChange={onChange}
         />
@@ -118,6 +113,7 @@ const ShippingRateInfo: React.FC<ShippingRateInfoProps> = props => {
         <CardSpacer />
         <div className={classes.deliveryTimeFields}>
           <TextField
+            data-test-id="min-delivery-time-input"
             disabled={disabled}
             error={!!formErrors.minDays}
             fullWidth
@@ -134,6 +130,7 @@ const ShippingRateInfo: React.FC<ShippingRateInfoProps> = props => {
             onChange={onChange}
           />
           <TextField
+            data-test-id="max-delivery-time-input"
             disabled={disabled}
             error={!!formErrors.maxDays}
             fullWidth
@@ -150,9 +147,10 @@ const ShippingRateInfo: React.FC<ShippingRateInfoProps> = props => {
             onChange={onChange}
           />
         </div>
-      </CardContent>
-    </Card>
+      </DashboardCard.Content>
+    </DashboardCard>
   );
 };
+
 ShippingRateInfo.displayName = "ShippingRateInfo";
 export default ShippingRateInfo;

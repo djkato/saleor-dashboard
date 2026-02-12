@@ -24,6 +24,11 @@ export const columnsMessages = defineMessages({
     defaultMessage: "Total",
     description: "total price of ordered products",
   },
+  isGift: {
+    id: "J3W5LI",
+    defaultMessage: "Is gift",
+    description: "order line is gift",
+  },
   status: {
     id: "tzMNF3",
     defaultMessage: "Status",
@@ -46,5 +51,10 @@ export const messages = defineMessages({
   editDiscount: {
     id: "DhFqJF",
     defaultMessage: "Edit discount",
+  },
+  showMetadata: {
+    id: "11ep0q",
+    defaultMessage: "Show metadata",
+    description: "button",
   },
 });

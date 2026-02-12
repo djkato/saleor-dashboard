@@ -1,19 +1,16 @@
 // @ts-strict-ignore
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
-import { Button } from "@dashboard/components/Button";
 import { ListPageLayout } from "@dashboard/components/Layouts";
 import { customerUrl } from "@dashboard/customers/urls";
 import { AddressTypeEnum, CustomerAddressesFragment } from "@dashboard/graphql";
 import { getStringOrPlaceholder, renderCollection } from "@dashboard/misc";
-import { Typography } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
-import { Box } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Button, Text } from "@saleor/macaw-ui-next";
 import { defineMessages, useIntl } from "react-intl";
 
 import CustomerAddress from "../CustomerAddress/CustomerAddress";
 
-export interface CustomerAddressListPageProps {
+interface CustomerAddressListPageProps {
   customer: CustomerAddressesFragment;
   disabled: boolean;
   onAdd: () => void;
@@ -41,8 +38,7 @@ const messages = defineMessages({
   noNameToShow: {
     id: "CWqmRU",
     defaultMessage: "Address Book",
-    description:
-      "customer's address book when no customer name is available, header",
+    description: "customer's address book when no customer name is available, header",
   },
   fullNameDetail: {
     id: "MpR4zK",
@@ -83,9 +79,7 @@ const useStyles = makeStyles(
   { name: "CustomerAddressListPage" },
 );
 
-const CustomerAddressListPage: React.FC<
-  CustomerAddressListPageProps
-> = props => {
+const CustomerAddressListPage = (props: CustomerAddressListPageProps) => {
   const { customer, disabled, onAdd, onEdit, onRemove, onSetAsDefault } = props;
   const classes = useStyles(props);
 
@@ -120,17 +114,13 @@ const CustomerAddressListPage: React.FC<
           padding={6}
           flexDirection="column"
         >
-          <Typography variant="h5">
+          <Text size={3} fontWeight="bold" lineHeight={2}>
             {intl.formatMessage(messages.noAddressToShow)}
-          </Typography>
-          <Typography className={classes.description}>
+          </Text>
+          <Text className={classes.description}>
             {intl.formatMessage(messages.doesntHaveAddresses)}
-          </Typography>
-          <Button
-            className={classes.addButton}
-            variant="primary"
-            onClick={onAdd}
-          >
+          </Text>
+          <Button className={classes.addButton} variant="primary" onClick={onAdd}>
             {intl.formatMessage(messages.addAddress)}
           </Button>
         </Box>
@@ -141,12 +131,8 @@ const CustomerAddressListPage: React.FC<
               address={address}
               addressNumber={addressNumber + 1}
               disabled={disabled}
-              isDefaultBillingAddress={
-                customer?.defaultBillingAddress?.id === address?.id
-              }
-              isDefaultShippingAddress={
-                customer?.defaultShippingAddress?.id === address?.id
-              }
+              isDefaultBillingAddress={customer?.defaultBillingAddress?.id === address?.id}
+              isDefaultShippingAddress={customer?.defaultShippingAddress?.id === address?.id}
               onEdit={() => onEdit(address.id)}
               onRemove={() => onRemove(address.id)}
               onSetAsDefault={type => onSetAsDefault(address.id, type)}
@@ -158,5 +144,6 @@ const CustomerAddressListPage: React.FC<
     </ListPageLayout>
   );
 };
+
 CustomerAddressListPage.displayName = "CustomerAddressListPage";
 export default CustomerAddressListPage;

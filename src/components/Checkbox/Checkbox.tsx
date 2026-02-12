@@ -1,10 +1,7 @@
 // @ts-strict-ignore
-import MuiCheckbox, {
-  CheckboxProps as MuiCheckboxProps,
-} from "@material-ui/core/Checkbox";
+import MuiCheckbox, { CheckboxProps as MuiCheckboxProps } from "@material-ui/core/Checkbox";
 import FormHelperText from "@material-ui/core/FormHelperText";
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
 
 const useStyles = makeStyles(
   theme => ({
@@ -15,7 +12,7 @@ const useStyles = makeStyles(
   { name: "Checkbox" },
 );
 
-export type CheckboxProps = Omit<
+type CheckboxProps = Omit<
   MuiCheckboxProps,
   "checkedIcon" | "color" | "icon" | "indeterminateIcon" | "classes" | "onClick"
 > & {
@@ -28,8 +25,7 @@ const firefoxHandler = (event, onChange, checked) => {
   event.preventDefault();
   onChange(event, checked);
 };
-
-const Checkbox: React.FC<CheckboxProps> = ({ helperText, error, ...props }) => {
+const Checkbox = ({ helperText, error, ...props }: CheckboxProps) => {
   const { disableClickPropagation, ...rest } = props;
   const classes = useStyles();
 
@@ -42,7 +38,6 @@ const Checkbox: React.FC<CheckboxProps> = ({ helperText, error, ...props }) => {
           disableClickPropagation
             ? event => {
                 event.stopPropagation();
-
                 /*
               Workaround for firefox
               ref: https://bugzilla.mozilla.org/show_bug.cgi?id=62151
@@ -53,12 +48,11 @@ const Checkbox: React.FC<CheckboxProps> = ({ helperText, error, ...props }) => {
         }
       />
       {helperText && (
-        <FormHelperText classes={{ root: error && classes.error }}>
-          {helperText}
-        </FormHelperText>
+        <FormHelperText classes={{ root: error && classes.error }}>{helperText}</FormHelperText>
       )}
     </>
   );
 };
+
 Checkbox.displayName = "Checkbox";
 export default Checkbox;

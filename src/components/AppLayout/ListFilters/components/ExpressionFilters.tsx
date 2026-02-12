@@ -3,43 +3,30 @@ import {
   ConditionalFilters,
   useConditionalFilterContext,
 } from "@dashboard/components/ConditionalFilter";
-import {
-  Box,
-  Button,
-  CloseIcon,
-  DropdownButton,
-  Popover,
-  Text,
-} from "@saleor/macaw-ui/next";
-import React, { useState } from "react";
+import { iconSize, iconStrokeWidth } from "@dashboard/components/icons";
+import { Box, Button, DropdownButton, Popover, Text } from "@saleor/macaw-ui-next";
+import { X } from "lucide-react";
 import { useIntl } from "react-intl";
 
 export const ExpressionFilters = () => {
-  const [open, setOpen] = useState(false);
   const { formatMessage } = useIntl();
-  const { valueProvider, containerState } = useConditionalFilterContext();
-
-  const clickOutside = () => {
+  const { valueProvider, containerState, filterWindow } = useConditionalFilterContext();
+  const clearEmpty = () => {
     containerState.clearEmpty();
   };
 
   return (
-    <Popover open={open} onOpenChange={open => setOpen(open)}>
+    <Popover open={filterWindow.isOpen} onOpenChange={open => filterWindow.setOpen(open)}>
       <Popover.Trigger>
-        <DropdownButton>
+        <DropdownButton data-test-id="filters-button">
           {formatMessage(conditionalFilterMessages.popoverTrigger, {
             count: valueProvider.count,
           })}
         </DropdownButton>
       </Popover.Trigger>
-      <Popover.Content align="start" onInteractOutside={clickOutside}>
-        <Box
-          __minHeight="250px"
-          __minWidth="636px"
-          display="grid"
-          __gridTemplateRows="auto 1fr"
-        >
-          <Popover.Arrow fill="surfaceNeutralPlain" />
+      <Popover.Content align="start" onInteractOutside={clearEmpty}>
+        <Box __minHeight="250px" __minWidth="636px" display="grid" __gridTemplateRows="auto 1fr">
+          <Popover.Arrow fill="default1" />
           <Box
             paddingTop={3}
             paddingX={3}
@@ -48,20 +35,22 @@ export const ExpressionFilters = () => {
             gap={1}
             alignItems="center"
             justifyContent="space-between"
-            backgroundColor="surfaceNeutralPlain"
+            backgroundColor="default1"
             borderTopLeftRadius={2}
             borderTopRightRadius={2}
           >
-            <Text variant="body" size="medium">
-              {formatMessage(conditionalFilterMessages.popoverTitle)}
-            </Text>
+            <Text>{formatMessage(conditionalFilterMessages.popoverTitle)}</Text>
             <Box display="flex" alignItems="center" gap={2}>
               <Popover.Close>
-                <Button variant="tertiary" icon={<CloseIcon />} />
+                <Button
+                  variant="tertiary"
+                  icon={<X size={iconSize.medium} strokeWidth={iconStrokeWidth} />}
+                  onClick={clearEmpty}
+                />
               </Popover.Close>
             </Box>
           </Box>
-          <ConditionalFilters onClose={() => setOpen(false)} />
+          <ConditionalFilters onClose={() => filterWindow.setOpen(false)} />
         </Box>
       </Popover.Content>
     </Popover>

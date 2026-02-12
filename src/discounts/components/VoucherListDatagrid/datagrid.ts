@@ -1,6 +1,7 @@
 import { PLACEHOLDER } from "@dashboard/components/Datagrid/const";
 import {
   moneyCell,
+  numberCell,
   readonlyTextCell,
 } from "@dashboard/components/Datagrid/customCells/cells";
 import { AvailableColumn } from "@dashboard/components/Datagrid/types";
@@ -22,7 +23,7 @@ export const vouchersListStaticColumnsAdapter = (
   [
     {
       id: "code",
-      title: intl.formatMessage(columnsMessages.code),
+      title: intl.formatMessage(columnsMessages.voucher),
       width: 350,
     },
     {
@@ -82,28 +83,21 @@ export const createGetCellContent =
 
     switch (columnId) {
       case "code":
-        return readonlyTextCell(rowData?.code ?? PLACEHOLDER);
+        return readonlyTextCell(rowData?.name ?? PLACEHOLDER);
       case "min-spent":
-        return rowData?.code && hasChannelsLoaded
-          ? moneyCell(
-              channel?.minSpent?.amount ?? "",
-              channel?.minSpent?.currency ?? "",
-              {
-                readonly: true,
-              },
-            )
+        return hasChannelsLoaded
+          ? moneyCell(channel?.minSpent?.amount ?? null, channel?.minSpent?.currency ?? "", {
+              cursor: "pointer",
+              readonly: true,
+            })
           : readonlyTextCell(PLACEHOLDER);
       case "start-date":
         return readonlyTextCell(
-          rowData.startDate
-            ? moment(rowData.startDate).locale(locale).format("lll")
-            : PLACEHOLDER,
+          rowData.startDate ? moment(rowData.startDate).locale(locale).format("lll") : PLACEHOLDER,
         );
       case "end-date":
         return readonlyTextCell(
-          rowData.endDate
-            ? moment(rowData.endDate).locale(locale).format("lll")
-            : PLACEHOLDER,
+          rowData.endDate ? moment(rowData.endDate).locale(locale).format("lll") : PLACEHOLDER,
         );
 
       case "value":
@@ -111,9 +105,7 @@ export const createGetCellContent =
 
       case "limit":
         return readonlyTextCell(
-          rowData.usageLimit === null
-            ? PLACEHOLDER
-            : rowData.usageLimit.toString(),
+          rowData.usageLimit === null ? PLACEHOLDER : rowData.usageLimit.toString(),
         );
 
       default:
@@ -127,17 +119,16 @@ function getVoucherValueCell(
 ) {
   const hasChannelsLoaded = voucher?.channelListings?.length;
 
-  if (!hasChannelsLoaded) {
+  if (!hasChannelsLoaded || !channel) {
     return readonlyTextCell(PLACEHOLDER);
   }
 
   if (voucher?.discountValueType === "FIXED") {
-    return moneyCell(channel?.discountValue ?? "", channel?.currency ?? "", {
+    return moneyCell(channel?.discountValue, channel?.currency ?? "", {
+      cursor: "pointer",
       readonly: true,
     });
   }
 
-  return moneyCell(channel?.discountValue ?? "", "%", {
-    readonly: true,
-  });
+  return numberCell(channel?.discountValue, { format: "percent" });
 }

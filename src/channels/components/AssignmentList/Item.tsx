@@ -1,6 +1,5 @@
 import DeletableItem from "@dashboard/components/DeletableItem";
-import { Divider, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Divider, Text } from "@saleor/macaw-ui-next";
 import { SortableElement, SortableElementProps } from "react-sortable-hoc";
 
 import SortableHandle from "./SortableHandle";
@@ -13,29 +12,26 @@ interface ItemProps extends SortableElementProps {
   onDelete: (id: string) => void;
 }
 
-const Item = SortableElement(
-  ({ item, sortable = false, onDelete }: ItemProps) => {
-    const { id, name } = item;
-    const classes = useStyles();
+/** @deprecated This component should use @dnd-kit instead of react-sortable-hoc */
+const Item = SortableElement(({ item, sortable = false, onDelete }: ItemProps) => {
+  const { id, name } = item;
+  const classes = useStyles();
 
-    return (
-      <>
-        <div className={classes.container}>
-          <div className={classes.containerContent}>
-            {sortable && (
-              <SortableHandle
-                className={classes.sortableHandle}
-                data-test-id="button-drag-handle"
-              />
-            )}
-            <Text size="small">{name}</Text>
-          </div>
-          <DeletableItem id={id} onDelete={onDelete} />
+  return (
+    <>
+      <div className={classes.container}>
+        <div className={classes.containerContent}>
+          {sortable && (
+            // @ts-expect-error - legacy types
+            <SortableHandle className={classes.sortableHandle} data-test-id="button-drag-handle" />
+          )}
+          <Text size={3}>{name}</Text>
         </div>
-        <Divider />
-      </>
-    );
-  },
-);
+        <DeletableItem id={id} onDelete={onDelete} />
+      </div>
+      <Divider />
+    </>
+  );
+});
 
 export default Item;

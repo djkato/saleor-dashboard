@@ -1,12 +1,13 @@
 // @ts-strict-ignore
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
 import CardSpacer from "@dashboard/components/CardSpacer";
-import LanguageSwitch from "@dashboard/components/LanguageSwitch";
+import { LanguageSwitchWithCaching } from "@dashboard/components/LanguageSwitch/LanguageSwitch";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
-import {
-  CollectionTranslationFragment,
-  LanguageCodeEnum,
-} from "@dashboard/graphql";
+import { ExtensionsButtonSelector } from "@dashboard/extensions/components/ExtensionsButtonSelector/ExtensionsButtonSelector";
+import { getExtensionsItemsForTranslationDetails } from "@dashboard/extensions/getExtensionsItems";
+import { useExtensions } from "@dashboard/extensions/hooks/useExtensions";
+import { CollectionTranslationFragment, LanguageCodeEnum } from "@dashboard/graphql";
+import useNavigator from "@dashboard/hooks/useNavigator";
 import { commonMessages } from "@dashboard/intl";
 import { getStringOrPlaceholder } from "@dashboard/misc";
 import {
@@ -18,19 +19,16 @@ import {
   languageEntityUrl,
   TranslatableEntities,
 } from "@dashboard/translations/urls";
-import React from "react";
+import { Box } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
 import TranslationFields from "../TranslationFields";
 
-export interface TranslationsCollectionsPageProps
-  extends TranslationsEntitiesPageProps {
+interface TranslationsCollectionsPageProps extends TranslationsEntitiesPageProps {
   data: CollectionTranslationFragment;
 }
 
-const TranslationsCollectionsPage: React.FC<
-  TranslationsCollectionsPageProps
-> = ({
+const TranslationsCollectionsPage = ({
   translationId,
   activeField,
   disabled,
@@ -41,8 +39,15 @@ const TranslationsCollectionsPage: React.FC<
   onDiscard,
   onEdit,
   onSubmit,
-}) => {
+}: TranslationsCollectionsPageProps) => {
   const intl = useIntl();
+  const navigate = useNavigator();
+  const { TRANSLATIONS_MORE_ACTIONS } = useExtensions(["TRANSLATIONS_MORE_ACTIONS"]);
+  const menuItems = getExtensionsItemsForTranslationDetails(TRANSLATIONS_MORE_ACTIONS, {
+    translationContext: "collection",
+    collectionId: data?.collection?.id,
+    translationLanguage: languageCode,
+  });
 
   return (
     <DetailPageLayout gridTemplateColumns={1}>
@@ -53,8 +58,7 @@ const TranslationsCollectionsPage: React.FC<
         title={intl.formatMessage(
           {
             id: "Bphmwe",
-            defaultMessage:
-              'Translation Collection "{collectionName}" - {languageCode}',
+            defaultMessage: 'Translation Collection "{collectionName}" - {languageCode}',
             description: "header",
           },
           {
@@ -63,87 +67,100 @@ const TranslationsCollectionsPage: React.FC<
           },
         )}
       >
-        <LanguageSwitch
-          currentLanguage={LanguageCodeEnum[languageCode]}
-          languages={languages}
-          getLanguageUrl={lang =>
-            languageEntityUrl(
-              lang,
-              TranslatableEntities.collections,
-              translationId,
-            )
-          }
-        />
+        <Box display="flex" gap={3}>
+          {menuItems.length > 0 && (
+            <ExtensionsButtonSelector
+              extensions={menuItems}
+              onClick={extension => {
+                extension.onSelect({
+                  translationContext: "collection",
+                  collectionId: data?.collection?.id,
+                  translationLanguage: languageCode,
+                });
+              }}
+            />
+          )}
+          <LanguageSwitchWithCaching
+            currentLanguage={LanguageCodeEnum[languageCode]}
+            languages={languages}
+            onLanguageChange={lang =>
+              navigate(languageEntityUrl(lang, TranslatableEntities.collections, translationId))
+            }
+          />
+        </Box>
       </TopNav>
-      <TranslationFields
-        activeField={activeField}
-        disabled={disabled}
-        initialState={true}
-        title={intl.formatMessage(commonMessages.generalInformations)}
-        fields={[
-          {
-            displayName: intl.formatMessage({
-              id: "VZsE96",
-              defaultMessage: "Collection Name",
-            }),
-            name: TranslationInputFieldName.name,
-            translation: data?.translation?.name || null,
-            type: "short" as "short",
-            value: data?.collection?.name,
-          },
-          {
-            displayName: intl.formatMessage(commonMessages.description),
-            name: TranslationInputFieldName.description,
-            translation: data?.translation?.description || null,
-            type: "rich" as "rich",
-            value: data?.collection?.description,
-          },
-        ]}
-        saveButtonState={saveButtonState}
-        richTextResetKey={languageCode}
-        onEdit={onEdit}
-        onDiscard={onDiscard}
-        onSubmit={onSubmit}
-      />
-      <CardSpacer />
-      <TranslationFields
-        activeField={activeField}
-        disabled={disabled}
-        initialState={true}
-        title={intl.formatMessage({
-          id: "TGX4T1",
-          defaultMessage: "Search Engine Preview",
-        })}
-        fields={[
-          {
-            displayName: intl.formatMessage({
-              id: "HlEpii",
-              defaultMessage: "Search Engine Title",
-            }),
-            name: TranslationInputFieldName.seoTitle,
-            translation: data?.translation?.seoTitle || null,
-            type: "short" as "short",
-            value: data?.collection?.seoTitle,
-          },
-          {
-            displayName: intl.formatMessage({
-              id: "US3IPU",
-              defaultMessage: "Search Engine Description",
-            }),
-            name: TranslationInputFieldName.seoDescription,
-            translation: data?.translation?.seoDescription || null,
-            type: "long" as "long",
-            value: data?.collection?.seoDescription,
-          },
-        ]}
-        saveButtonState={saveButtonState}
-        richTextResetKey={languageCode}
-        onEdit={onEdit}
-        onDiscard={onDiscard}
-        onSubmit={onSubmit}
-      />
+      <DetailPageLayout.Content>
+        <TranslationFields
+          activeField={activeField}
+          disabled={disabled}
+          initialState={true}
+          title={intl.formatMessage(commonMessages.generalInformations)}
+          fields={[
+            {
+              displayName: intl.formatMessage({
+                id: "VZsE96",
+                defaultMessage: "Collection Name",
+              }),
+              name: TranslationInputFieldName.name,
+              translation: data?.translation?.name || null,
+              type: "short" as const,
+              value: data?.collection?.name,
+            },
+            {
+              displayName: intl.formatMessage(commonMessages.description),
+              name: TranslationInputFieldName.description,
+              translation: data?.translation?.description || null,
+              type: "rich" as const,
+              value: data?.collection?.description,
+            },
+          ]}
+          saveButtonState={saveButtonState}
+          richTextResetKey={languageCode}
+          onEdit={onEdit}
+          onDiscard={onDiscard}
+          onSubmit={onSubmit}
+        />
+        <CardSpacer />
+        <TranslationFields
+          activeField={activeField}
+          disabled={disabled}
+          initialState={true}
+          title={intl.formatMessage({
+            id: "TGX4T1",
+            defaultMessage: "Search Engine Preview",
+          })}
+          fields={[
+            {
+              displayName: intl.formatMessage({
+                id: "HlEpii",
+                defaultMessage: "Search Engine Title",
+              }),
+              name: TranslationInputFieldName.seoTitle,
+              translation: data?.translation?.seoTitle || null,
+              type: "short" as const,
+              value: data?.collection?.seoTitle,
+            },
+            {
+              displayName: intl.formatMessage({
+                id: "US3IPU",
+                defaultMessage: "Search Engine Description",
+              }),
+              name: TranslationInputFieldName.seoDescription,
+              translation: data?.translation?.seoDescription || null,
+              type: "long" as const,
+              value: data?.collection?.seoDescription,
+            },
+          ]}
+          saveButtonState={saveButtonState}
+          richTextResetKey={languageCode}
+          onEdit={onEdit}
+          onDiscard={onDiscard}
+          onSubmit={onSubmit}
+        />
+      </DetailPageLayout.Content>
     </DetailPageLayout>
   );
 };
+
 TranslationsCollectionsPage.displayName = "TranslationsCollectionsPage";
 export default TranslationsCollectionsPage;

@@ -1,12 +1,10 @@
 import ActionDialog from "@dashboard/components/ActionDialog";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
-import { DialogContentText } from "@material-ui/core";
-import React from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import messages from "./messages";
 
-export interface BulkAttributeUnassignDialogProps {
+interface BulkAttributeUnassignDialogProps {
   title: string;
   attributeQuantity: number;
   confirmButtonState: ConfirmButtonTransitionState;
@@ -16,9 +14,7 @@ export interface BulkAttributeUnassignDialogProps {
   onConfirm: () => void;
 }
 
-const BulkAttributeUnassignDialog: React.FC<
-  BulkAttributeUnassignDialogProps
-> = ({
+const BulkAttributeUnassignDialog = ({
   title,
   attributeQuantity,
   confirmButtonState,
@@ -26,7 +22,7 @@ const BulkAttributeUnassignDialog: React.FC<
   itemTypeName,
   onClose,
   onConfirm,
-}) => {
+}: BulkAttributeUnassignDialogProps) => {
   const intl = useIntl();
 
   return (
@@ -38,18 +34,17 @@ const BulkAttributeUnassignDialog: React.FC<
       title={title}
       confirmButtonLabel={intl.formatMessage(messages.confirmBtn)}
     >
-      <DialogContentText>
-        <FormattedMessage
-          {...messages.content}
-          values={{
-            attributeQuantity: <strong>{attributeQuantity}</strong>,
-            counter: attributeQuantity,
-            itemTypeName: <strong>{itemTypeName}</strong>,
-          }}
-        />
-      </DialogContentText>
+      <FormattedMessage
+        {...messages.content}
+        values={{
+          attributeQuantity: <strong>{attributeQuantity}</strong>,
+          counter: attributeQuantity,
+          itemTypeName: <strong>{itemTypeName}</strong>,
+        }}
+      />
     </ActionDialog>
   );
 };
+
 BulkAttributeUnassignDialog.displayName = "BulkAttributeUnassignDialog";
 export default BulkAttributeUnassignDialog;

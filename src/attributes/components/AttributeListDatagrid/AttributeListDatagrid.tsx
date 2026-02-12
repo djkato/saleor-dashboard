@@ -1,7 +1,4 @@
-import {
-  AttributeListUrlSortField,
-  attributeUrl,
-} from "@dashboard/attributes/urls";
+import { AttributeListUrlSortField, attributeUrl } from "@dashboard/attributes/urls";
 import { ColumnPicker } from "@dashboard/components/Datagrid/ColumnPicker/ColumnPicker";
 import { useColumns } from "@dashboard/components/Datagrid/ColumnPicker/useColumns";
 import Datagrid from "@dashboard/components/Datagrid/Datagrid";
@@ -9,29 +6,22 @@ import {
   DatagridChangeStateContext,
   useDatagridChangeState,
 } from "@dashboard/components/Datagrid/hooks/useDatagridChange";
-import { TablePaginationWithContext } from "@dashboard/components/TablePagination";
+import { DatagridPagination } from "@dashboard/components/TablePagination";
 import { AttributeFragment } from "@dashboard/graphql";
+import { getPrevLocationState } from "@dashboard/hooks/useBackLinkWithState";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { ListProps, SortPage } from "@dashboard/types";
 import { Item } from "@glideapps/glide-data-grid";
-import { Box } from "@saleor/macaw-ui/next";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useIntl } from "react-intl";
+import { useLocation } from "react-router";
 
-import {
-  attributesListStaticColumnsAdapter,
-  createGetCellContent,
-} from "./datagrid";
+import { attributesListStaticColumnsAdapter, createGetCellContent } from "./datagrid";
 import { messages } from "./messages";
 
-interface AttributeListDatagridProps
-  extends ListProps,
-    SortPage<AttributeListUrlSortField> {
+interface AttributeListDatagridProps extends ListProps, SortPage<AttributeListUrlSortField> {
   attributes: AttributeFragment[];
-  onSelectAttributesIds: (
-    rowsIndex: number[],
-    clearSelection: () => void,
-  ) => void;
+  onSelectAttributesIds: (rowsIndex: number[], clearSelection: () => void) => void;
 }
 
 export const AttributeListDatagrid = ({
@@ -44,14 +34,13 @@ export const AttributeListDatagrid = ({
   onUpdateListSettings,
 }: AttributeListDatagridProps) => {
   const datagridState = useDatagridChangeState();
+  const location = useLocation();
   const navigate = useNavigator();
   const intl = useIntl();
-
   const attributesListStaticColumns = useMemo(
     () => attributesListStaticColumnsAdapter(intl, sort),
     [intl, sort],
   );
-
   const onColumnChange = useCallback(
     (picked: string[]) => {
       if (onUpdateListSettings) {
@@ -60,19 +49,12 @@ export const AttributeListDatagrid = ({
     },
     [onUpdateListSettings],
   );
-
-  const {
-    handlers,
-    visibleColumns,
-    recentlyAddedColumn,
-    staticColumns,
-    selectedColumns,
-  } = useColumns({
-    selectedColumns: settings?.columns ?? [],
-    staticColumns: attributesListStaticColumns,
-    onSave: onColumnChange,
-  });
-
+  const { handlers, visibleColumns, recentlyAddedColumn, staticColumns, selectedColumns } =
+    useColumns({
+      selectedColumns: settings?.columns ?? [],
+      staticColumns: attributesListStaticColumns,
+      onSave: onColumnChange,
+    });
   const getCellContent = useCallback(
     createGetCellContent({
       attributes,
@@ -81,18 +63,18 @@ export const AttributeListDatagrid = ({
     }),
     [attributes, intl, visibleColumns],
   );
-
   const handleRowClick = useCallback(
     ([_, row]: Item) => {
       const rowData: AttributeFragment = attributes[row];
 
       if (rowData) {
-        navigate(attributeUrl(rowData.id));
+        navigate(attributeUrl(rowData.id), {
+          state: getPrevLocationState(location),
+        });
       }
     },
     [attributes],
   );
-
   const handleRowAnchor = useCallback(
     ([, row]: Item) => attributeUrl(attributes[row].id),
     [attributes],
@@ -100,6 +82,7 @@ export const AttributeListDatagrid = ({
   const handleHeaderClick = useCallback(
     (col: number) => {
       const columnName = visibleColumns[col].id as AttributeListUrlSortField;
+
       onSort(columnName);
     },
     [visibleColumns, onSort],
@@ -110,12 +93,12 @@ export const AttributeListDatagrid = ({
       <Datagrid
         readonly
         loading={disabled}
-        rowMarkers="checkbox"
+        rowMarkers="checkbox-visible"
         columnSelect="single"
         hasRowHover={true}
         onColumnMoved={handlers.onMove}
         onColumnResize={handlers.onResize}
-        verticalBorder={col => col > 0}
+        verticalBorder={false}
         rows={attributes?.length ?? 0}
         availableColumns={visibleColumns}
         emptyText={intl.formatMessage(messages.empty)}
@@ -135,16 +118,15 @@ export const AttributeListDatagrid = ({
             onToggle={handlers.onToggle}
           />
         )}
+        navigatorOpts={{ state: getPrevLocationState(location) }}
       />
 
-      <Box paddingX={6}>
-        <TablePaginationWithContext
-          component="div"
-          settings={settings}
-          disabled={disabled}
-          onUpdateListSettings={onUpdateListSettings}
-        />
-      </Box>
+      <DatagridPagination
+        component="div"
+        settings={settings}
+        disabled={disabled}
+        onUpdateListSettings={onUpdateListSettings}
+      />
     </DatagridChangeStateContext.Provider>
   );
 };

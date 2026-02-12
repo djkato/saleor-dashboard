@@ -1,99 +1,89 @@
-import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
-import ResponsiveTable from "@dashboard/components/ResponsiveTable";
-import TableRowLink from "@dashboard/components/TableRowLink";
-import useSearchQuery from "@dashboard/hooks/useSearchQuery";
-import useScrollableDialogStyle from "@dashboard/styles/useScrollableDialogStyle";
-import { DialogProps, FetchMoreProps, Node } from "@dashboard/types";
-import {
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TableBody,
-  TableCell,
-  TextField,
-} from "@material-ui/core";
-import React from "react";
-import InfiniteScroll from "react-infinite-scroll-component";
+import { ConfirmButton, ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
+import { InfiniteScroll } from "@dashboard/components/InfiniteScroll";
+import { DashboardModal } from "@dashboard/components/Modal";
+import { ResponsiveTable } from "@dashboard/components/ResponsiveTable";
+import { SaleorThrobber } from "@dashboard/components/Throbber";
+import { Container, DialogProps, FetchMoreProps } from "@dashboard/types";
+import { TableBody, TextField } from "@material-ui/core";
+import { Text } from "@saleor/macaw-ui-next";
+import { ChangeEvent, ReactNode } from "react";
 
 import BackButton from "../BackButton";
-import Checkbox from "../Checkbox";
-import { ConfirmButton } from "../ConfirmButton";
-import { useStyles } from "./styles";
-
-export interface AssignContainerDialogFormData {
-  containers: string[];
-  query: string;
-}
+import { MultiSelectionRows, SingleSelectionRows } from "./AssignContainerRows";
+import { useAssignContainerSearch } from "./useAssignContainerSearch";
+import { useAssignDialogMultiSelection } from "./useAssignDialogMultiSelection";
+import { useAssignDialogSingleSelection } from "./useAssignDialogSingleSelection";
 
 type Labels = Record<"confirmBtn" | "title" | "label" | "placeholder", string>;
-interface Container extends Node {
-  name: string;
-}
-export interface AssignContainerDialogProps
-  extends FetchMoreProps,
-    DialogProps {
+
+export interface AssignContainerDialogProps extends FetchMoreProps, DialogProps {
   confirmButtonState: ConfirmButtonTransitionState;
   containers: Container[];
   loading: boolean;
   labels: Labels;
   onFetch: (value: string) => void;
-  onSubmit: (data: string[]) => void;
+  onSubmit: (data: Container[]) => void;
+  emptyMessage?: string;
+  selectionMode?: "single" | "multiple";
+  selectedId?: string;
+  filtersSlot?: ReactNode;
+  search?: {
+    query: string;
+    onQueryChange: (event: ChangeEvent<HTMLInputElement>) => void;
+    resetQuery: () => void;
+  };
+  onResetFilters?: () => void;
 }
 
-function handleContainerAssign(
-  containerId: string,
-  isSelected: boolean,
-  selectedContainers: string[],
-  setSelectedContainers: (data: string[]) => void,
-) {
-  if (isSelected) {
-    setSelectedContainers(
-      selectedContainers.filter(
-        selectedContainer => selectedContainer !== containerId,
-      ),
-    );
-  } else {
-    setSelectedContainers([...selectedContainers, containerId]);
-  }
-}
+const scrollableTargetId = "assignDialogScrollableTarget";
 
-const scrollableTargetId = "assignContainerScrollableDialog";
-
-const AssignContainerDialog: React.FC<AssignContainerDialogProps> = props => {
-  const {
-    confirmButtonState,
-    containers,
-    hasMore,
-    loading,
-    open,
-    labels,
-    onClose,
+const AssignContainerDialog = ({
+  confirmButtonState,
+  containers,
+  hasMore,
+  loading,
+  labels,
+  onClose,
+  onFetch,
+  onFetchMore,
+  onSubmit,
+  open,
+  emptyMessage = "No objects found",
+  selectionMode = "multiple",
+  selectedId,
+  filtersSlot,
+  search: externalSearch,
+  onResetFilters,
+}: AssignContainerDialogProps) => {
+  const { query, onQueryChange, handleClose } = useAssignContainerSearch({
     onFetch,
-    onFetchMore,
+    externalSearch,
+    onClose,
+    onResetFilters,
+  });
+
+  const singleSelection = useAssignDialogSingleSelection({
+    items: containers,
+    selectedId,
+    open,
     onSubmit,
-  } = props;
-  const classes = useStyles(props);
-  const scrollableDialogClasses = useScrollableDialogStyle({});
+  });
 
-  const [query, onQueryChange] = useSearchQuery(onFetch);
-  const [selectedContainers, setSelectedContainers] = React.useState<string[]>(
-    [],
-  );
+  const multiSelection = useAssignDialogMultiSelection({
+    open,
+    onSubmit,
+  });
 
-  const handleSubmit = () => onSubmit(selectedContainers);
+  const handleSubmit =
+    selectionMode === "single" ? singleSelection.handleSubmit : multiSelection.handleSubmit;
+
+  const itemCount = containers?.length ?? 0;
 
   return (
-    <Dialog
-      onClose={onClose}
-      open={open}
-      classes={{ paper: scrollableDialogClasses.dialog }}
-      fullWidth
-      maxWidth="sm"
-    >
-      <DialogTitle disableTypography>{labels.title}</DialogTitle>
-      <DialogContent>
+    <DashboardModal onChange={onClose} open={open}>
+      <DashboardModal.Content size="sm" __gridTemplateRows="auto auto 1fr auto">
+        <DashboardModal.Header>{labels.title}</DashboardModal.Header>
+
         <TextField
           name="query"
           value={query}
@@ -103,73 +93,60 @@ const AssignContainerDialog: React.FC<AssignContainerDialogProps> = props => {
           fullWidth
           InputProps={{
             autoComplete: "off",
-            endAdornment: loading && <CircularProgress size={16} />,
+            endAdornment: loading && <SaleorThrobber size={16} />,
           }}
         />
-      </DialogContent>
-      <DialogContent
-        className={scrollableDialogClasses.scrollArea}
-        id={scrollableTargetId}
-      >
+
+        {filtersSlot}
+
         <InfiniteScroll
-          dataLength={containers?.length}
+          id={scrollableTargetId}
+          dataLength={itemCount}
           next={onFetchMore}
           hasMore={hasMore}
           scrollThreshold="100px"
-          loader={
-            <div className={scrollableDialogClasses.loadMoreLoaderContainer}>
-              <CircularProgress size={16} />
-            </div>
-          }
           scrollableTarget={scrollableTargetId}
         >
           <ResponsiveTable>
             <TableBody>
-              {containers?.map(container => {
-                const isSelected = !!selectedContainers.find(
-                  selectedContainer => selectedContainer === container.id,
-                );
-
-                return (
-                  <TableRowLink key={container.id}>
-                    <TableCell
-                      padding="checkbox"
-                      className={classes.checkboxCell}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={() =>
-                          handleContainerAssign(
-                            container.id,
-                            isSelected,
-                            selectedContainers,
-                            setSelectedContainers,
-                          )
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className={classes.wideCell}>
-                      {container.name}
-                    </TableCell>
-                  </TableRowLink>
-                );
-              })}
+              {!loading && itemCount === 0 && (
+                <Text>
+                  <Text>{emptyMessage}</Text>
+                </Text>
+              )}
+              {selectionMode === "single" ? (
+                <SingleSelectionRows
+                  containers={containers}
+                  selectedItemId={singleSelection.selectedItemId}
+                  onSelect={singleSelection.handleSelect}
+                />
+              ) : (
+                <MultiSelectionRows
+                  containers={containers}
+                  isSelected={multiSelection.isSelected}
+                  onToggle={multiSelection.handleToggle}
+                />
+              )}
             </TableBody>
           </ResponsiveTable>
         </InfiniteScroll>
-      </DialogContent>
-      <DialogActions>
-        <BackButton onClick={onClose} />
-        <ConfirmButton
-          transitionState={confirmButtonState}
-          type="submit"
-          onClick={handleSubmit}
-        >
-          {labels.confirmBtn}
-        </ConfirmButton>
-      </DialogActions>
-    </Dialog>
+
+        <DashboardModal.Actions>
+          <BackButton onClick={handleClose} />
+          <ConfirmButton
+            data-test-id="assign-and-save-button"
+            transitionState={confirmButtonState}
+            type="submit"
+            onClick={handleSubmit}
+          >
+            {labels.confirmBtn}
+          </ConfirmButton>
+        </DashboardModal.Actions>
+      </DashboardModal.Content>
+    </DashboardModal>
   );
 };
+
 AssignContainerDialog.displayName = "AssignContainerDialog";
+
 export default AssignContainerDialog;

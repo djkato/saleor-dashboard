@@ -1,40 +1,37 @@
 // @ts-strict-ignore
-import {
-  CircularProgress,
-  ClickAwayListener,
-  Grow,
-  MenuItem,
-  MenuList,
-  Paper,
-  Popper,
-  Typography,
-} from "@material-ui/core";
-import { IconButtonProps, makeStyles, SettingsIcon } from "@saleor/macaw-ui";
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { SaleorThrobber } from "@dashboard/components/Throbber";
+import { ClickAwayListener, Grow, MenuItem, MenuList, Paper, Popper } from "@material-ui/core";
+import { IconButtonProps, makeStyles } from "@saleor/macaw-ui";
+import { Text } from "@saleor/macaw-ui-next";
 import clsx from "clsx";
-import React, { useEffect, useRef, useState } from "react";
+import { EllipsisVertical } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import * as React from "react";
 import { FormattedMessage } from "react-intl";
 
 import { IconButton } from "../IconButton";
 import { cardMenuMessages as messages } from "./messages";
 
 const ITEM_HEIGHT = 48;
+
 export interface CardMenuItem {
   disabled?: boolean;
   label: string;
   testId?: string;
-  onSelect: () => void;
+  onSelect: <T>(params?: T) => void;
   loading?: boolean;
   withLoading?: boolean;
   hasError?: boolean;
   Icon?: React.ReactElement;
 }
 
-export interface CardMenuProps {
+interface CardMenuProps {
   className?: string;
   disabled?: boolean;
   menuItems: CardMenuItem[];
   outlined?: boolean;
-  Icon?: React.ElementType<{}>;
+  Icon?: React.ElementType<any>;
   IconButtonProps?: IconButtonProps;
   autoFocusItem?: boolean;
   showMenuIcon?: boolean;
@@ -68,11 +65,10 @@ const useStyles = makeStyles(
   }),
   { name: "CardMenu" },
 );
-
 /**
  * @deprecated use [`TopNav.Menu`](https://github.com/saleor/saleor-dashboard/blob/main/src/components/AppLayout/TopNav/Menu.tsx) instead
  */
-const CardMenu: React.FC<CardMenuProps> = props => {
+const CardMenu = (props: CardMenuProps) => {
   const {
     className,
     disabled,
@@ -85,31 +81,24 @@ const CardMenu: React.FC<CardMenuProps> = props => {
     ...rest
   } = props;
   const classes = useStyles(props);
-
   const anchorRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
-
   const handleToggle = () => setOpen(prevOpen => !prevOpen);
-
   const handleClose = (event: React.MouseEvent<EventTarget>) => {
-    if (
-      anchorRef.current &&
-      anchorRef.current.contains(event.target as HTMLElement)
-    ) {
+    if (anchorRef.current && anchorRef.current.contains(event.target as HTMLElement)) {
       return;
     }
 
     setOpen(false);
   };
-
   const handleListKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "Tab") {
       event.preventDefault();
       setOpen(false);
     }
   };
-
   const prevOpen = useRef(open);
+
   useEffect(() => {
     if (prevOpen.current && !open) {
       anchorRef.current!.focus();
@@ -117,7 +106,6 @@ const CardMenu: React.FC<CardMenuProps> = props => {
 
     prevOpen.current = open;
   }, [open]);
-
   useEffect(() => {
     const hasAnyItemsLoadingOrWithError = menuItems
       ?.filter(({ withLoading }) => withLoading)
@@ -130,16 +118,18 @@ const CardMenu: React.FC<CardMenuProps> = props => {
 
   const handleMenuClick = (index: number) => {
     const selectedItem = menuItems[index];
+
     selectedItem.onSelect();
 
     if (!selectedItem.withLoading) {
       setOpen(false);
     }
   };
-
   const isWithLoading = menuItems.some(({ withLoading }) => withLoading);
-
-  const Icon = icon ?? SettingsIcon;
+  const DefaultIcon = () => (
+    <EllipsisVertical size={iconSize.small} strokeWidth={iconStrokeWidthBySize.small} />
+  );
+  const Icon = icon ?? DefaultIcon;
 
   return (
     <div className={className} {...rest}>
@@ -155,7 +145,7 @@ const CardMenu: React.FC<CardMenuProps> = props => {
         state={open ? "active" : "default"}
         {...IconButtonProps}
       >
-        <Icon />
+        <Icon onPointerEnterCapture={undefined} onPointerLeaveCapture={undefined} />
       </IconButton>
       <Popper
         placement="bottom-end"
@@ -168,8 +158,7 @@ const CardMenu: React.FC<CardMenuProps> = props => {
           <Grow
             {...TransitionProps}
             style={{
-              transformOrigin:
-                placement === "bottom" ? "right top" : "right bottom",
+              transformOrigin: placement === "bottom" ? "right top" : "right bottom",
               overflowY: "auto",
             }}
           >
@@ -195,17 +184,15 @@ const CardMenu: React.FC<CardMenuProps> = props => {
                       >
                         {menuItem.loading ? (
                           <>
-                            <Typography variant="subtitle1">
-                              <FormattedMessage
-                                {...messages.cardMenuItemLoading}
-                              />
-                            </Typography>
-                            <CircularProgress size={24} />
+                            <Text fontSize={3}>
+                              <FormattedMessage {...messages.cardMenuItemLoading} />
+                            </Text>
+                            <SaleorThrobber size={24} />
                           </>
                         ) : (
-                          <Typography>
+                          <Text>
                             {showMenuIcon && menuItem.Icon} {menuItem.label}
-                          </Typography>
+                          </Text>
                         )}
                       </div>
                     </MenuItem>
@@ -219,5 +206,6 @@ const CardMenu: React.FC<CardMenuProps> = props => {
     </div>
   );
 };
+
 CardMenu.displayName = "CardMenu";
 export default CardMenu;

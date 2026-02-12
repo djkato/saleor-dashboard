@@ -1,12 +1,8 @@
 // @ts-strict-ignore
-import { Button } from "@dashboard/components/Button";
-import CardTitle from "@dashboard/components/CardTitle";
-import Skeleton from "@dashboard/components/Skeleton";
+import { DashboardCard } from "@dashboard/components/Card";
+import MediaTile from "@dashboard/components/MediaTile";
 import { ProductMediaFragment } from "@dashboard/graphql";
-import { Card, CardContent, Typography } from "@material-ui/core";
-import { makeStyles } from "@saleor/macaw-ui";
-import { vars } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Button, Skeleton, Text } from "@saleor/macaw-ui-next";
 import { defineMessages, useIntl } from "react-intl";
 
 const messages = defineMessages({
@@ -27,37 +23,6 @@ const messages = defineMessages({
   },
 });
 
-const useStyles = makeStyles(
-  theme => ({
-    gridElement: {
-      "& img": {
-        width: "100%",
-      },
-    },
-    helpText: {
-      gridColumnEnd: "span 4",
-    },
-    image: {
-      objectFit: "contain",
-      width: "100%",
-    },
-    imageContainer: {
-      background: "#ffffff",
-      border: `1px solid ${vars.colors.border.neutralPlain}`,
-      borderRadius: theme.spacing(),
-      height: theme.spacing(17.5),
-      marginBottom: theme.spacing(2),
-      padding: theme.spacing(2),
-    },
-    root: {
-      display: "grid",
-      gridColumnGap: theme.spacing(2),
-      gridTemplateColumns: "repeat(4, 1fr)",
-    },
-  }),
-  { name: "ProductVariantMedia" },
-);
-
 interface ProductVariantMediaProps {
   media?: ProductMediaFragment[];
   placeholderImage?: string;
@@ -65,52 +30,45 @@ interface ProductVariantMediaProps {
   onImageAdd: () => any;
 }
 
-export const ProductVariantMedia: React.FC<
-  ProductVariantMediaProps
-> = props => {
+const ProductVariantMedia = (props: ProductVariantMediaProps) => {
   const intl = useIntl();
-  const classes = useStyles(props);
   const { disabled, media, onImageAdd } = props;
 
   return (
-    <Card>
-      <CardTitle
-        title={intl.formatMessage(messages.media)}
-        toolbar={
-          <Button variant="tertiary" disabled={disabled} onClick={onImageAdd}>
+    <DashboardCard>
+      <DashboardCard.Header>
+        <DashboardCard.Title>{intl.formatMessage(messages.media)}</DashboardCard.Title>
+        <DashboardCard.Toolbar>
+          <Button
+            data-test-id="choose-media-button"
+            variant="secondary"
+            disabled={disabled}
+            onClick={onImageAdd}
+          >
             {intl.formatMessage(messages.chooseMedia)}
           </Button>
-        }
-      />
-      <CardContent>
-        <div className={classes.root}>
+        </DashboardCard.Toolbar>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
+        <Box display="flex" flexWrap="wrap" gap={5}>
           {media === undefined || media === null ? (
             <Skeleton />
           ) : media.length > 0 ? (
             media
               .sort((prev, next) => (prev.sortOrder > next.sortOrder ? 1 : -1))
               .map(mediaObj => {
-                const parsedMediaOembedData = JSON.parse(mediaObj?.oembedData);
-                const mediaUrl =
-                  parsedMediaOembedData?.thumbnail_url || mediaObj.url;
-                return (
-                  <img
-                    key={mediaObj.id}
-                    className={classes.image}
-                    src={mediaUrl}
-                    alt={mediaObj.alt}
-                  />
-                );
+                return <MediaTile key={mediaObj.id} disableOverlay media={mediaObj} />;
               })
           ) : (
-            <Typography className={classes.helpText}>
+            <Text __gridColumnEnd="span 4" size={3}>
               {intl.formatMessage(messages.selectSpecificVariant)}
-            </Typography>
+            </Text>
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </Box>
+      </DashboardCard.Content>
+    </DashboardCard>
   );
 };
+
 ProductVariantMedia.displayName = "ProductVariantMedia";
 export default ProductVariantMedia;

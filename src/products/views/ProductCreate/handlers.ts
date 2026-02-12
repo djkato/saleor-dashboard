@@ -9,6 +9,7 @@ import {
   prepareAttributesInput,
 } from "@dashboard/attributes/utils/handlers";
 import { ChannelData } from "@dashboard/channels/utils";
+import { VALUES_PAGINATE_BY } from "@dashboard/config";
 import {
   AttributeErrorFragment,
   FileUploadMutation,
@@ -41,11 +42,7 @@ const getChannelsVariables = (productId: string, channels: ChannelData[]) => ({
     },
   },
 });
-
-const getSimpleProductVariables = (
-  formData: ProductCreateData,
-  productId: string,
-) => ({
+const getSimpleProductVariables = (formData: ProductCreateData, productId: string) => ({
   input: {
     attributes: [],
     product: productId,
@@ -56,21 +53,18 @@ const getSimpleProductVariables = (
     })),
     preorder: formData.isPreorder
       ? {
-          globalThreshold: formData.globalThreshold
-            ? parseInt(formData.globalThreshold, 10)
-            : null,
+          globalThreshold: formData.globalThreshold ? parseInt(formData.globalThreshold, 10) : null,
           endDate: formData.preorderEndDateTime || null,
         }
       : null,
     trackInventory: formData.trackInventory,
   },
+  firstValues: VALUES_PAGINATE_BY,
 });
 
 export function createHandler(
   productType: ProductTypeQuery["productType"],
-  uploadFile: (
-    variables: FileUploadMutationVariables,
-  ) => Promise<FetchResult<FileUploadMutation>>,
+  uploadFile: (variables: FileUploadMutationVariables) => Promise<FetchResult<FileUploadMutation>>,
   productCreate: (
     variables: ProductCreateMutationVariables,
   ) => Promise<FetchResult<ProductCreateMutation>>,
@@ -101,11 +95,11 @@ export function createHandler(
     );
 
     errors = [...errors, ...mergeFileUploadErrors(uploadFilesResult)];
+
     const updatedFileAttributes = getAttributesAfterFileAttributesUpdate(
       formData.attributesWithNewFileValue,
       uploadFilesResult,
     );
-
     const productVariables: ProductCreateMutationVariables = {
       input: {
         attributes: prepareAttributesInput({
@@ -114,7 +108,7 @@ export function createHandler(
           updatedFileAttributes,
         }),
         category: formData.category,
-        collections: formData.collections,
+        collections: formData.collections.map(collection => collection.value),
         description: getParsedDataForJsonStringField(formData.description),
         name: formData.name,
         productType: formData.productType?.id,
@@ -128,9 +122,8 @@ export function createHandler(
         weight: weight(formData.weight),
       },
     };
-
     const result = await productCreate(productVariables);
-    const productErrors = result.data.productCreate.errors || [];
+    const productErrors = result?.data?.productCreate?.errors ?? [];
 
     errors = [...errors, ...productErrors];
 
@@ -141,19 +134,20 @@ export function createHandler(
       return { errors };
     }
 
+    // Only set channel listings for simple products (no variants)
+    // Products with variants will have availability configured when variants are created
     if (!hasVariants) {
       const result = await Promise.all([
-        updateChannels(
-          getChannelsVariables(productId, formData.channelListings),
-        ),
+        updateChannels(getChannelsVariables(productId, formData.channelListings)),
         productVariantCreate(getSimpleProductVariables(formData, productId)),
       ]);
-      const channelErrors =
-        result[0].data?.productChannelListingUpdate?.errors || [];
+      const channelErrors = result[0].data?.productChannelListingUpdate?.errors || [];
       const variantErrors = result[1].data?.productVariantCreate?.errors || [];
+
       errors = [...errors, ...channelErrors, ...variantErrors];
 
       const variantId = result[1].data.productVariantCreate.productVariant?.id;
+
       if (variantErrors.length === 0 && variantId) {
         updateVariantChannels({
           variables: {
@@ -166,14 +160,6 @@ export function createHandler(
           },
         });
       }
-    } else {
-      const result = await updateChannels(
-        getChannelsVariables(productId, formData.channelListings),
-      );
-      const channelErrors =
-        result.data?.productChannelListingUpdate?.errors || [];
-
-      errors = [...errors, ...channelErrors];
     }
 
     /*
@@ -185,6 +171,7 @@ export function createHandler(
 
       return { errors };
     }
+
     return { id: productId || null, errors };
   };
 }

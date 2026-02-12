@@ -6,33 +6,26 @@ import {
 } from "@dashboard/graphql";
 import { commonMessages } from "@dashboard/intl";
 import { joinDateTime, splitDateTime } from "@dashboard/misc";
-import { TextField } from "@material-ui/core";
-import { TextFieldProps } from "@material-ui/core/TextField";
-import { Box } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Input } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
-type DateTimeFieldProps = Omit<TextFieldProps, "label" | "error"> & {
+interface DateTimeFieldProps {
   onChange: (value: string) => void;
   error: ProductErrorWithAttributesFragment | PageErrorWithAttributesFragment;
   value: string;
-};
+  disabled: boolean;
+  name: string;
+}
 
-export const DateTimeField: React.FC<DateTimeFieldProps> = ({
-  disabled,
-  error,
-  name,
-  onChange,
-  value,
-}) => {
+export const DateTimeField = ({ disabled, error, name, onChange, value }: DateTimeFieldProps) => {
   const intl = useIntl();
-
   const parsedValue = value ? splitDateTime(value) : { date: "", time: "" };
 
   return (
     <Box display="flex" gap={0.5}>
-      <TextField
-        fullWidth
+      <Input
+        width="100%"
+        size="small"
         disabled={disabled}
         error={!!error}
         helperText={getErrorMessage(error, intl)}
@@ -45,10 +38,10 @@ export const DateTimeField: React.FC<DateTimeFieldProps> = ({
         }}
         type="date"
         value={parsedValue.date}
-        InputLabelProps={{ shrink: true }}
       />
-      <TextField
-        fullWidth
+      <Input
+        width="100%"
+        size="small"
         disabled={disabled}
         error={!!error}
         helperText={getErrorMessage(error, intl)}
@@ -61,7 +54,6 @@ export const DateTimeField: React.FC<DateTimeFieldProps> = ({
         }}
         type="time"
         value={parsedValue.time}
-        InputLabelProps={{ shrink: true }}
       />
     </Box>
   );

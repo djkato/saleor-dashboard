@@ -1,10 +1,9 @@
 // @ts-strict-ignore
-import {
-  GiftCardDetailsQuery,
-  useGiftCardDetailsQuery,
-} from "@dashboard/graphql";
-import React, { createContext } from "react";
+import { GiftCardDetailsQuery, useGiftCardDetailsQuery } from "@dashboard/graphql";
+import { createContext } from "react";
+import * as React from "react";
 
+import { useGiftCardPermissions } from "../../../hooks/useGiftCardPermissions";
 import { ExtendedGiftCard } from "./types";
 import { getExtendedGiftCard } from "./utils";
 
@@ -18,18 +17,14 @@ export interface GiftCardDetailsConsumerProps {
   loading: boolean;
 }
 
-export const GiftCardDetailsContext =
-  createContext<GiftCardDetailsConsumerProps>(null);
+export const GiftCardDetailsContext = createContext<GiftCardDetailsConsumerProps>(null);
 
-const GiftCardDetailsProvider: React.FC<GiftCardDetailsProviderProps> = ({
-  children,
-  id,
-}) => {
+const GiftCardDetailsProvider = ({ children, id }: GiftCardDetailsProviderProps) => {
+  const { canSeeApp, canSeeUser } = useGiftCardPermissions();
   const { data, loading } = useGiftCardDetailsQuery({
     displayLoader: true,
-    variables: { id },
+    variables: { id, canSeeApp, canSeeUser },
   });
-
   const providerValues: GiftCardDetailsConsumerProps = {
     giftCard: getExtendedGiftCard(data?.giftCard),
     loading,
@@ -40,6 +35,16 @@ const GiftCardDetailsProvider: React.FC<GiftCardDetailsProviderProps> = ({
       {children}
     </GiftCardDetailsContext.Provider>
   );
+};
+
+export const useGiftCardDetails = () => {
+  const context = React.useContext(GiftCardDetailsContext);
+
+  if (!context) {
+    throw new Error("useGiftCardDetails must be used within a GiftCardDetailsProvider");
+  }
+
+  return context;
 };
 
 export default GiftCardDetailsProvider;

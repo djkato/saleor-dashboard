@@ -1,6 +1,5 @@
 import Wrapper from "@test/wrapper";
 import { fireEvent, render, screen } from "@testing-library/react";
-import React from "react";
 
 import { ProductErrorCell } from "./ProductErrorCell";
 
@@ -13,9 +12,9 @@ describe("ProductErrorCell", () => {
     );
 
     const errorMessage = screen.queryByTestId("product-error-message");
+
     expect(errorMessage).not.toBeInTheDocument();
   });
-
   it("shows popup on hover", () => {
     render(
       <Wrapper>
@@ -24,8 +23,8 @@ describe("ProductErrorCell", () => {
     );
 
     const errorMessage = screen.getByTestId("product-error-message");
-    expect(errorMessage).toBeInTheDocument();
 
+    expect(errorMessage).toBeInTheDocument();
     fireEvent.mouseOver(errorMessage);
     expect(screen.getByTestId("product-error-popup")).toBeInTheDocument();
   });

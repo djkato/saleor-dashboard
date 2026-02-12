@@ -5,54 +5,51 @@ import {
   ChannelCreateInput,
   ChannelCreateMutation,
   ChannelErrorFragment,
+  isStagingSchema,
   useChannelCreateMutation,
   useChannelReorderWarehousesMutation,
 } from "@dashboard/graphql";
+import { ChannelCreateInput as ChannelCreateInputWithAllowLegacyGiftCardUse } from "@dashboard/graphql/staging";
 import { getSearchFetchMoreProps } from "@dashboard/hooks/makeTopLevelSearch/utils";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import useShop from "@dashboard/hooks/useShop";
-import { commonMessages } from "@dashboard/intl";
-import { extractMutationErrors } from "@dashboard/misc";
 import getChannelsErrorMessage from "@dashboard/utils/errors/channels";
 import currencyCodes from "currency-codes";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import ChannelDetailsPage from "../../pages/ChannelDetailsPage";
 import { channelPath } from "../../urls";
-import { calculateItemsOrderMoves } from "../ChannelDetails/handlers";
 import { useShippingZones } from "../ChannelDetails/useShippingZones";
 import { useWarehouses } from "../ChannelDetails/useWarehouses";
+import { useSaveChannel } from "./useSaveChannel";
 
-export const ChannelCreateView = () => {
+const ChannelCreateView = () => {
   const navigate = useNavigator();
   const notify = useNotifier();
   const intl = useIntl();
   const shop = useShop();
-
   const handleError = (error: ChannelErrorFragment) => {
     notify({
       status: "error",
       text: getChannelsErrorMessage(error, intl),
     });
   };
-
   const [createChannel, createChannelOpts] = useChannelCreateMutation({
     onCompleted: ({ channelCreate: { errors } }: ChannelCreateMutation) => {
       if (!errors.length) {
         notify({
           status: "success",
-          text: intl.formatMessage(commonMessages.savedChanges),
+          text: intl.formatMessage({ id: "HA0fD3", defaultMessage: "Channel created" }),
         });
       }
     },
   });
-
   const [reorderChannelWarehouses, reorderChannelWarehousesOpts] =
     useChannelReorderWarehousesMutation({
       onCompleted: data => {
         const errors = data.channelReorderWarehouses.errors;
+
         if (errors.length) {
           errors.forEach(error => handleError(error));
         }
@@ -60,63 +57,62 @@ export const ChannelCreateView = () => {
         navigate(channelPath(data.channelReorderWarehouses.channel?.id));
       },
     });
-
+  const saveChannel = useSaveChannel({
+    createChannel,
+    reorderChannelWarehouses,
+  });
   const handleSubmit = async ({
+    allocationStrategy,
+    allowUnpaidOrders,
+    currencyCode,
+    defaultCountry,
+    defaultTransactionFlowStrategy,
+    deleteExpiredOrdersAfter,
+    markAsPaidStrategy,
+    name,
     shippingZonesIdsToAdd,
+    slug,
     warehousesIdsToAdd,
     warehousesToDisplay,
-    currencyCode,
-    allocationStrategy,
-    name,
-    slug,
-    defaultCountry,
-    markAsPaidStrategy,
-    deleteExpiredOrdersAfter,
-    allowUnpaidOrders,
+    automaticallyCompleteCheckouts,
+    allowLegacyGiftCardUse,
   }: FormData) => {
     const input: ChannelCreateInput = {
-      defaultCountry,
       name,
       slug,
+      defaultCountry,
       currencyCode: currencyCode.toUpperCase(),
       addShippingZones: shippingZonesIdsToAdd,
       addWarehouses: warehousesIdsToAdd,
       stockSettings: {
         allocationStrategy,
       },
+      paymentSettings: {
+        defaultTransactionFlowStrategy,
+      },
       orderSettings: {
         markAsPaidStrategy,
         deleteExpiredOrdersAfter,
         allowUnpaidOrders,
       },
+      checkoutSettings: {
+        automaticallyCompleteFullyPaidCheckouts: automaticallyCompleteCheckouts,
+      },
     };
 
-    const createChannelMutation = createChannel({
-      variables: {
-        input,
+    const inputWithAllowLegacyGiftCardUse: ChannelCreateInputWithAllowLegacyGiftCardUse = {
+      ...input,
+      checkoutSettings: {
+        automaticallyCompleteFullyPaidCheckouts: automaticallyCompleteCheckouts,
+        allowLegacyGiftCardUse: allowLegacyGiftCardUse,
       },
-    });
+    };
 
-    const result = await createChannelMutation;
-    const errors = await extractMutationErrors(createChannelMutation);
-
-    if (!errors?.length) {
-      const moves = calculateItemsOrderMoves(
-        result.data?.channelCreate.channel?.warehouses,
-        warehousesToDisplay,
-      );
-
-      await reorderChannelWarehouses({
-        variables: {
-          channelId: result.data?.channelCreate.channel?.id,
-          moves,
-        },
-      });
-    }
-
-    return errors;
+    return saveChannel(
+      isStagingSchema() ? inputWithAllowLegacyGiftCardUse : input,
+      warehousesToDisplay,
+    );
   };
-
   const {
     shippingZonesCountData,
     shippingZonesCountLoading,
@@ -124,7 +120,6 @@ export const ChannelCreateView = () => {
     searchShippingZones,
     searchShippingZonesResult,
   } = useShippingZones();
-
   const {
     warehousesCountData,
     warehousesCountLoading,
@@ -132,7 +127,6 @@ export const ChannelCreateView = () => {
     searchWarehouses,
     searchWarehousesResult,
   } = useWarehouses();
-
   const currencyCodeChoices = currencyCodes.data.map(currencyData => ({
     label: intl.formatMessage(
       {
@@ -159,9 +153,7 @@ export const ChannelCreateView = () => {
       />
       <>
         <ChannelDetailsPage
-          allShippingZonesCount={
-            shippingZonesCountData?.shippingZones?.totalCount
-          }
+          allShippingZonesCount={shippingZonesCountData?.shippingZones?.totalCount}
           searchShippingZones={searchShippingZones}
           searchShippingZonesData={searchShippingZonesResult.data}
           fetchMoreShippingZones={getSearchFetchMoreProps(
@@ -171,10 +163,7 @@ export const ChannelCreateView = () => {
           allWarehousesCount={warehousesCountData?.warehouses?.totalCount}
           searchWarehouses={searchWarehouses}
           searchWarehousesData={searchWarehousesResult.data}
-          fetchMoreWarehouses={getSearchFetchMoreProps(
-            searchWarehousesResult,
-            fetchMoreWarehouses,
-          )}
+          fetchMoreWarehouses={getSearchFetchMoreProps(searchWarehousesResult, fetchMoreWarehouses)}
           disabled={
             createChannelOpts.loading ||
             reorderChannelWarehousesOpts.loading ||

@@ -1,49 +1,4 @@
-import { ProductTypeKindEnum } from "@dashboard/graphql";
-import { isInEnum } from "@dashboard/misc";
-import { IntlShape } from "react-intl";
-
-import { productKindMessages as messages } from "./messages";
-
-interface ProductKindChoice {
-  label: string;
-  value: ProductTypeKindEnum;
-}
-
-export const getAvailableProductKinds = (): ProductKindChoice[] =>
-  Object.keys(ProductTypeKindEnum).map(kind => ({
-    label: kind,
-    value: kind as ProductTypeKindEnum,
-  }));
-
-export const getProductKindOpts = (
-  availableProducts: ProductKindChoice[],
-  intl: IntlShape,
-): ProductKindChoice[] =>
-  availableProducts.map(kind => {
-    switch (kind.value) {
-      case ProductTypeKindEnum.GIFT_CARD:
-        return {
-          ...kind,
-          label: intl.formatMessage(messages.giftCardLabel),
-        };
-      case ProductTypeKindEnum.NORMAL:
-        return {
-          ...kind,
-          label: intl.formatMessage(messages.normalLabel),
-        };
-    }
-  });
-
-export const getProductGiftCardFilterParam = (productKind?: string) => {
-  if (
-    productKind === undefined ||
-    !isInEnum(productKind, ProductTypeKindEnum)
-  ) {
-    return null;
-  }
-
-  return productKind === ProductTypeKindEnum.GIFT_CARD;
-};
+import { FilterValueProvider } from "@dashboard/components/ConditionalFilter/FilterValueProvider";
 
 export const getNextUniqueTabName = (name: string, avialabeNames: string[]) => {
   let uniqueName = name;
@@ -60,5 +15,12 @@ export const getNextUniqueTabName = (name: string, avialabeNames: string[]) => {
 export const getActiveTabIndexAfterTabDelete = (
   currentTab: number,
   tabIndexToDelete: number,
-): string =>
-  tabIndexToDelete < currentTab ? `${currentTab - 1}` : `${currentTab}`;
+): string => (tabIndexToDelete < currentTab ? `${currentTab - 1}` : `${currentTab}`);
+
+export const obtainChannelFromFilter = (valueProvider: FilterValueProvider) => {
+  const channelToken = valueProvider.getTokenByName("channel");
+
+  if (channelToken) {
+    return channelToken.value;
+  }
+};

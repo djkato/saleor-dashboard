@@ -1,41 +1,39 @@
 // @ts-strict-ignore
-import {
-  useOrderSettingsQuery,
-  useOrderSettingsUpdateMutation,
-} from "@dashboard/graphql";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useOrderSettingsQuery, useOrderSettingsUpdateMutation } from "@dashboard/graphql";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import { commonMessages } from "@dashboard/intl";
 import { extractMutationErrors, getMutationState } from "@dashboard/misc";
 import OrderSettingsPage from "@dashboard/orders/components/OrderSettingsPage";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import { OrderSettingsFormData } from "../components/OrderSettingsPage/types";
 
-export const OrderSettings: React.FC = () => {
+const OrderSettings = () => {
   const intl = useIntl();
   const notify = useNotifier();
-
   const { data, loading } = useOrderSettingsQuery({});
+  const [orderSettingsUpdate, orderSettingsUpdateOpts] = useOrderSettingsUpdateMutation({
+    onCompleted: ({ orderSettingsUpdate }) => {
+      const errors = orderSettingsUpdate?.errors ?? [];
 
-  const [orderSettingsUpdate, orderSettingsUpdateOpts] =
-    useOrderSettingsUpdateMutation({
-      onCompleted: ({ orderSettingsUpdate: { errors } }) => {
-        if (!errors.length) {
-          notify({
-            status: "success",
-            text: intl.formatMessage(commonMessages.savedChanges),
-          });
-          return;
-        }
-
+      if (!errors.length) {
         notify({
-          status: "error",
-          text: intl.formatMessage(commonMessages.somethingWentWrong),
+          status: "success",
+          text: intl.formatMessage({
+            id: "lL57q7",
+            defaultMessage: "Order settings updated",
+          }),
         });
-      },
-    });
 
+        return;
+      }
+
+      notify({
+        status: "error",
+        text: intl.formatMessage(commonMessages.somethingWentWrong),
+      });
+    },
+  });
   const handleSubmit = async ({
     automaticallyConfirmAllNewOrders,
     automaticallyFulfillNonShippableGiftCard,
@@ -71,4 +69,5 @@ export const OrderSettings: React.FC = () => {
     />
   );
 };
+
 export default OrderSettings;

@@ -36,10 +36,12 @@ attribute:QXR0cmlidXRlOjIx
 - selected columns - array of column IDs which are selected in the column picker. It is saved in local storage
 - recently added column - this value is used in datagrid component to enable auto-scroll to newly added column
 - handlers:
-  - column resize handler (for datagrid)
-  - column reorder handler (for datagrid)
-  - column selection toggle (for column picker)
-  - customUpdateVisible - used to manually update visible columns state. For now it is required to update arrow icon in the datagrid columns
+  - onResize (for datagrid)
+  - onMove (for datagrid)
+  - onToggle (for column picker)
+  - onClearRecentlyAddedColumnn - passed to datagrid to prevent extra scrolling to last column after it has already happened
+  - onCustomUpdateVisible - used to manually update visible columns state. For now it is required to update arrow icon in the datagrid columns
+  - onResetDynamicToInitial - used to manually trigger dynamic column recalculation from initial parameters.
 
 In order to use this hook, you need to provide two/three things:
 
@@ -54,9 +56,7 @@ In order to use this hook, you need to provide two/three things:
 Firstly, in the view file, we need to provide settings object which holds seleted columns IDs. We should use `useListSettings` hook for that.
 
 ```tsx
-const { updateListSettings, settings } = useListSettings(
-  ListViews.PRODUCT_LIST,
-);
+const { updateListSettings, settings } = useListSettings(ListViews.PRODUCT_LIST);
 
 // Translates columnIDs to api IDs
 const filteredColumnIds = settings.columns
@@ -205,9 +205,7 @@ Here is the adapter for the dynamic columns inside the category:
 
 ```tsx
 export const parseAttributesColumns = (
-  attributes: RelayToFlat<
-    SearchAvailableInGridAttributesQuery["availableInGrid"]
-  >,
+  attributes: RelayToFlat<SearchAvailableInGridAttributesQuery["availableInGrid"]>,
   activeAttributeSortId: string,
   sort: Sort<ProductListUrlSortField>,
 ) =>

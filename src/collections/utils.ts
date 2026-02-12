@@ -1,9 +1,6 @@
-// @ts-strict-ignore
 import { ChannelCollectionData } from "@dashboard/channels/utils";
-import {
-  CollectionDetailsQuery,
-  SearchProductsQuery,
-} from "@dashboard/graphql";
+import { CollectionDetailsQuery, SearchProductsQuery } from "@dashboard/graphql";
+import { mapEdgesToItems } from "@dashboard/utils/maps";
 
 export const createChannelsChangeHandler =
   (
@@ -12,11 +9,8 @@ export const createChannelsChangeHandler =
     triggerChange: () => void,
   ) =>
   (id: string, data: Omit<ChannelCollectionData, "name" | "id">) => {
-    const channelIndex = channelListings.findIndex(
-      channel => channel.id === id,
-    );
+    const channelIndex = channelListings.findIndex(channel => channel.id === id);
     const channel = channelListings[channelIndex];
-
     const updatedChannels = [
       ...channelListings.slice(0, channelIndex),
       {
@@ -25,20 +19,29 @@ export const createChannelsChangeHandler =
       },
       ...channelListings.slice(channelIndex + 1),
     ];
+
     updateChannels(updatedChannels);
     triggerChange();
   };
 
 export const getAssignedProductIdsToCollection = (
   collection: CollectionDetailsQuery["collection"],
-  queryData: SearchProductsQuery["search"],
+  queryData?: SearchProductsQuery["search"],
 ) => {
   if (!queryData || !collection) {
     return {};
   }
 
   return queryData.edges
-    .filter(e => e.node.collections.some(s => collection.id === s.id))
+    .filter(e => e.node?.collections?.some(s => collection.id === s.id))
     .map(e => ({ [e.node.id]: true }))
     .reduce((p, c) => ({ ...p, ...c }), {});
+};
+
+export const getProductsFromSearchResults = (searchResults: SearchProductsQuery | undefined) => {
+  if (!searchResults?.search) {
+    return [];
+  }
+
+  return mapEdgesToItems(searchResults.search)?.filter(suggestedProduct => suggestedProduct.id);
 };

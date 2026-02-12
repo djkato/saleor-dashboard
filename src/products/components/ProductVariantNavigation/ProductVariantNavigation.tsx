@@ -1,32 +1,21 @@
-// @ts-strict-ignore
-import { Button } from "@dashboard/components/Button";
-import CardTitle from "@dashboard/components/CardTitle";
-import ResponsiveTable from "@dashboard/components/ResponsiveTable";
-import Skeleton from "@dashboard/components/Skeleton";
-import {
-  SortableTableBody,
-  SortableTableRow,
-} from "@dashboard/components/SortableTable";
-import TableCellAvatar from "@dashboard/components/TableCellAvatar";
-import TableRowLink from "@dashboard/components/TableRowLink";
-import {
-  ProductVariantCreateDataQuery,
-  ProductVariantDetailsQuery,
-} from "@dashboard/graphql";
+import { DashboardCard } from "@dashboard/components/Card";
+import { Divider } from "@dashboard/components/Divider";
+import useNavigator from "@dashboard/hooks/useNavigator";
 import { sectionNames } from "@dashboard/intl";
-import {
-  productVariantAddUrl,
-  productVariantEditUrl,
-} from "@dashboard/products/urls";
+import { productVariantAddUrl } from "@dashboard/products/urls";
 import { ReorderAction } from "@dashboard/types";
-import { Card, TableCell } from "@material-ui/core";
-import clsx from "clsx";
-import React from "react";
+import { closestCenter, DndContext } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Box, Button, Skeleton, Text } from "@saleor/macaw-ui-next";
+import { Fragment } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import { renderCollection } from "../../../misc";
+import { ProductVariantEmptyItem } from "./components/ProductVariantEmptyItem";
+import { VariantItem } from "./components/ProductVariantItem";
+import { useVariantDrag } from "./hooks/useVariantDrag";
 import { messages } from "./messages";
-import { useStyles } from "./styles";
+import { ProductVariantItem } from "./types";
 
 interface ProductVariantNavigationProps {
   current?: string;
@@ -34,104 +23,106 @@ interface ProductVariantNavigationProps {
   fallbackThumbnail: string;
   productId: string;
   isCreate?: boolean;
-  variants:
-    | Array<ProductVariantDetailsQuery["productVariant"]>
-    | ProductVariantCreateDataQuery["product"]["variants"];
+  loading?: boolean;
+  variants: ProductVariantItem[] | undefined;
   onReorder: ReorderAction;
 }
 
-const ProductVariantNavigation: React.FC<
-  ProductVariantNavigationProps
-> = props => {
-  const {
-    current,
-    defaultVariantId,
-    fallbackThumbnail,
-    productId,
-    isCreate,
-    variants,
-    onReorder,
-  } = props;
-
-  const classes = useStyles(props);
+const ProductVariantNavigation = (props: ProductVariantNavigationProps) => {
+  const { current, defaultVariantId, productId, isCreate, loading, variants, onReorder } = props;
+  const navigate = useNavigator();
   const intl = useIntl();
 
-  return (
-    <Card>
-      <CardTitle title={intl.formatMessage(sectionNames.variants)} />
-      <ResponsiveTable>
-        <SortableTableBody onSortEnd={onReorder}>
-          {renderCollection(variants, (variant, variantIndex) => {
-            const isDefault = variant && variant.id === defaultVariantId;
-            const isActive = variant && variant.id === current;
-            const thumbnail = variant?.media?.filter(
-              mediaObj => mediaObj.type === "IMAGE",
-            )[0];
+  const { items, sensors, isSaving, handleDragEnd } = useVariantDrag({
+    variants: variants ?? [],
+    onReorder,
+  });
 
-            return (
-              <SortableTableRow
-                hover={!!variant}
-                key={variant ? variant.id : "skeleton"}
-                index={variantIndex || 0}
-                className={clsx(classes.link, {
-                  [classes.rowActive]: isActive,
-                })}
-                href={
-                  variant
-                    ? productVariantEditUrl(productId, variant.id)
-                    : undefined
-                }
-              >
-                <TableCellAvatar
-                  className={classes.colAvatar}
-                  thumbnail={thumbnail?.url || fallbackThumbnail}
-                />
-                <TableCell className={classes.colName}>
-                  {variant ? variant.name || variant.sku : <Skeleton />}
-                  {isDefault && (
-                    <span className={classes.defaultVariant}>
-                      {intl.formatMessage(messages.defaultVariant)}
-                    </span>
-                  )}
-                </TableCell>
-              </SortableTableRow>
-            );
-          })}
-          {!isCreate ? (
-            <TableRowLink className={classes.rowNew}>
-              <TableCell colSpan={3}>
-                <Button
-                  href={productVariantAddUrl(productId)}
-                  data-test-id="button-add-variant"
-                >
-                  <FormattedMessage {...messages.addVariant} />
-                </Button>
-              </TableCell>
-            </TableRowLink>
-          ) : (
-            <TableRowLink>
-              <TableCellAvatar
-                alignRight
-                className={clsx(
-                  classes.colAvatar,
-                  classes.rowActive,
-                  classes.noHandle,
-                  {
-                    [classes.firstVariant]: variants?.length === 0,
-                  },
-                )}
-                thumbnail={null}
-                colSpan={2}
-              />
-              <TableCell className={classes.colName}>
-                <FormattedMessage {...messages.newVariant} />
-              </TableCell>
-            </TableRowLink>
-          )}
-        </SortableTableBody>
-      </ResponsiveTable>
-    </Card>
+  const hasVariants = variants && variants.length > 0;
+
+  return (
+    <DashboardCard>
+      <DashboardCard.Header paddingRight={0}>
+        <DashboardCard.Title>{intl.formatMessage(sectionNames.variants)}</DashboardCard.Title>
+        {!isCreate && (
+          <DashboardCard.Toolbar>
+            <Button
+              variant="secondary"
+              onClick={() => navigate(productVariantAddUrl(productId))}
+              data-test-id="button-add-variant"
+            >
+              <FormattedMessage {...messages.addVariant} />
+            </Button>
+          </DashboardCard.Toolbar>
+        )}
+      </DashboardCard.Header>
+
+      <Box __maxHeight="calc(100vh - 220px)" overflowY="auto" paddingBottom={4}>
+        {loading ? (
+          <Box data-test-id="variants-list">
+            <Divider />
+            {[1, 2, 3].map(i => (
+              <Fragment key={i}>
+                <Box display="flex" alignItems="center" gap={4} paddingX={6} paddingY={4}>
+                  <Skeleton __width={48} __height={48} borderRadius={2} />
+                  <Skeleton __width="60%" />
+                </Box>
+                <Divider />
+              </Fragment>
+            ))}
+          </Box>
+        ) : (
+          <>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <Box data-test-id="variants-list">
+                {hasVariants && <Divider />}
+                <SortableContext items={items} strategy={verticalListSortingStrategy}>
+                  {renderCollection(variants, variant => {
+                    if (!variant) {
+                      return null;
+                    }
+
+                    const isDefault = variant.id === defaultVariantId;
+                    const isActive = variant.id === current;
+                    const thumbnail = variant.media?.filter(
+                      mediaObj => mediaObj.type === "IMAGE",
+                    )[0];
+
+                    return (
+                      <Fragment key={variant.id}>
+                        <VariantItem
+                          variant={variant}
+                          thumbnail={thumbnail}
+                          isDefault={isDefault}
+                          isActive={isActive}
+                          productId={productId}
+                          draggable={!isSaving}
+                        />
+                        <Divider height={0} />
+                      </Fragment>
+                    );
+                  })}
+                </SortableContext>
+              </Box>
+            </DndContext>
+
+            {isCreate && (
+              <ProductVariantEmptyItem hasVariants={hasVariants || false}>
+                <Text>
+                  <FormattedMessage {...messages.newVariant} />
+                </Text>
+              </ProductVariantEmptyItem>
+            )}
+          </>
+        )}
+      </Box>
+    </DashboardCard>
   );
 };
+
 ProductVariantNavigation.displayName = "ProductVariantNavigation";
 export default ProductVariantNavigation;

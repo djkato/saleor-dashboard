@@ -1,19 +1,11 @@
-// @ts-strict-ignore
-import { Button } from "@dashboard/components/Button";
-import CardTitle from "@dashboard/components/CardTitle";
+import Money from "@dashboard/components/Money";
 import TableCellAvatar from "@dashboard/components/TableCellAvatar";
 import TableRowLink from "@dashboard/components/TableRowLink";
 import { OrderLineGrantRefundFragment } from "@dashboard/graphql";
 import { renderCollection } from "@dashboard/misc";
-import {
-  Card,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TextField,
-} from "@material-ui/core";
-import React from "react";
+import { Table, TableBody, TableCell, TableHead } from "@material-ui/core";
+import { Box, Button, Input, Text } from "@saleor/macaw-ui-next";
+import * as React from "react";
 import { FormattedMessage } from "react-intl";
 
 import { useGrantRefundContext } from "../context";
@@ -26,11 +18,7 @@ interface ProductsCardProps {
   lines: OrderLineGrantRefundFragment[];
 }
 
-export const ProductsCard: React.FC<ProductsCardProps> = ({
-  title,
-  subtitle,
-  lines,
-}) => {
+export const ProductsCard = ({ title, subtitle, lines }: ProductsCardProps) => {
   const classes = useProductsCardStyles();
   const { dispatch, state } = useGrantRefundContext();
 
@@ -39,8 +27,7 @@ export const ProductsCard: React.FC<ProductsCardProps> = ({
   }
 
   const getHandleAmountChange =
-    (line: OrderLineGrantRefundFragment) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (line: OrderLineGrantRefundFragment) => (e: React.ChangeEvent<HTMLInputElement>) => {
       const parsedValue = parseInt(e.target.value, 10);
       const value = Number.isNaN(parsedValue) ? 0 : parsedValue;
 
@@ -48,39 +35,42 @@ export const ProductsCard: React.FC<ProductsCardProps> = ({
         type: "setQuantity",
         lineId: line.id,
         amount: value,
+        unitPrice: line.unitPrice.gross.amount,
       });
     };
-
   const handleSetMaxQuanity = () => {
     dispatch({
       type: "setMaxQuantity",
-      lineIds: lines.map(line => line.id),
+      lines: lines.map(line => ({
+        id: line.id,
+        quantity: state.lines.get(line.id)?.availableQuantity ?? 0,
+        unitPrice: line.unitPrice.gross.amount,
+      })),
     });
   };
 
   return (
-    <Card>
-      <CardTitle
-        title={
-          <>
-            {title}
-            {subtitle}
-          </>
-        }
-        toolbar={
-          <Button
-            variant="secondary"
-            onClick={handleSetMaxQuanity}
-            data-test-id="setMaxQuantityButton"
-          >
-            <FormattedMessage {...grantRefundPageMessages.setMaxQuantity} />
-          </Button>
-        }
-      ></CardTitle>
+    <>
+      <Box display="flex" justifyContent="space-between" alignItems="center">
+        <Text size={5} fontWeight="bold">
+          {title}
+          {subtitle}
+        </Text>
+        <Button
+          variant="secondary"
+          onClick={handleSetMaxQuanity}
+          data-test-id="setMaxQuantityButton"
+        >
+          <FormattedMessage {...grantRefundPageMessages.setMaxQuantity} />
+        </Button>
+      </Box>
       <Table>
         <TableHead>
           <TableCell className={classes.colProduct}>
             <FormattedMessage {...productCardMessages.product} />
+          </TableCell>
+          <TableCell className={classes.colUnitPrice}>
+            <FormattedMessage {...productCardMessages.unitPrice} />
           </TableCell>
           <TableCell className={classes.colQuantity}>
             <FormattedMessage {...productCardMessages.quantity} />
@@ -92,59 +82,57 @@ export const ProductsCard: React.FC<ProductsCardProps> = ({
         <TableBody>
           {renderCollection(
             lines,
-            line => (
-              <TableRowLink key={line?.id}>
-                <TableCellAvatar
-                  thumbnail={line?.thumbnail?.url}
-                  className={classes.colProduct}
-                >
-                  <div className={classes.productName}>
-                    <span>{line?.productName}</span>
-                    <span className={classes.productVariantName}>
-                      {line.variantName}
-                    </span>
-                  </div>
-                </TableCellAvatar>
-                <TableCell className={classes.colQuantity}>
-                  {line.quantity}
-                </TableCell>
-                <TableCell className={classes.colQuantityInput}>
-                  <TextField
-                    type="number"
-                    inputProps={{
-                      className: classes.quantityInnerInput,
-                      "data-test-id": "quantityInput" + line?.id,
-                      max: (line?.quantity).toString(),
-                      min: 0,
-                      style: { textAlign: "right" },
-                    }}
-                    fullWidth
-                    value={state.lines.get(line.id)?.selectedQuantity}
-                    onChange={getHandleAmountChange(line)}
-                    InputProps={{
-                      endAdornment: line?.quantity && (
-                        <div className={classes.remainingQuantity}>
-                          / {line?.quantity}
-                        </div>
-                      ),
-                    }}
-                  />
-                </TableCell>
-              </TableRowLink>
-            ),
+            line => {
+              if (!line) {
+                return null;
+              }
+
+              const stateLine = state.lines.get(line.id);
+
+              return (
+                <TableRowLink key={line.id}>
+                  <TableCellAvatar thumbnail={line.thumbnail?.url} className={classes.colProduct}>
+                    <div className={classes.productName}>
+                      <span>{line.productName}</span>
+                      <span>{line.variantName}</span>
+                    </div>
+                  </TableCellAvatar>
+                  <TableCell className={classes.colUnitPrice}>
+                    <Money money={line.unitPrice.gross} />
+                  </TableCell>
+                  <TableCell className={classes.colQuantity}>{line.quantity}</TableCell>
+                  <TableCell className={classes.colQuantityInput}>
+                    <Input
+                      size="small"
+                      textAlign="right"
+                      type="number"
+                      max={stateLine?.availableQuantity}
+                      min={0}
+                      data-test-id={"quantityInput" + line.id}
+                      value={stateLine?.selectedQuantity ?? 0}
+                      onChange={getHandleAmountChange(line)}
+                      endAdornment={
+                        line.quantity && (
+                          <Box size={3} whiteSpace="nowrap" color="default2">
+                            / {stateLine?.availableQuantity}
+                          </Box>
+                        )
+                      }
+                    />
+                  </TableCell>
+                </TableRowLink>
+              );
+            },
             () => (
               <TableRowLink>
                 <TableCell colSpan={3}>
-                  <FormattedMessage
-                    id="Q1Uzbb"
-                    defaultMessage="No products found"
-                  />
+                  <FormattedMessage id="Q1Uzbb" defaultMessage="No products found" />
                 </TableCell>
               </TableRowLink>
             ),
           )}
         </TableBody>
       </Table>
-    </Card>
+    </>
   );
 };

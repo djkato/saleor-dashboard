@@ -6,14 +6,14 @@ import {
   useOrderGrantRefundEditMutation,
 } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import { extractMutationErrors } from "@dashboard/misc";
 import OrderGrantRefundPage from "@dashboard/orders/components/OrderGrantRefundPage";
 import { OrderGrantRefundFormData } from "@dashboard/orders/components/OrderGrantRefundPage/form";
 import { orderUrl } from "@dashboard/orders/urls";
-import React from "react";
 import { useIntl } from "react-intl";
 
+import { squashLines } from "../OrderReturn/useRefundWithinReturn";
 import { updateGrantRefundMessages } from "./messages";
 
 interface OrderGrantRefundProps {
@@ -21,21 +21,16 @@ interface OrderGrantRefundProps {
   grantRefundId: string;
 }
 
-const OrderEditGrantRefund: React.FC<OrderGrantRefundProps> = ({
-  orderId,
-  grantRefundId,
-}) => {
+const OrderEditGrantRefund = ({ orderId, grantRefundId }: OrderGrantRefundProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
   const notify = useNotifier();
-
   const { data, loading } = useOrderDetailsGrantRefundEditQuery({
     displayLoader: true,
     variables: {
       id: orderId,
     },
   });
-
   const [grantRefund, grantRefundOptions] = useOrderGrantRefundEditMutation({
     onCompleted: submitData => {
       if (submitData.orderGrantRefundUpdate.errors.length === 0) {
@@ -49,14 +44,43 @@ const OrderEditGrantRefund: React.FC<OrderGrantRefundProps> = ({
       }
     },
   });
+  const handleSubmit = async ({
+    amount,
+    reason,
+    lines,
+    grantRefundForShipping,
+  }: OrderGrantRefundFormData) => {
+    const grantedRefundLinesToDelete = lines
+      .map(line => grantedRefund.lines.find(grandLine => grandLine.orderLine.id === line.id))
+      .filter(Boolean)
+      .map(line => line.id);
 
-  const handleSubmit = async ({ amount, reason }: OrderGrantRefundFormData) => {
-    extractMutationErrors(
+    if (grantedRefundLinesToDelete.length > 0) {
+      await extractMutationErrors(
+        grantRefund({
+          variables: {
+            refundId: grantRefundId,
+            removeLines: grantedRefundLinesToDelete,
+          },
+        }),
+      );
+    }
+
+    await extractMutationErrors(
       grantRefund({
         variables: {
           refundId: grantRefundId,
           amount,
           reason,
+          grantRefundForShipping,
+          addLines: squashLines(
+            lines.map(line => ({
+              id: line.id,
+              quantity: line.quantity,
+              reason: line.reason ?? "",
+            })),
+          ),
+          removeLines: [],
         },
       }),
     );
@@ -67,7 +91,7 @@ const OrderEditGrantRefund: React.FC<OrderGrantRefundProps> = ({
       <OrderGrantRefundPage
         order={undefined}
         loading={true}
-        submitState="loading"
+        submitState="default"
         onSubmit={() => undefined}
         isEdit
       />
@@ -84,19 +108,14 @@ const OrderEditGrantRefund: React.FC<OrderGrantRefundProps> = ({
 
   return (
     <>
-      <WindowTitle
-        title={intl.formatMessage(updateGrantRefundMessages.windowTitle)}
-      />
+      <WindowTitle title={intl.formatMessage(updateGrantRefundMessages.windowTitle)} />
       <OrderGrantRefundPage
         order={data.order}
         loading={false}
         submitState={grantRefundOptions.status}
         onSubmit={handleSubmit}
         isEdit
-        initialData={{
-          reason: grantedRefund.reason,
-          amount: grantedRefund.amount.amount.toString(),
-        }}
+        initialData={grantedRefund}
       />
     </>
   );

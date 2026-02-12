@@ -2,17 +2,24 @@
 import {
   FulfillmentStatus,
   OrderDetailsFragment,
-  OrderLineFragment,
+  OrderDetailsWithMetadataFragment,
+  OrderDiscountFragment,
+  OrderDiscountType,
+  OrderFulfillLineFragment,
+  OrderLineWithMetadataFragment,
   OrderRefundDataQuery,
   OrderStatus,
   PaymentChargeStatusEnum,
 } from "@dashboard/graphql";
 import { FormsetData } from "@dashboard/hooks/useFormset";
+import { testIntlInstance } from "@test/intl";
 
 import { LineItemData } from "../components/OrderReturnPage/form";
 import { OrderRefundSharedType } from "../types";
 import {
   getAllFulfillmentLinesPriceSum,
+  getAttributesCaption,
+  getDiscountTypeLabel,
   getPreviouslyRefundedPrice,
   getRefundedLinesPriceSum,
   getReplacedProductsAmount,
@@ -53,7 +60,7 @@ const orderBase: OrderDetailsFragment = {
   number: "19",
   paymentStatus: PaymentChargeStatusEnum.FULLY_CHARGED,
   status: OrderStatus.FULFILLED,
-  // @ts-expect-error
+  // @ts-expect-error error
   total: {
     __typename: "TaxedMoney",
     gross: {
@@ -128,13 +135,11 @@ describe("Get warehouses used in order", () => {
         },
       },
     ];
-
     const orderWarehouses = getWarehousesFromOrderLines(lines);
 
     expect(orderWarehouses.length).toBe(3);
   });
 });
-
 describe("Get previously refunded price", () => {
   it("is able to calculate refunded price from order", () => {
     const order: OrderWithTotalAndTotalCaptured = {
@@ -152,15 +157,11 @@ describe("Get previously refunded price", () => {
         currency: "USD",
       },
     };
-
-    const refundedPrice = getPreviouslyRefundedPrice(
-      order as unknown as OrderRefundSharedType,
-    );
+    const refundedPrice = getPreviouslyRefundedPrice(order as unknown as OrderRefundSharedType);
 
     expect(refundedPrice.amount).toBe(-60);
   });
 });
-
 describe("Get refunded lines price sum", () => {
   const lines: OrderRefundDataQuery["order"]["lines"] = [
     {
@@ -234,15 +235,10 @@ describe("Get refunded lines price sum", () => {
         value: "1",
       },
     ];
-
-    const refundedLinesPriceSum = getRefundedLinesPriceSum(
-      lines,
-      refundedProductQuantities,
-    );
+    const refundedLinesPriceSum = getRefundedLinesPriceSum(lines, refundedProductQuantities);
 
     expect(refundedLinesPriceSum).toBe(20);
   });
-
   it("is able to sum lines prices multiplied by different quantities", () => {
     const refundedProductQuantities: FormsetData<null, string> = [
       {
@@ -264,16 +260,11 @@ describe("Get refunded lines price sum", () => {
         value: "4",
       },
     ];
-
-    const refundedLinesPriceSum = getRefundedLinesPriceSum(
-      lines,
-      refundedProductQuantities,
-    );
+    const refundedLinesPriceSum = getRefundedLinesPriceSum(lines, refundedProductQuantities);
 
     expect(refundedLinesPriceSum).toBe(28);
   });
 });
-
 describe("Get get all fulfillment lines price sum", () => {
   const fulfillments: OrderRefundDataQuery["order"]["fulfillments"] = [
     {
@@ -461,7 +452,6 @@ describe("Get get all fulfillment lines price sum", () => {
         value: "1",
       },
     ];
-
     const allFulfillmentLinesPriceSum = getAllFulfillmentLinesPriceSum(
       fulfillments,
       refundedFulfilledProductQuantities,
@@ -469,7 +459,6 @@ describe("Get get all fulfillment lines price sum", () => {
 
     expect(allFulfillmentLinesPriceSum).toBe(34);
   });
-
   it("is able to sum fulfillment lines prices multiplied by different quantities", () => {
     const refundedFulfilledProductQuantities: FormsetData<null, string> = [
       {
@@ -509,7 +498,6 @@ describe("Get get all fulfillment lines price sum", () => {
         value: "4",
       },
     ];
-
     const allFulfillmentLinesPriceSum = getAllFulfillmentLinesPriceSum(
       fulfillments,
       refundedFulfilledProductQuantities,
@@ -518,13 +506,15 @@ describe("Get get all fulfillment lines price sum", () => {
     expect(allFulfillmentLinesPriceSum).toBe(72);
   });
 });
-
 describe("Get the total value of all replaced products", () => {
   it("sums up correctly", () => {
-    const unfulfilledLines: OrderLineFragment[] = [
+    const unfulfilledLines: OrderLineWithMetadataFragment[] = [
       {
         id: "1",
         isShippingRequired: false,
+        isGift: false,
+        metadata: [],
+        privateMetadata: [],
         allocations: [
           {
             id: "allocation_test_id",
@@ -541,6 +531,8 @@ describe("Get the total value of all replaced products", () => {
           id: "UHJvZHVjdFZhcmlhbnQ6MzE3",
           name: "Milk 1",
           quantityAvailable: 50,
+          metadata: [],
+          privateMetadata: [],
           preorder: null,
           __typename: "ProductVariant",
           product: {
@@ -635,6 +627,9 @@ describe("Get the total value of all replaced products", () => {
       {
         id: "2",
         isShippingRequired: false,
+        isGift: false,
+        metadata: [],
+        privateMetadata: [],
         allocations: [
           {
             id: "allocation_test_id",
@@ -652,6 +647,8 @@ describe("Get the total value of all replaced products", () => {
           name: "Milk 1",
           quantityAvailable: 50,
           preorder: null,
+          metadata: [],
+          privateMetadata: [],
           stocks: [
             {
               id: "stock_test_id1",
@@ -745,6 +742,9 @@ describe("Get the total value of all replaced products", () => {
       {
         id: "3",
         isShippingRequired: true,
+        isGift: false,
+        metadata: [],
+        privateMetadata: [],
         allocations: [
           {
             id: "allocation_test_id",
@@ -762,6 +762,8 @@ describe("Get the total value of all replaced products", () => {
           name: "Milk 2",
           quantityAvailable: 50,
           preorder: null,
+          metadata: [],
+          privateMetadata: [],
           stocks: [
             {
               id: "stock_test_id1",
@@ -853,14 +855,16 @@ describe("Get the total value of all replaced products", () => {
         __typename: "OrderLine",
       },
     ];
-
-    const fulfilledLines: OrderDetailsFragment["fulfillments"][0]["lines"] = [
+    const fulfilledLines: OrderDetailsWithMetadataFragment["fulfillments"][0]["lines"] = [
       {
         id: "4",
         quantity: 1,
         orderLine: {
           id: "T3JkZXJMaW5lOjQ1",
           isShippingRequired: false,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -878,6 +882,8 @@ describe("Get the total value of all replaced products", () => {
             name: "Milk 1",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -976,6 +982,9 @@ describe("Get the total value of all replaced products", () => {
         orderLine: {
           id: "T3JkZXJMaW5lOjQ1",
           isShippingRequired: false,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -993,6 +1002,8 @@ describe("Get the total value of all replaced products", () => {
             name: "Milk 1",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -1091,6 +1102,9 @@ describe("Get the total value of all replaced products", () => {
         orderLine: {
           id: "T3JkZXJMaW5lOjQ3",
           isShippingRequired: true,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -1108,6 +1122,8 @@ describe("Get the total value of all replaced products", () => {
             name: "Milk 2",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -1206,6 +1222,9 @@ describe("Get the total value of all replaced products", () => {
         orderLine: {
           id: "T3JkZXJMaW5lOjQ1",
           isShippingRequired: false,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -1223,6 +1242,8 @@ describe("Get the total value of all replaced products", () => {
             name: "Milk 3",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -1321,6 +1342,9 @@ describe("Get the total value of all replaced products", () => {
         orderLine: {
           id: "T3JkZXJMaW5lOjQ1",
           isShippingRequired: false,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -1338,6 +1362,8 @@ describe("Get the total value of all replaced products", () => {
             name: "Milk 3",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -1431,112 +1457,108 @@ describe("Get the total value of all replaced products", () => {
         __typename: "FulfillmentLine",
       },
     ];
-
     const unfulfilledItemsQuantities: FormsetData<LineItemData, number> = [
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "1" },
         id: "1",
         label: null,
         value: 0,
       },
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "2" },
         id: "2",
         label: null,
         value: 2,
       },
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "3" },
         id: "3",
         label: null,
         value: 1,
       },
     ];
-
     const fulfilledItemsQuantities: FormsetData<LineItemData, number> = [
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "4" },
         id: "4",
         label: null,
         value: 4,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "5" },
         id: "5",
         label: null,
         value: 0,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "6" },
         id: "6",
         label: null,
         value: 3,
       },
       {
-        data: { isFulfillment: true, isRefunded: true },
+        data: { isFulfillment: true, isRefunded: true, orderLineId: "7" },
         id: "7",
         label: null,
         value: 4,
       },
       {
-        data: { isFulfillment: true, isRefunded: true },
+        data: { isFulfillment: true, isRefunded: true, orderLineId: "8" },
         id: "8",
         label: null,
         value: 3,
       },
     ];
-
     const itemsToBeReplaced: FormsetData<LineItemData, boolean> = [
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "1" },
         id: "1",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "2" },
         id: "2",
         label: null,
         value: false,
       },
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "3" },
         id: "3",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "4" },
         id: "4",
         label: null,
         value: false,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "5" },
         id: "5",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "6" },
         id: "6",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: true, isRefunded: true },
+        data: { isFulfillment: true, isRefunded: true, orderLineId: "7" },
         id: "7",
         label: null,
         value: false,
       },
       {
-        data: { isFulfillment: true, isRefunded: true },
+        data: { isFulfillment: true, isRefunded: true, orderLineId: "8" },
         id: "8",
         label: null,
         value: true,
       },
     ];
-
     const totalValue = getReplacedProductsAmount(
       {
         ...orderBase,
@@ -1563,13 +1585,15 @@ describe("Get the total value of all replaced products", () => {
     expect(totalValue).toBe(10);
   });
 });
-
 describe("Get the total value of all selected products", () => {
   it("sums up correctly", () => {
-    const unfulfilledLines: OrderLineFragment[] = [
+    const unfulfilledLines: OrderLineWithMetadataFragment[] = [
       {
         id: "1",
         isShippingRequired: false,
+        isGift: false,
+        metadata: [],
+        privateMetadata: [],
         allocations: [
           {
             id: "allocation_test_id",
@@ -1587,6 +1611,8 @@ describe("Get the total value of all selected products", () => {
           name: "Digital Book",
           quantityAvailable: 50,
           preorder: null,
+          metadata: [],
+          privateMetadata: [],
           stocks: [
             {
               id: "stock_test_id1",
@@ -1680,6 +1706,9 @@ describe("Get the total value of all selected products", () => {
       {
         id: "2",
         isShippingRequired: false,
+        isGift: false,
+        metadata: [],
+        privateMetadata: [],
         allocations: [
           {
             id: "allocation_test_id",
@@ -1697,6 +1726,8 @@ describe("Get the total value of all selected products", () => {
           name: "Digital Book",
           quantityAvailable: 50,
           preorder: null,
+          metadata: [],
+          privateMetadata: [],
           stocks: [
             {
               id: "stock_test_id1",
@@ -1790,6 +1821,9 @@ describe("Get the total value of all selected products", () => {
       {
         id: "3",
         isShippingRequired: true,
+        isGift: false,
+        metadata: [],
+        privateMetadata: [],
         allocations: [
           {
             id: "allocation_test_id",
@@ -1807,6 +1841,8 @@ describe("Get the total value of all selected products", () => {
           name: "Digital Book",
           quantityAvailable: 50,
           preorder: null,
+          metadata: [],
+          privateMetadata: [],
           stocks: [
             {
               id: "stock_test_id1",
@@ -1898,14 +1934,16 @@ describe("Get the total value of all selected products", () => {
         __typename: "OrderLine",
       },
     ];
-
-    const fulfilledLines: OrderDetailsFragment["fulfillments"][0]["lines"] = [
+    const fulfilledLines: OrderDetailsWithMetadataFragment["fulfillments"][0]["lines"] = [
       {
         id: "4",
         quantity: 1,
         orderLine: {
           id: "T3JkZXJMaW5lOjQ1",
           isShippingRequired: false,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -1923,6 +1961,8 @@ describe("Get the total value of all selected products", () => {
             name: "Digital Book",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -2021,6 +2061,9 @@ describe("Get the total value of all selected products", () => {
         orderLine: {
           id: "T3JkZXJMaW5lOjQ1",
           isShippingRequired: false,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -2037,6 +2080,8 @@ describe("Get the total value of all selected products", () => {
             id: "UHJvZHVjdFZhcmlhbnQ6MzE3",
             name: "Digital Book",
             quantityAvailable: 50,
+            metadata: [],
+            privateMetadata: [],
             preorder: null,
             stocks: [
               {
@@ -2136,6 +2181,9 @@ describe("Get the total value of all selected products", () => {
         orderLine: {
           id: "T3JkZXJMaW5lOjQ3",
           isShippingRequired: true,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -2153,6 +2201,8 @@ describe("Get the total value of all selected products", () => {
             name: "Digital Book",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -2246,102 +2296,97 @@ describe("Get the total value of all selected products", () => {
         __typename: "FulfillmentLine",
       },
     ];
-
     const unfulfilledItemsQuantities: FormsetData<LineItemData, number> = [
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "1" },
         id: "1",
         label: null,
         value: 0,
       },
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "2" },
         id: "2",
         label: null,
         value: 2,
       },
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "3" },
         id: "3",
         label: null,
         value: 1,
       },
     ];
-
     const fulfilledItemsQuantities: FormsetData<LineItemData, number> = [
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "4" },
         id: "4",
         label: null,
         value: 4,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "5" },
         id: "5",
         label: null,
         value: 0,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "6" },
         id: "6",
         label: null,
         value: 3,
       },
     ];
-
     const waitingItemsQuantities: FormsetData<LineItemData, number> = [];
-
     const itemsToBeReplaced: FormsetData<LineItemData, boolean> = [
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "1" },
         id: "1",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "2" },
         id: "2",
         label: null,
         value: false,
       },
       {
-        data: { isFulfillment: false, isRefunded: false },
+        data: { isFulfillment: false, isRefunded: false, orderLineId: "3" },
         id: "3",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "4" },
         id: "4",
         label: null,
         value: false,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "5" },
         id: "5",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: true, isRefunded: false },
+        data: { isFulfillment: true, isRefunded: false, orderLineId: "6" },
         id: "6",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: true, isRefunded: true },
+        data: { isFulfillment: true, isRefunded: true, orderLineId: "7" },
         id: "7",
         label: null,
         value: true,
       },
       {
-        data: { isFulfillment: true, isRefunded: true },
+        data: { isFulfillment: true, isRefunded: true, orderLineId: "8" },
         id: "8",
         label: null,
         value: true,
       },
     ];
-
     const totalValue = getReturnSelectedProductsAmount(
       {
         ...orderBase,
@@ -2369,16 +2414,18 @@ describe("Get the total value of all selected products", () => {
     expect(totalValue).toBe(59.94);
   });
 });
-
 describe("Merge repeated order lines of fulfillment lines", () => {
   it("is able to merge repeated order lines and sum their quantities", () => {
-    const lines: OrderDetailsFragment["fulfillments"][0]["lines"] = [
+    const lines: OrderDetailsWithMetadataFragment["fulfillments"][0]["lines"] = [
       {
         id: "RnVsZmlsbG1lbnRMaW5lOjMx",
         quantity: 1,
         orderLine: {
           id: "T3JkZXJMaW5lOjQ1",
           isShippingRequired: false,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -2396,6 +2443,8 @@ describe("Merge repeated order lines of fulfillment lines", () => {
             name: "Saleor Demo Product",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -2494,6 +2543,9 @@ describe("Merge repeated order lines of fulfillment lines", () => {
         orderLine: {
           id: "T3JkZXJMaW5lOjQ1",
           isShippingRequired: false,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -2511,6 +2563,8 @@ describe("Merge repeated order lines of fulfillment lines", () => {
             name: "Saleor Demo Product",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -2609,6 +2663,9 @@ describe("Merge repeated order lines of fulfillment lines", () => {
         orderLine: {
           id: "T3JkZXJMaW5lOjQ3",
           isShippingRequired: true,
+          isGift: false,
+          metadata: [],
+          privateMetadata: [],
           allocations: [
             {
               id: "allocation_test_id",
@@ -2626,6 +2683,8 @@ describe("Merge repeated order lines of fulfillment lines", () => {
             name: "Saleor Demo Product",
             quantityAvailable: 50,
             preorder: null,
+            metadata: [],
+            privateMetadata: [],
             stocks: [
               {
                 id: "stock_test_id1",
@@ -2719,14 +2778,170 @@ describe("Merge repeated order lines of fulfillment lines", () => {
         __typename: "FulfillmentLine",
       },
     ];
-
     const mergedLines = mergeRepeatedOrderLines(lines);
 
     expect(mergedLines).toHaveLength(2);
     expect(
-      mergedLines.find(
-        fulfillmentLine => fulfillmentLine.orderLine.id === "T3JkZXJMaW5lOjQ1",
-      ).quantity,
+      mergedLines.find(fulfillmentLine => fulfillmentLine.orderLine.id === "T3JkZXJMaW5lOjQ1")
+        .quantity,
     ).toBe(2);
+  });
+});
+describe("Get discount type label", () => {
+  it("should return Staff added for manual discount", () => {
+    // Arrange
+    const discount = {
+      type: OrderDiscountType.MANUAL,
+    } as OrderDiscountFragment;
+    // Act
+    const result = getDiscountTypeLabel(discount, testIntlInstance);
+
+    // Assert
+    expect(result).toBe("Staff added");
+  });
+  it("should return discount name when exists", () => {
+    // Arrange
+    const discount = {
+      type: OrderDiscountType.ORDER_PROMOTION,
+      name: "Subtotal discount: Test promotion",
+    } as OrderDiscountFragment;
+    // Act
+    const result = getDiscountTypeLabel(discount, testIntlInstance);
+
+    // Assert
+    expect(result).toBe("Subtotal discount");
+  });
+  it("should return  - when no discount name", () => {
+    // Arrange
+    const discount = {
+      type: OrderDiscountType.ORDER_PROMOTION,
+      name: " :Test promotion",
+    } as OrderDiscountFragment;
+    // Act
+    const result = getDiscountTypeLabel(discount, testIntlInstance);
+
+    // Assert
+    expect(result).toBe("-");
+  });
+  it("should return voucher name formatting when voucher discount type", () => {
+    // Arrange
+    const discount = {
+      type: OrderDiscountType.VOUCHER,
+      name: "Big sale",
+    } as OrderDiscountFragment;
+    // Act
+    const result = getDiscountTypeLabel(discount, testIntlInstance);
+
+    // Assert
+    expect(result).toContain("Voucher:");
+  });
+  it("should return Sale discount for sale discount type", () => {
+    // Arrange
+    const discount = {
+      type: OrderDiscountType.SALE,
+    } as OrderDiscountFragment;
+    // Act
+    const result = getDiscountTypeLabel(discount, testIntlInstance);
+
+    // Assert
+    expect(result).toBe("Sale");
+  });
+  it("should return Promotion when promotion discount type", () => {
+    // Arrange
+    const discount = {
+      type: OrderDiscountType.PROMOTION,
+    } as OrderDiscountFragment;
+    // Act
+    const result = getDiscountTypeLabel(discount, testIntlInstance);
+
+    // Assert
+    expect(result).toBe("Promotion");
+  });
+});
+describe("getAttributesCaption", () => {
+  it("should join multiple attributes with separator", () => {
+    // Arrange
+    const attributes: OrderFulfillLineFragment["variant"]["attributes"] = [
+      {
+        values: [{ name: "Red", __typename: "AttributeValue", id: "1" }],
+        __typename: "SelectedAttribute",
+      },
+      {
+        values: [{ name: "Large", __typename: "AttributeValue", id: "2" }],
+        __typename: "SelectedAttribute",
+      },
+    ];
+
+    // Act
+    const result = getAttributesCaption(attributes);
+
+    // Assert
+    expect(result).toBe(" / Red / Large");
+  });
+
+  it("should handle attributes with multiple values", () => {
+    // Arrange
+    const attributes: OrderFulfillLineFragment["variant"]["attributes"] = [
+      {
+        values: [
+          { name: "Red", __typename: "AttributeValue", id: "1" },
+          { name: "Blue", __typename: "AttributeValue", id: "2" },
+        ],
+        __typename: "SelectedAttribute",
+      },
+      {
+        values: [{ name: "Cotton", __typename: "AttributeValue", id: "3" }],
+        __typename: "SelectedAttribute",
+      },
+    ];
+
+    // Act
+    const result = getAttributesCaption(attributes);
+
+    // Assert
+    expect(result).toBe(" / Red, Blue / Cotton");
+  });
+
+  it("should handle empty attributes", () => {
+    // Arrange
+    const attributes: OrderFulfillLineFragment["variant"]["attributes"] = [
+      {
+        values: [
+          { name: "Red", __typename: "AttributeValue", id: "1" },
+          { name: "Blue", __typename: "AttributeValue", id: "2" },
+        ],
+        __typename: "SelectedAttribute",
+      },
+      {
+        values: [],
+        __typename: "SelectedAttribute",
+      },
+    ];
+
+    // Act
+    const result = getAttributesCaption(attributes);
+
+    // Assert
+    expect(result).toBe(" / Red, Blue");
+  });
+
+  it("should handle no attributes", () => {
+    // Arrange
+    const attributes: OrderFulfillLineFragment["variant"]["attributes"] = [
+      {
+        values: [],
+        __typename: "SelectedAttribute",
+      },
+      {
+        values: [],
+        __typename: "SelectedAttribute",
+      },
+    ];
+
+    // Act
+    const result = getAttributesCaption(attributes);
+
+    // Assert
+    expect(result).toBe("");
   });
 });

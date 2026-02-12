@@ -1,36 +1,27 @@
 // @ts-strict-ignore
+import { DashboardCard } from "@dashboard/components/Card";
 import Form from "@dashboard/components/Form";
-import Hr from "@dashboard/components/Hr";
-import Skeleton from "@dashboard/components/Skeleton";
-import Timeline, {
-  TimelineAddNote,
-  TimelineNote,
-} from "@dashboard/components/Timeline";
-import {
-  GiftCardEventsEnum,
-  useGiftCardAddNoteMutation,
-} from "@dashboard/graphql";
-import useNotifier from "@dashboard/hooks/useNotifier";
-import { Typography } from "@material-ui/core";
-import React from "react";
+import { Timeline, TimelineAddNote } from "@dashboard/components/Timeline/Timeline";
+import { TimelineNote } from "@dashboard/components/Timeline/TimelineNote";
+import { toActor } from "@dashboard/components/Timeline/utils";
+import { useGiftCardDetails } from "@dashboard/giftCards/GiftCardUpdate/providers/GiftCardDetailsProvider";
+import { GiftCardEventsEnum, useGiftCardAddNoteMutation } from "@dashboard/graphql";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
+import { HistoryComponentLoader } from "@dashboard/orders/components/OrderHistory/HistoryComponentLoader";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import { GIFT_CARD_DETAILS_QUERY } from "../queries";
 import GiftCardTimelineEvent from "./GiftCardTimelineEvent";
-import useGiftCardHistoryEvents from "./hooks/useGiftCardHistoryEvents";
 import { giftCardHistoryMessages as messages } from "./messages";
-import useStyles from "./styles";
 
 interface FormData {
   message: string;
 }
 
-const GiftCardHistory: React.FC = () => {
+const GiftCardHistory = () => {
   const intl = useIntl();
   const notify = useNotifier();
-  const { id, events } = useGiftCardHistoryEvents();
-  const classes = useStyles();
-
+  const { giftCard } = useGiftCardDetails();
   const [addTimelineNote, { loading }] = useGiftCardAddNoteMutation({
     refetchQueries: [GIFT_CARD_DETAILS_QUERY],
     onCompleted: ({ giftCardAddNote }) => {
@@ -49,21 +40,24 @@ const GiftCardHistory: React.FC = () => {
       }
     },
   });
-
   const onNoteAdd = (data: FormData) => {
     const { message } = data;
-    addTimelineNote({ variables: { id, input: { message } } });
+
+    if (!giftCard) return;
+
+    addTimelineNote({ variables: { id: giftCard.id, input: { message } } });
   };
 
   return (
-    <div className={classes.root}>
-      <Typography className={classes.header} color="textSecondary">
-        <FormattedMessage {...messages.historyHeaderTitle} />
-      </Typography>
-      <Hr />
-      <Timeline>
-        {events ? (
-          <>
+    <DashboardCard>
+      <DashboardCard.Header>
+        <DashboardCard.Title>
+          <FormattedMessage {...messages.historyHeaderTitle} />
+        </DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
+        {giftCard?.events ? (
+          <Timeline>
             <Form initial={{ message: "" }} onSubmit={onNoteAdd} resetOnSubmit>
               {({ change, data, reset, submit }) => (
                 <TimelineAddNote
@@ -75,34 +69,32 @@ const GiftCardHistory: React.FC = () => {
                 />
               )}
             </Form>
-            {events
+            {giftCard.events
               .slice()
               .reverse()
               .map(event => {
-                const { id, message, type, date, user } = event;
+                const { id, message, type, date, user, app } = event;
 
                 if (type === GiftCardEventsEnum.NOTE_ADDED) {
                   return (
                     <TimelineNote
                       date={date}
-                      user={user}
+                      actor={toActor(user, app)}
                       message={message}
                       key={id}
-                      hasPlainDate
+                      hasPlainDate={false}
                     />
                   );
                 }
 
-                return (
-                  <GiftCardTimelineEvent key={id} date={date} event={event} />
-                );
+                return <GiftCardTimelineEvent key={id} date={date} event={event} />;
               })}
-          </>
+          </Timeline>
         ) : (
-          <Skeleton />
+          <HistoryComponentLoader />
         )}
-      </Timeline>
-    </div>
+      </DashboardCard.Content>
+    </DashboardCard>
   );
 };
 

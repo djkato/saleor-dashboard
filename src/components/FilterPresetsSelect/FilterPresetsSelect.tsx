@@ -10,8 +10,8 @@ import {
   Text,
   Tooltip,
   vars,
-} from "@saleor/macaw-ui/next";
-import React, { MouseEvent } from "react";
+} from "@saleor/macaw-ui-next";
+import { MouseEvent } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import { FilterPresetItem } from "./FilterPresetItem";
@@ -46,11 +46,8 @@ export const FilterPresetsSelect = ({
   presetsChanged,
 }: FilterPresetsSelectProps) => {
   const intl = useIntl();
-  const showUpdateButton =
-    presetsChanged && savedPresets.length > 0 && activePreset;
-
+  const showUpdateButton = presetsChanged && savedPresets.length > 0 && activePreset;
   const showSaveButton = presetsChanged;
-
   const getLabel = () => {
     if (!activePreset) {
       return selectAllLabel;
@@ -58,9 +55,9 @@ export const FilterPresetsSelect = ({
 
     return savedPresets[activePreset - 1];
   };
-
   const handleSelectPreset = (e: MouseEvent<HTMLElement>, index: number) => {
     const target = e.target as HTMLElement;
+
     // Prevent run onSelect when click on remove button
     if (!["LI", "SPAN"].includes(target.tagName)) {
       return;
@@ -68,14 +65,13 @@ export const FilterPresetsSelect = ({
 
     onSelect(index);
   };
-
   const renderDropdown = () => {
     if (!savedPresets?.length) {
       return (
         <Box display="flex" alignItems="center">
           <Tooltip>
             <Tooltip.Trigger>
-              <Text variant="title" size="small">
+              <Text size={6} fontWeight="regular">
                 {selectAllLabel}
               </Text>
             </Tooltip.Trigger>
@@ -103,11 +99,11 @@ export const FilterPresetsSelect = ({
             size="medium"
             data-test-id="show-saved-filters-button"
             style={{
-              borderColor: isOpen ? vars.colors.border.brandDefault : undefined,
+              borderColor: isOpen ? vars.colors.border.accent1 : undefined,
             }}
           >
             <Box __maxWidth="200px">
-              <Text ellipsis variant="title" size="small" display="block">
+              <Text ellipsis size={6} fontWeight="regular" display="block">
                 {getLabel()}
               </Text>
             </Box>
@@ -121,32 +117,24 @@ export const FilterPresetsSelect = ({
             overflowY="auto"
             padding={1}
             borderRadius={3}
-            boxShadow="overlay"
-            borderColor="neutralHighlight"
+            boxShadow="defaultOverlay"
+            borderColor="default1"
             borderStyle="solid"
             borderWidth={1}
             width="100%"
             marginTop={0.5}
-            backgroundColor="surfaceNeutralPlain"
+            backgroundColor="default1"
           >
             <Dropdown.Item>
-              <List.Item
-                paddingX={1.5}
-                paddingY={1}
-                gap={3}
-                borderRadius={3}
-                onClick={onSelectAll}
-              >
-                <Text variant={activePreset === 0 ? "bodyStrong" : "body"}>
-                  {selectAllLabel}
-                </Text>
+              <List.Item paddingX={1.5} paddingY={1} gap={3} borderRadius={3} onClick={onSelectAll}>
+                <Text fontWeight={activePreset === 0 ? "bold" : "regular"}>{selectAllLabel}</Text>
               </List.Item>
             </Dropdown.Item>
             {savedPresets.length > 0 && (
               <Box
                 height="px"
                 marginY={1}
-                __backgroundColor={vars.colors.border.neutralHighlight}
+                __backgroundColor={vars.colors.border.default1}
                 __marginLeft={-4}
                 __width={getSeparatorWidth("4px")}
               />

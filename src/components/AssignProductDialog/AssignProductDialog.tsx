@@ -1,196 +1,77 @@
-// @ts-strict-ignore
-import {
-  ConfirmButton,
-  ConfirmButtonTransitionState,
-} from "@dashboard/components/ConfirmButton";
-import ResponsiveTable from "@dashboard/components/ResponsiveTable";
-import TableCellAvatar from "@dashboard/components/TableCellAvatar";
-import TableRowLink from "@dashboard/components/TableRowLink";
-import { SearchProductsQuery } from "@dashboard/graphql";
-import useModalDialogOpen from "@dashboard/hooks/useModalDialogOpen";
-import useSearchQuery from "@dashboard/hooks/useSearchQuery";
-import { maybe } from "@dashboard/misc";
-import useScrollableDialogStyle from "@dashboard/styles/useScrollableDialogStyle";
-import { DialogProps, FetchMoreProps, RelayToFlat } from "@dashboard/types";
-import {
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TableBody,
-  TableCell,
-  TextField,
-} from "@material-ui/core";
-import React, { useEffect } from "react";
-import InfiniteScroll from "react-infinite-scroll-component";
-import { FormattedMessage, useIntl } from "react-intl";
+import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
+import { DashboardModal } from "@dashboard/components/Modal";
+import { ProductWhereInput } from "@dashboard/graphql";
+import { Container, DialogProps, FetchMoreProps } from "@dashboard/types";
+import { FormattedMessage } from "react-intl";
 
-import BackButton from "../BackButton";
-import Checkbox from "../Checkbox";
+import {
+  InitialConstraints,
+  ModalProductFilterProvider,
+} from "../ModalFilters/entityConfigs/ModalProductFilterProvider";
+import { AssignProductDialogMulti } from "./AssignProductDialogMulti";
+import { AssignProductDialogSingle } from "./AssignProductDialogSingle";
 import { messages } from "./messages";
-import { useStyles } from "./styles";
-
-export interface AssignProductDialogFormData {
-  products: RelayToFlat<SearchProductsQuery["search"]>;
-  query: string;
-}
+import { Products, SelectedChannel } from "./types";
 
 export interface AssignProductDialogProps extends FetchMoreProps, DialogProps {
   confirmButtonState: ConfirmButtonTransitionState;
-  products: RelayToFlat<SearchProductsQuery["search"]>;
+  products: Products;
+  selectedChannels?: SelectedChannel[];
+  productUnavailableText?: string;
   selectedIds?: Record<string, boolean>;
   loading: boolean;
-  onFetch: (value: string) => void;
-  onSubmit: (data: string[]) => void;
+  onFilterChange?: (
+    filterVariables: ProductWhereInput,
+    channel: string | undefined,
+    query: string,
+  ) => void;
+  // name is part of Container interface
+  onSubmit: (data: Array<Container & Omit<Partial<Products[number]>, "name">>) => void;
+  labels?: {
+    confirmBtn?: string;
+  };
+  selectionMode?: "single" | "multiple";
+  selectedId?: string;
+  excludedFilters?: string[];
+  initialConstraints?: InitialConstraints;
 }
 
-const scrollableTargetId = "assignProductScrollableDialog";
+export const AssignProductDialog = (props: AssignProductDialogProps): JSX.Element => {
+  const { selectionMode = "multiple", excludedFilters, initialConstraints, ...restProps } = props;
 
-const AssignProductDialog: React.FC<AssignProductDialogProps> = props => {
-  const {
-    confirmButtonState,
-    hasMore,
-    open,
-    loading,
-    products,
-    onClose,
-    onFetch,
-    onFetchMore,
-    onSubmit,
-    selectedIds,
-  } = props;
-  const classes = useStyles(props);
-  const scrollableDialogClasses = useScrollableDialogStyle({});
-  const intl = useIntl();
-  const [query, onQueryChange, queryReset] = useSearchQuery(onFetch);
-  const [productsDict, setProductsDict] = React.useState(selectedIds || {});
+  const { open, onClose } = props;
 
-  useEffect(() => {
-    if (selectedIds) {
-      setProductsDict(prev => {
-        const prevIds = Object.keys(prev);
-        const newIds = Object.keys(selectedIds);
-
-        const preSelected = newIds
-          .filter(n => !prevIds.includes(n))
-          .reduce((p, c) => ({ ...p, [c]: true }), {});
-
-        return { ...prev, ...preSelected };
-      });
-    }
-  }, [selectedIds]);
-
-  useModalDialogOpen(open, {
-    onOpen: () => {
-      queryReset();
-      setProductsDict(selectedIds || {});
-    },
-  });
-
-  const handleSubmit = () => {
-    const selectedProductsAsArray = Object.keys(productsDict)
-      .filter(key => productsDict[key])
-      .map(key => key);
-
-    onSubmit(selectedProductsAsArray);
+  const handleClose = (): void => {
+    onClose();
   };
 
-  const handleChange = productId => {
-    setProductsDict(prev => ({
-      ...prev,
-      [productId]: !prev[productId] ?? true,
-    }));
-  };
+  const dialogContent = (
+    <>
+      <DashboardModal.Header>
+        <FormattedMessage {...messages.assignVariantDialogHeader} />
+      </DashboardModal.Header>
+      {selectionMode === "single" ? (
+        <AssignProductDialogSingle {...restProps} />
+      ) : (
+        <AssignProductDialogMulti {...restProps} />
+      )}
+    </>
+  );
 
   return (
-    <Dialog
-      onClose={onClose}
-      open={open}
-      classes={{ paper: scrollableDialogClasses.dialog }}
-      fullWidth
-      maxWidth="sm"
-    >
-      <DialogTitle disableTypography>
-        <FormattedMessage {...messages.assignVariantDialogHeader} />
-      </DialogTitle>
-      <DialogContent>
-        <TextField
-          name="query"
-          value={query}
-          onChange={onQueryChange}
-          label={intl.formatMessage(messages.assignProductDialogSearch)}
-          placeholder={intl.formatMessage(messages.assignProductDialogContent)}
-          fullWidth
-          InputProps={{
-            autoComplete: "off",
-            endAdornment: loading && <CircularProgress size={16} />,
-          }}
-        />
-      </DialogContent>
-      <DialogContent
-        className={scrollableDialogClasses.scrollArea}
-        id={scrollableTargetId}
-      >
-        <InfiniteScroll
-          dataLength={products?.length ?? 0}
-          next={onFetchMore}
-          hasMore={hasMore}
-          scrollThreshold="100px"
-          loader={
-            <div className={scrollableDialogClasses.loadMoreLoaderContainer}>
-              <CircularProgress size={16} />
-            </div>
-          }
-          scrollableTarget={scrollableTargetId}
+    <DashboardModal onChange={handleClose} open={open}>
+      <DashboardModal.Content size="sm" __gridTemplateRows="auto auto 1fr auto">
+        <ModalProductFilterProvider
+          excludedFilters={excludedFilters}
+          initialConstraints={initialConstraints}
         >
-          <ResponsiveTable key="table">
-            <TableBody>
-              {products &&
-                products.map(product => {
-                  const isSelected = productsDict[product.id] || false;
-
-                  return (
-                    <TableRowLink
-                      key={product.id}
-                      data-test-id="assign-product-table-row"
-                    >
-                      <TableCellAvatar
-                        className={classes.avatar}
-                        thumbnail={maybe(() => product.thumbnail.url)}
-                      />
-                      <TableCell className={classes.colName}>
-                        {product.name}
-                      </TableCell>
-                      <TableCell
-                        padding="checkbox"
-                        className={classes.checkboxCell}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onChange={() => handleChange(product.id)}
-                        />
-                      </TableCell>
-                    </TableRowLink>
-                  );
-                })}
-            </TableBody>
-          </ResponsiveTable>
-        </InfiniteScroll>
-      </DialogContent>
-      <DialogActions>
-        <BackButton onClick={onClose} />
-        <ConfirmButton
-          data-test-id="submit"
-          transitionState={confirmButtonState}
-          type="submit"
-          onClick={handleSubmit}
-        >
-          <FormattedMessage {...messages.assignProductDialogButton} />
-        </ConfirmButton>
-      </DialogActions>
-    </Dialog>
+          {dialogContent}
+        </ModalProductFilterProvider>
+      </DashboardModal.Content>
+    </DashboardModal>
   );
 };
+
 AssignProductDialog.displayName = "AssignProductDialog";
+
 export default AssignProductDialog;

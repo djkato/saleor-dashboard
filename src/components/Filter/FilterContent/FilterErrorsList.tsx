@@ -1,9 +1,8 @@
 // @ts-strict-ignore
 import InlineAlert from "@dashboard/components/Alert/InlineAlert";
-import errorTracker from "@dashboard/services/errorTracking";
-import { Typography } from "@material-ui/core";
+import { errorTracker } from "@dashboard/services/errorTracking";
 import { alpha, makeStyles } from "@material-ui/core/styles";
-import React from "react";
+import { Text } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
 import { validationMessages } from "../messages";
@@ -41,23 +40,22 @@ interface FilterErrorsListProps<T extends string = string> {
   errorMessages?: FilterErrorMessages<T>;
 }
 
-const FilterErrorsList: React.FC<FilterErrorsListProps> = ({
+export const FilterErrorsList = ({
   filter: { dependencies },
   errors = [],
   errorMessages,
-}) => {
+}: FilterErrorsListProps) => {
   const classes = useStyles({});
   const intl = useIntl();
-
   const getErrorMessage = (code: string) => {
     try {
-      return intl.formatMessage(
-        errorMessages?.[code] || validationMessages[code],
-        { dependencies: dependencies?.join() },
-      );
+      return intl.formatMessage(errorMessages?.[code] || validationMessages[code], {
+        dependencies: dependencies?.join(),
+      });
     } catch (e) {
       errorTracker.captureException(e as Error);
       console.warn("Translation missing for filter error code: ", code);
+
       return intl.formatMessage(validationMessages.UNKNOWN_ERROR);
     }
   };
@@ -73,9 +71,7 @@ const FilterErrorsList: React.FC<FilterErrorsListProps> = ({
           {errors.map(code => (
             <div className={classes.itemContainer} key={code}>
               <div className={classes.dot} />
-              <Typography className={classes.listItemTitle}>
-                {getErrorMessage(code)}
-              </Typography>
+              <Text className={classes.listItemTitle}>{getErrorMessage(code)}</Text>
             </div>
           ))}
         </InlineAlert>
@@ -83,5 +79,3 @@ const FilterErrorsList: React.FC<FilterErrorsListProps> = ({
     </div>
   );
 };
-
-export default FilterErrorsList;

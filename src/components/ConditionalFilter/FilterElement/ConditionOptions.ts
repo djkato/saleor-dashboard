@@ -1,12 +1,10 @@
 import { AttributeInputTypeEnum } from "@dashboard/graphql";
 
-import {
-  ATTRIBUTE_INPUT_TYPE_CONDITIONS,
-  STATIC_CONDITIONS,
-} from "../constants";
+import { ATTRIBUTE_INPUT_TYPE_CONDITIONS, STATIC_CONDITIONS } from "../constants";
 
 export type StaticElementName = keyof typeof STATIC_CONDITIONS;
 export type AttributeInputType = keyof typeof ATTRIBUTE_INPUT_TYPE_CONDITIONS;
+export type AnyFilterElementName = AttributeInputType | StaticElementName | AttributeInputTypeEnum;
 
 export interface ConditionItem {
   type: string;
@@ -18,6 +16,7 @@ export class ConditionOptions extends Array<ConditionItem> {
   private constructor(options: ConditionItem[] | number) {
     if (Array.isArray(options)) {
       super(...options);
+
       return;
     }
 
@@ -52,9 +51,7 @@ export class ConditionOptions extends Array<ConditionItem> {
     return new ConditionOptions(options);
   }
 
-  public static fromName(
-    name: AttributeInputType | StaticElementName | AttributeInputTypeEnum,
-  ) {
+  public static fromName(name: AnyFilterElementName) {
     const optionsStatic = this.isStaticName(name) && STATIC_CONDITIONS[name];
     const optionsAttribute =
       this.isAttributeInputType(name) && ATTRIBUTE_INPUT_TYPE_CONDITIONS[name];

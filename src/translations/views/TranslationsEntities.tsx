@@ -3,7 +3,7 @@ import useNavigator from "@dashboard/hooks/useNavigator";
 import { createPaginationState } from "@dashboard/hooks/usePaginator";
 import useShop from "@dashboard/hooks/useShop";
 import { stringifyQs } from "@dashboard/utils/urls";
-import React from "react";
+import { useMemo } from "react";
 
 import { PAGINATE_BY } from "../../config";
 import { maybe } from "../../misc";
@@ -24,10 +24,7 @@ interface TranslationsEntitiesProps {
   params: LanguageEntitiesUrlQueryParams;
 }
 
-const TranslationsEntities: React.FC<TranslationsEntitiesProps> = ({
-  language,
-  params,
-}) => {
+const TranslationsEntities = ({ language, params }: TranslationsEntitiesProps) => {
   const navigate = useNavigator();
   const shop = useShop();
 
@@ -110,13 +107,14 @@ const TranslationsEntities: React.FC<TranslationsEntitiesProps> = ({
     shop.languages.find(languageFromList => languageFromList.code === language),
   );
   const paginationState = createPaginationState(PAGINATE_BY, params);
-  const queryVariables = React.useMemo(
+  const queryVariables = useMemo(
     () => ({
       ...paginationState,
       language: language as any,
     }),
     [params],
   );
+
   return (
     <TranslationsEntitiesListPage
       filters={{
@@ -130,10 +128,7 @@ const TranslationsEntities: React.FC<TranslationsEntitiesProps> = ({
       ) : params.tab === "products" ? (
         <TranslationsProductList params={params} variables={queryVariables} />
       ) : params.tab === "collections" ? (
-        <TranslationsCollectionList
-          params={params}
-          variables={queryVariables}
-        />
+        <TranslationsCollectionList params={params} variables={queryVariables} />
       ) : params.tab === "sales" ? (
         <TranslationsSaleList params={params} variables={queryVariables} />
       ) : params.tab === "vouchers" ? (
@@ -143,15 +138,13 @@ const TranslationsEntities: React.FC<TranslationsEntitiesProps> = ({
       ) : params.tab === "attributes" ? (
         <TranslationsAttributeList params={params} variables={queryVariables} />
       ) : params.tab === "shippingMethods" ? (
-        <TranslationsShippingMethodList
-          params={params}
-          variables={queryVariables}
-        />
+        <TranslationsShippingMethodList params={params} variables={queryVariables} />
       ) : params.tab === "menuItems" ? (
         <TranslationsMenuItemList params={params} variables={queryVariables} />
       ) : null}
     </TranslationsEntitiesListPage>
   );
 };
+
 TranslationsEntities.displayName = "TranslationsEntities";
 export default TranslationsEntities;

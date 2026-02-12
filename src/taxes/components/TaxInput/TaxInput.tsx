@@ -1,7 +1,6 @@
 import { findPriceSeparator } from "@dashboard/components/PriceField/utils";
 import { FormChange } from "@dashboard/hooks/useForm";
 import { InputAdornment, TextField, TextFieldProps } from "@material-ui/core";
-import React from "react";
 
 import { useStyles } from "./styles";
 
@@ -11,13 +10,8 @@ interface TaxInputProps {
   change: FormChange;
 }
 
-export const TaxInput: React.FC<TaxInputProps> = ({
-  placeholder,
-  value,
-  change,
-}) => {
+const TaxInput = ({ placeholder, value, change }: TaxInputProps) => {
   const classes = useStyles();
-
   const handleChange: FormChange = e => {
     let value = e.target.value;
     const splitCharacter = findPriceSeparator(value);
@@ -25,6 +19,7 @@ export const TaxInput: React.FC<TaxInputProps> = ({
 
     if (decimalPart?.length > 3) {
       const shortenedDecimalPart = decimalPart.slice(0, 3);
+
       value = `${integerPart}${splitCharacter}${shortenedDecimalPart}`;
     }
 
@@ -47,6 +42,7 @@ export const TaxInput: React.FC<TaxInputProps> = ({
 
   return (
     <TextField
+      data-test-id="tax-input"
       type="number"
       fullWidth
       placeholder={placeholder}

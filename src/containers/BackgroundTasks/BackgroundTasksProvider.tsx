@@ -1,31 +1,26 @@
 // @ts-strict-ignore
 import { ApolloClient, useApolloClient } from "@apollo/client";
-import { IMessageContext } from "@dashboard/components/messages";
-import useNotifier from "@dashboard/hooks/useNotifier";
-import React from "react";
+import { INotificationCallback } from "@dashboard/components/notifications";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
+import { ReactNode, useEffect, useRef } from "react";
 import { IntlShape, useIntl } from "react-intl";
 
 import BackgroundTasksContext from "./context";
 import { checkExportFileStatus, checkOrderInvoicesStatus } from "./queries";
-import {
-  handleTask,
-  queueCustom,
-  queueExport,
-  queueInvoiceGenerate,
-} from "./tasks";
+import { handleTask, queueCustom, queueExport, queueInvoiceGenerate } from "./tasks";
 import { QueuedTask, Task, TaskData, TaskStatus } from "./types";
 
 export const backgroundTasksRefreshTime = 15 * 1000;
 
 export function useBackgroundTasks(
   apolloClient: Pick<ApolloClient<any>, "query">,
-  notify: IMessageContext,
+  notify: INotificationCallback,
   intl: IntlShape,
 ) {
-  const idCounter = React.useRef(0);
-  const tasks = React.useRef<QueuedTask[]>([]);
+  const idCounter = useRef(0);
+  const tasks = useRef<QueuedTask[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const intervalId = setInterval(() => {
       const queue = async () => {
         await Promise.all(
@@ -34,9 +29,8 @@ export function useBackgroundTasks(
               const status = await handleTask(task);
 
               if (status !== TaskStatus.PENDING) {
-                const taskIndex = tasks.current.findIndex(
-                  t => t.id === task.id,
-                );
+                const taskIndex = tasks.current.findIndex(t => t.id === task.id);
+
                 tasks.current[taskIndex].status = status;
               }
             }
@@ -56,6 +50,7 @@ export function useBackgroundTasks(
 
   function queue(type: Task, data?: TaskData) {
     idCounter.current += 1;
+
     switch (type) {
       case Task.CUSTOM:
         queueCustom(idCounter.current, tasks, data);
@@ -104,7 +99,7 @@ export function useBackgroundTasks(
   };
 }
 
-const BackgroundTasksProvider: React.FC = ({ children }) => {
+const BackgroundTasksProvider = ({ children }: { children: ReactNode }) => {
   const apolloClient = useApolloClient();
   const notify = useNotifier();
   const intl = useIntl();

@@ -3,10 +3,11 @@ import { DatagridChangeOpts } from "@dashboard/components/Datagrid/hooks/useData
 import { ProductFragment } from "@dashboard/graphql";
 import { ProductUpdateSubmitData } from "@dashboard/products/components/ProductUpdatePage/types";
 
-import { product } from "../../../fixtures";
+import { product, variantAttributes } from "../../../fixtures";
 import {
   getBulkVariantUpdateInputs,
   getCreateVariantInput,
+  getProductUpdateVariables,
   inferProductChannelsAfterUpdate,
 } from "./utils";
 
@@ -31,7 +32,6 @@ describe("Product update utils", () => {
         },
       ],
     } as ProductFragment;
-
     const submitData = {
       channels: {
         updateChannels: [
@@ -45,12 +45,10 @@ describe("Product update utils", () => {
         removeChannels: ["2"],
       },
     } as ProductUpdateSubmitData;
-
     const result = inferProductChannelsAfterUpdate(product, submitData);
 
     expect(result).toEqual(["1", "3", "4"]);
   });
-
   it("should infer product channels after update without data", () => {
     const product = {
       channelListings: [
@@ -71,17 +69,14 @@ describe("Product update utils", () => {
         },
       ],
     } as ProductFragment;
-
     const submitData = {
       channels: {},
     } as ProductUpdateSubmitData;
-
     const result = inferProductChannelsAfterUpdate(product, submitData);
 
     expect(result).toEqual(["1", "2", "3"]);
   });
 });
-
 describe("getCreateVariantInput", () => {
   test("should return input data base on datagrid change data", () => {
     // Arrange
@@ -130,8 +125,7 @@ describe("getCreateVariantInput", () => {
             kind: "number-cell",
             value: 3223,
           },
-          column:
-            "stock:V2FyZWhvdXNlOmQ0YzI0ODQxLTg2MDgtNGFiNC04MDkzLWUxNmQ4NWNlYjdkYQ==",
+          column: "warehouse:V2FyZWhvdXNlOmQ0YzI0ODQxLTg2MDgtNGFiNC04MDkzLWUxNmQ4NWNlYjdkYQ==",
           row: 1,
         },
         {
@@ -152,14 +146,16 @@ describe("getCreateVariantInput", () => {
       added: [1],
     };
     // Act
-    const createDataInput = getCreateVariantInput(inputData, 1);
+    const createDataInput = getCreateVariantInput(inputData, 1, variantAttributes);
 
     // Assert
     expect(createDataInput).toEqual({
       attributes: [
         {
           id: "QXR0cmlidXRlOjE1",
-          values: ["1l"],
+          dropdown: {
+            value: "1l",
+          },
         },
       ],
       sku: "23423",
@@ -176,14 +172,12 @@ describe("getCreateVariantInput", () => {
       ],
       stocks: [
         {
-          warehouse:
-            "V2FyZWhvdXNlOmQ0YzI0ODQxLTg2MDgtNGFiNC04MDkzLWUxNmQ4NWNlYjdkYQ==",
+          warehouse: "V2FyZWhvdXNlOmQ0YzI0ODQxLTg2MDgtNGFiNC04MDkzLWUxNmQ4NWNlYjdkYQ==",
           quantity: 3223,
         },
       ],
     });
   });
-
   test("should return only sku and name", () => {
     // Arrange
     const inputData: DatagridChangeOpts = {
@@ -202,9 +196,8 @@ describe("getCreateVariantInput", () => {
       removed: [],
       added: [1],
     };
-
     // Act
-    const createDataInput = getCreateVariantInput(inputData, 1);
+    const createDataInput = getCreateVariantInput(inputData, 1, variantAttributes);
 
     // Assert
     expect(createDataInput).toEqual({
@@ -216,13 +209,10 @@ describe("getCreateVariantInput", () => {
     });
   });
 });
-
 describe("getBulkVariantUpdateInputs", () => {
   test("should return input data base on datagrid change data for multiple variants", () => {
     // Arrange
-    const variants: ProductFragment["variants"] =
-      product("http://google.com").variants;
-
+    const variants: ProductFragment["variants"] = product("http://google.com").variants;
     const inputData: DatagridChangeOpts = {
       updates: [
         {
@@ -263,7 +253,7 @@ describe("getBulkVariantUpdateInputs", () => {
             kind: "number-cell",
             value: 2344,
           },
-          column: `stock:${variants[2].stocks[0].warehouse.id}`,
+          column: `warehouse:${variants[2].stocks[0].warehouse.id}`,
           row: 2,
         },
         {
@@ -283,11 +273,11 @@ describe("getBulkVariantUpdateInputs", () => {
       removed: [],
       added: [],
     };
-
     // Act
     const bulkVariantUpdateInput = getBulkVariantUpdateInputs(
       variants,
       inputData,
+      variantAttributes,
     );
 
     // Assert
@@ -312,8 +302,10 @@ describe("getBulkVariantUpdateInputs", () => {
         id: variants[2].id,
         attributes: [
           {
-            id: variants[2].attributes[0].attribute.id,
-            values: ["2l"],
+            id: "QXR0cmlidXRlOjE1",
+            dropdown: {
+              value: "2l",
+            },
           },
         ],
         sku: "2345555",
@@ -344,5 +336,212 @@ describe("getBulkVariantUpdateInputs", () => {
         },
       },
     ]);
+  });
+  test("should return input data base on datagrid change data for simultaneous bulk operations", () => {
+    // Arrange
+    const variants: ProductFragment["variants"] = product("http://google.com").variants;
+    const inputData: DatagridChangeOpts = {
+      updates: [
+        {
+          data: "2345555",
+          column: "sku",
+          row: 0, // initially 0
+        },
+        {
+          data: {
+            kind: "money-cell",
+            value: 234,
+            currency: "USD",
+          },
+          column: `channel:${variants[0].channelListings[0].channel.id}`,
+          row: 0, // initially 0
+        },
+        {
+          data: "edited variant",
+          column: "name",
+          row: 1, // initially 2
+        },
+        {
+          data: {
+            kind: "number-cell",
+            value: 2344,
+          },
+          column: `warehouse:${variants[2].stocks[0].warehouse.id}`,
+          row: 1, // initially 2
+        },
+        // row 2 (initially 4) is unchanged
+        {
+          data: "completely new variant",
+          column: "name",
+          row: 3, // initially 5
+        },
+      ],
+      // DatagridChangeOpts generates removed indices based on initial grid,
+      // meanwhile added and updates indices are calculated on the grid after removal
+      // of rows. This is why we have 3 as an index both in removed and added.
+      removed: [1, 3],
+      added: [3],
+    };
+    // Act
+    const bulkVariantUpdateInput = getBulkVariantUpdateInputs(
+      variants,
+      inputData,
+      variantAttributes,
+    );
+
+    // Assert
+    expect(bulkVariantUpdateInput).toEqual([
+      {
+        id: variants[0].id,
+        attributes: [],
+        sku: "2345555",
+        name: undefined,
+        stocks: { create: [], update: [], remove: [] },
+        channelListings: {
+          create: [],
+          remove: [],
+          update: [
+            {
+              channelListing: variants[0].channelListings[0].id,
+              price: 234,
+            },
+          ],
+        },
+      },
+      {
+        id: variants[2].id,
+        attributes: [],
+        sku: undefined,
+        name: "edited variant",
+        stocks: {
+          create: [],
+          update: [
+            {
+              stock: variants[2].stocks[0].id,
+              quantity: 2344,
+            },
+          ],
+          remove: [],
+        },
+        channelListings: { create: [], remove: [], update: [] },
+      },
+    ]);
+  });
+});
+
+describe("getProductUpdateVariables", () => {
+  const baseProduct = product("http://google.com");
+  const baseData = {
+    attributes: [],
+    attributesWithNewFileValue: [],
+    category: null,
+    collections: [],
+    description: null,
+    name: "Test Product",
+    rating: null,
+    slug: "test-product",
+    taxClassId: null,
+    seoDescription: null,
+    seoTitle: null,
+  } as ProductUpdateSubmitData;
+
+  it("should include weight when valid number is provided", () => {
+    // Arrange
+    const data = {
+      ...baseData,
+      weight: "10.5",
+    } as ProductUpdateSubmitData;
+
+    // Act
+    const result = getProductUpdateVariables(baseProduct, data, []);
+
+    // Assert
+    expect(result.input.weight).toBe(10.5);
+  });
+
+  it("should include weight when zero is provided", () => {
+    // Arrange
+    const data = {
+      ...baseData,
+      weight: "0",
+    } as ProductUpdateSubmitData;
+
+    // Act
+    const result = getProductUpdateVariables(baseProduct, data, []);
+
+    // Assert
+    expect(result.input.weight).toBe(0);
+  });
+
+  it("should include null when empty string is provided to clear weight", () => {
+    // Arrange
+    const data = {
+      ...baseData,
+      weight: "",
+    } as ProductUpdateSubmitData;
+
+    // Act
+    const result = getProductUpdateVariables(baseProduct, data, []);
+
+    // Assert
+    expect(result.input.weight).toBeNull();
+  });
+
+  it("should not include weight when undefined is provided", () => {
+    // Arrange
+    const data = {
+      ...baseData,
+      weight: undefined,
+    } as ProductUpdateSubmitData;
+
+    // Act
+    const result = getProductUpdateVariables(baseProduct, data, []);
+
+    // Assert
+    expect(result.input.weight).toBeUndefined();
+  });
+
+  it("should handle decimal weight values", () => {
+    // Arrange
+    const data = {
+      ...baseData,
+      weight: "0.001",
+    } as ProductUpdateSubmitData;
+
+    // Act
+    const result = getProductUpdateVariables(baseProduct, data, []);
+
+    // Assert
+    expect(result.input.weight).toBe(0.001);
+  });
+
+  it("should include NaN when invalid non-numeric string is provided", () => {
+    // Arrange
+    const data = {
+      ...baseData,
+      weight: "invalid",
+    } as ProductUpdateSubmitData;
+
+    // Act
+    const result = getProductUpdateVariables(baseProduct, data, []);
+
+    // Assert
+    // parseFloat("invalid") returns NaN, backend should validate
+    expect(result.input.weight).toBeNaN();
+  });
+
+  it("should include negative number when provided", () => {
+    // Arrange
+    const data = {
+      ...baseData,
+      weight: "-5",
+    } as ProductUpdateSubmitData;
+
+    // Act
+    const result = getProductUpdateVariables(baseProduct, data, []);
+
+    // Assert
+    // Backend should validate if negative weights are allowed
+    expect(result.input.weight).toBe(-5);
   });
 });

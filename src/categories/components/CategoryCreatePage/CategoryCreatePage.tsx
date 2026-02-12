@@ -1,21 +1,19 @@
-// @ts-strict-ignore
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
 import { CardSpacer } from "@dashboard/components/CardSpacer";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
 import { Metadata } from "@dashboard/components/Metadata";
-import Savebar from "@dashboard/components/Savebar";
+import { Savebar } from "@dashboard/components/Savebar";
 import { SeoForm } from "@dashboard/components/SeoForm";
 import { ProductErrorFragment } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import { Box } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
 import CategoryDetailsForm from "../../components/CategoryDetailsForm";
 import CategoryCreateForm, { CategoryCreateData } from "./form";
 
-export interface CategoryCreatePageProps {
+interface CategoryCreatePageProps {
   errors: ProductErrorFragment[];
   disabled: boolean;
   saveButtonBarState: ConfirmButtonTransitionState;
@@ -23,13 +21,13 @@ export interface CategoryCreatePageProps {
   onSubmit: (data: CategoryCreateData) => any;
 }
 
-export const CategoryCreatePage: React.FC<CategoryCreatePageProps> = ({
+const CategoryCreatePage = ({
   disabled,
   onSubmit,
   errors,
   saveButtonBarState,
   backUrl,
-}) => {
+}: CategoryCreatePageProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
 
@@ -75,16 +73,20 @@ export const CategoryCreatePage: React.FC<CategoryCreatePageProps> = ({
               <Metadata data={data} onChange={handlers.changeMetadata} />
             </Box>
           </DetailPageLayout.Content>
-          <Savebar
-            onCancel={() => navigate(backUrl)}
-            onSubmit={submit}
-            state={saveButtonBarState}
-            disabled={isSaveDisabled}
-          />
+          <Savebar>
+            <Savebar.Spacer />
+            <Savebar.CancelButton onClick={() => navigate(backUrl)} />
+            <Savebar.ConfirmButton
+              transitionState={saveButtonBarState}
+              onClick={submit}
+              disabled={isSaveDisabled}
+            />
+          </Savebar>
         </DetailPageLayout>
       )}
     </CategoryCreateForm>
   );
 };
+
 CategoryCreatePage.displayName = "CategoryCreatePage";
 export default CategoryCreatePage;

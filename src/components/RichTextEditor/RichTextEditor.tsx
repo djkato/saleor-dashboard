@@ -1,14 +1,14 @@
-// @ts-strict-ignore
-import { LogLevels } from "@editorjs/editorjs";
-import { FormControl, FormHelperText, InputLabel } from "@material-ui/core";
+import { LogLevels, OutputData } from "@editorjs/editorjs";
+import { FormControl, FormHelperText } from "@material-ui/core";
 import { useId } from "@reach/auto-id";
 import { EditorCore, Props as ReactEditorJSProps } from "@react-editor-js/core";
+import { Box } from "@saleor/macaw-ui-next";
 import clsx from "clsx";
-import React from "react";
-import { createReactEditorJS } from "react-editor-js";
+import * as React from "react";
 
 import { tools } from "./consts";
-import { useHasRendered } from "./hooks";
+import { useHasRendered, useUpdateOnRerender } from "./hooks";
+import { ReactEditorJS } from "./ReactEditorJS";
 import useStyles from "./styles";
 
 export type EditorJsProps = Omit<ReactEditorJSProps, "factory">;
@@ -17,20 +17,16 @@ export interface RichTextEditorProps extends Omit<EditorJsProps, "onChange"> {
   id?: string;
   disabled: boolean;
   error: boolean;
-  helperText: string;
+  helperText?: string;
   label: string;
   name: string;
-  editorRef:
-    | React.RefCallback<EditorCore>
-    | React.MutableRefObject<EditorCore>
-    | null;
+  editorRef: React.RefCallback<EditorCore> | React.MutableRefObject<EditorCore | null> | null;
   // onChange with value shouldn't be used due to issues with React and EditorJS integration
-  onChange?: () => void;
+  onChange?: (data?: OutputData) => void;
+  onBlur?: () => void;
 }
 
-const ReactEditorJS = createReactEditorJS();
-
-const RichTextEditor: React.FC<RichTextEditorProps> = ({
+const RichTextEditor = ({
   id: defaultId,
   disabled,
   error,
@@ -40,14 +36,15 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   editorRef,
   onInitialize,
   onChange,
+  onBlur,
   ...props
-}) => {
+}: RichTextEditorProps) => {
   const classes = useStyles({});
   const id = useId(defaultId);
+  const ref = React.useRef<EditorCore | null>(null);
   const [isFocused, setIsFocused] = React.useState(false);
   const [hasValue, setHasValue] = React.useState(false);
   const isTyped = Boolean(hasValue || isFocused);
-
   const handleInitialize = React.useCallback((editor: EditorCore) => {
     if (onInitialize) {
       onInitialize(editor);
@@ -56,13 +53,23 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (typeof editorRef === "function") {
       return editorRef(editor);
     }
+
     if (editorRef) {
+      ref.current = editor;
+
       return (editorRef.current = editor);
     }
   }, []);
-
   // We need to render FormControl first to get id from @reach/auto-id
   const hasRendered = useHasRendered();
+
+  // EditorJS does not rerender when default value changes,
+  // so we need to manually update it
+  useUpdateOnRerender({
+    render: ref.current?.render.bind(ref.current),
+    defaultValue: props.defaultValue,
+    hasRendered,
+  });
 
   return (
     <FormControl
@@ -72,19 +79,19 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       fullWidth
       variant="outlined"
     >
-      <InputLabel
-        focused={true}
-        shrink={true}
-        classes={{
-          disabled: classes.labelDisabled,
-          error: classes.labelError,
-          root: classes.labelRoot,
-        }}
-        error={error}
-        disabled={disabled}
+      <Box
+        as="label"
+        color={error ? "critical2" : "default2"}
+        fontWeight="regular"
+        size={1}
+        position="absolute"
+        htmlFor={id}
+        zIndex="2"
+        __top={9}
+        __left={9}
       >
         {label}
-      </InputLabel>
+      </Box>
       {hasRendered && (
         <ReactEditorJS
           // match with the id of holder div
@@ -95,8 +102,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           onInitialize={handleInitialize}
           onChange={async event => {
             const editorJsValue = await event.saver.save();
+
             setHasValue(editorJsValue.blocks.length > 0);
-            return onChange?.();
+
+            return onChange?.(editorJsValue);
           }}
           {...props}
         >
@@ -107,15 +116,18 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               [classes.rootActive]: isFocused,
               [classes.rootDisabled]: disabled,
               [classes.rootError]: error,
-              [classes.rootTyped]:
-                isTyped || props.defaultValue?.blocks?.length > 0,
+              [classes.rootHasLabel]: label !== "",
+              [classes.rootTyped]: isTyped || props.defaultValue?.blocks?.length! > 0,
             })}
             onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onBlur={() => {
+              setIsFocused(false);
+              onBlur?.();
+            }}
           />
         </ReactEditorJS>
       )}
-      <FormHelperText>{helperText}</FormHelperText>
+      {helperText && <FormHelperText>{helperText}</FormHelperText>}
     </FormControl>
   );
 };

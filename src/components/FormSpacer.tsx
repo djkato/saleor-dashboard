@@ -1,5 +1,5 @@
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import * as React from "react";
 
 const useStyles = makeStyles(
   theme => ({
@@ -14,9 +14,8 @@ interface FormSpacerProps {
   children?: React.ReactNode;
 }
 
-export const FormSpacer: React.FC<FormSpacerProps> = props => {
+export const FormSpacer = (props: FormSpacerProps) => {
   const { children } = props;
-
   const classes = useStyles(props);
 
   return <div className={classes.spacer}>{children}</div>;

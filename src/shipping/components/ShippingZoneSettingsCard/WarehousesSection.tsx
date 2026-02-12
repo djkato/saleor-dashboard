@@ -1,10 +1,8 @@
 import CardSpacer from "@dashboard/components/CardSpacer";
-import MultiAutocompleteSelectField, {
-  MultiAutocompleteChoiceType,
-} from "@dashboard/components/MultiAutocompleteSelectField";
+import { Multiselect } from "@dashboard/components/Combobox";
 import { FormChange } from "@dashboard/hooks/useForm";
 import { FetchMoreProps, SearchProps } from "@dashboard/types";
-import React from "react";
+import { Box, Button, Option } from "@saleor/macaw-ui-next";
 import { defineMessages, FormattedMessage, useIntl } from "react-intl";
 
 const messages = defineMessages({
@@ -32,48 +30,49 @@ const messages = defineMessages({
 });
 
 interface WarehousesSectionProps extends FetchMoreProps, SearchProps {
-  displayValues: MultiAutocompleteChoiceType[];
-  choices: MultiAutocompleteChoiceType[];
+  choices: Option[];
   onChange: FormChange;
   onAdd: () => void;
-  selectedWarehouses: string[];
+  selectedWarehouses: Option[];
 }
 
-const WarehousesSection: React.FC<WarehousesSectionProps> = ({
+const WarehousesSection = ({
   onAdd,
   onSearchChange,
   onChange,
   onFetchMore,
-  displayValues,
   choices,
   selectedWarehouses,
   hasMore,
   loading,
-}) => {
+}: WarehousesSectionProps) => {
   const intl = useIntl();
 
   return (
     <>
       <FormattedMessage {...messages.subtitle} />
       <CardSpacer />
-      <MultiAutocompleteSelectField
-        add={{
-          label: intl.formatMessage(messages.selectFieldAddText),
-          onClick: onAdd,
-        }}
-        testId="warehouses"
-        choices={choices}
-        displayValues={displayValues}
-        fetchChoices={onSearchChange}
-        hasMore={hasMore}
+
+      <Multiselect
         label={intl.formatMessage(messages.selectFieldLabel)}
-        loading={loading}
+        data-test-id="select-warehouse-for-shipping-method"
         name="warehouses"
-        onChange={onChange}
-        onFetchMore={onFetchMore}
-        placeholder={intl.formatMessage(messages.selectFieldPlaceholder)}
+        options={choices}
         value={selectedWarehouses}
+        onChange={onChange}
+        fetchOptions={onSearchChange}
+        fetchMore={{
+          onFetchMore,
+          hasMore,
+          loading,
+        }}
       />
+
+      <Box marginTop={4} display="flex" justifyContent="flex-end">
+        <Button variant="secondary" onClick={onAdd}>
+          {intl.formatMessage(messages.selectFieldAddText)}
+        </Button>
+      </Box>
     </>
   );
 };

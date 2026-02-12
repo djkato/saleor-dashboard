@@ -7,7 +7,9 @@ function useBulkActions(initial: string[] = []) {
 
   function toggleAll(items: Node[], selected: number) {
     const allItems = items.map(item => item.id);
+
     reset();
+
     if (selected !== allItems.length) {
       set(allItems);
     }
@@ -24,11 +26,3 @@ function useBulkActions(initial: string[] = []) {
   };
 }
 export default useBulkActions;
-
-export interface UseBulkActionsProps {
-  isSelected: (id: string) => boolean;
-  listElements: string[];
-  toggle: (id: string) => void;
-  toggleAll: (items: Node[], selected: number) => void;
-  reset: () => void;
-}

@@ -1,23 +1,31 @@
 // @ts-strict-ignore
 import { LazyQueryResult, QueryLazyOptions } from "@apollo/client";
 import { messages } from "@dashboard/components/ChannelsAvailabilityDropdown/messages";
-import { getChannelAvailabilityLabel } from "@dashboard/components/ChannelsAvailabilityDropdown/utils";
+import {
+  getChannelAvailabilityLabel,
+  getChannelAvailabilityStatus,
+} from "@dashboard/components/ChannelsAvailabilityDropdown/utils";
 import { ColumnCategory } from "@dashboard/components/Datagrid/ColumnPicker/useColumns";
 import {
-  dropdownCell,
+  dateCell,
+  moneyCell,
+  pillCell,
   readonlyTextCell,
+  statusCell,
+  tagsCell,
   thumbnailCell,
 } from "@dashboard/components/Datagrid/customCells/cells";
 import {
-  DropdownChoice,
-  emptyDropdownCellValue,
-} from "@dashboard/components/Datagrid/customCells/DropdownCell";
+  hueToPillColorDark,
+  hueToPillColorLight,
+  stringToHue,
+} from "@dashboard/components/Datagrid/customCells/PillCell";
 import { ThumbnailCellProps } from "@dashboard/components/Datagrid/customCells/ThumbnailCell";
 import { GetCellContentOpts } from "@dashboard/components/Datagrid/Datagrid";
 import { AvailableColumn } from "@dashboard/components/Datagrid/types";
 import { Locale } from "@dashboard/components/Locale";
-import { getMoneyRange } from "@dashboard/components/MoneyRange";
 import {
+  AttributeTypeEnum,
   AvailableColumnAttributesQuery,
   Exact,
   GridAttributesQuery,
@@ -30,17 +38,22 @@ import { ProductListUrlSortField } from "@dashboard/products/urls";
 import { RelayToFlat, Sort } from "@dashboard/types";
 import { getColumnSortDirectionIcon } from "@dashboard/utils/columns/getColumnSortDirectionIcon";
 import { mapEdgesToItems } from "@dashboard/utils/maps";
-import { Item } from "@glideapps/glide-data-grid";
-import moment from "moment-timezone";
+import { GridCell, Item } from "@glideapps/glide-data-grid";
+import { DefaultTheme } from "@saleor/macaw-ui-next";
 import { IntlShape } from "react-intl";
 
 import { getAttributeIdFromColumnValue } from "../ProductListPage/utils";
 import { categoryMetaGroups, columnsMessages } from "./messages";
 
-export const productListStaticColumnAdapter = (
-  intl: IntlShape,
-  sort: Sort<ProductListUrlSortField>,
-) =>
+export const productListStaticColumnAdapter = ({
+  intl,
+  sort,
+  onPriceClick,
+}: {
+  intl: IntlShape;
+  sort: Sort<ProductListUrlSortField>;
+  onPriceClick: ((productId: string) => boolean) | undefined;
+}) =>
   [
     {
       id: "name",
@@ -65,12 +78,28 @@ export const productListStaticColumnAdapter = (
     {
       id: "date",
       title: intl.formatMessage(columnsMessages.updatedAt),
-      width: 250,
+      width: 300,
+    },
+    {
+      id: "created",
+      title: intl.formatMessage(columnsMessages.created),
+      width: 300,
     },
     {
       id: "price",
       title: intl.formatMessage(columnsMessages.price),
       width: 250,
+      action: onPriceClick,
+    },
+    {
+      id: "productCategory",
+      title: intl.formatMessage(columnsMessages.category),
+      width: 200,
+    },
+    {
+      id: "productCollections",
+      title: intl.formatMessage(columnsMessages.collections),
+      width: 300,
     },
   ].map(column => ({
     ...column,
@@ -114,10 +143,8 @@ export const productListDynamicColumnAdapter = ({
   },
 ];
 
-export const parseAttributesColumns = (
-  attributes: RelayToFlat<
-    SearchAvailableInGridAttributesQuery["availableInGrid"]
-  >,
+const parseAttributesColumns = (
+  attributes: RelayToFlat<SearchAvailableInGridAttributesQuery["availableInGrid"]>,
   activeAttributeSortId: string,
   sort: Sort<ProductListUrlSortField>,
   intl: IntlShape,
@@ -152,23 +179,19 @@ interface GetCellContentProps {
   columns: AvailableColumn[];
   products: RelayToFlat<ProductListQuery["products"]>;
   intl: IntlShape;
-  getProductTypes: (query: string) => Promise<DropdownChoice[]>;
+  theme: DefaultTheme;
   locale: Locale;
   selectedChannelId?: string;
 }
 
 export function createGetCellContent({
   columns,
-  getProductTypes,
   intl,
-  locale,
+  theme,
   products,
   selectedChannelId,
 }: GetCellContentProps) {
-  return (
-    [column, row]: Item,
-    { changes, getChangeIndex, added, removed }: GetCellContentOpts,
-  ) => {
+  return ([column, row]: Item, { changes, getChangeIndex, added, removed }: GetCellContentOpts) => {
     const columnId = columns[column]?.id;
 
     if (!columnId) {
@@ -179,25 +202,29 @@ export function createGetCellContent({
     const rowData = added.includes(row)
       ? undefined
       : products[getDatagridRowDataIndex(row, removed)];
-
     const channel = rowData?.channelListings?.find(
       listing => listing.channel.id === selectedChannelId,
     );
 
     switch (columnId) {
       case "productType":
-        return getProductTypeCellContent(change, rowData, getProductTypes);
+        return getProductTypeCellContent(theme, rowData);
       case "availability":
         return getAvailabilityCellContent(rowData, intl, channel);
-
       case "description":
         return getDescriptionCellContent(columnId, change, rowData);
       case "name":
         return getNameCellContent(change, rowData);
       case "price":
-        return getPriceCellContent(intl, locale, channel);
+        return getPriceCellContent(intl, channel);
       case "date":
-        return getUpdatedAtrCellContent(rowData, locale);
+        return getDateCellContent(rowData);
+      case "created":
+        return getCreatedCellContent(rowData);
+      case "productCategory":
+        return getCategoryCellContent(theme, rowData);
+      case "productCollections":
+        return getCollectionsCellContent(theme, rowData);
     }
 
     if (columnId.startsWith("attribute")) {
@@ -205,65 +232,97 @@ export function createGetCellContent({
     }
 
     const value = change ?? rowData?.[columnId] ?? "";
+
     return readonlyTextCell(value || "");
   };
 }
 
-function getProductTypeCellContent(
-  change: { value: DropdownChoice },
-  rowData: RelayToFlat<ProductListQuery["products"]>[number],
-  getProductTypes: (query: string) => Promise<DropdownChoice[]>,
-) {
-  const value = change?.value ?? getRowDataValue(rowData, change?.value);
+const COMMON_CELL_PROPS: Partial<GridCell> = { cursor: "pointer" };
 
-  return dropdownCell(
-    value,
-    {
-      allowCustomValues: false,
-      emptyOption: false,
-      update: (text: string) =>
-        getProductTypes(value.label !== text ? text : ""),
-    },
-    {
-      cursor: "pointer",
-    },
-  );
+function getDateCellContent(rowData: RelayToFlat<ProductListQuery["products"]>[number]) {
+  return dateCell(rowData?.updatedAt, COMMON_CELL_PROPS);
 }
 
-function getRowDataValue(
-  rowData?: RelayToFlat<ProductListQuery["products"]>[number],
-  changeValue?: DropdownChoice,
-): DropdownChoice {
-  if (changeValue === null || !rowData) {
-    return emptyDropdownCellValue;
+function getCreatedCellContent(rowData: RelayToFlat<ProductListQuery["products"]>[number]) {
+  return dateCell(rowData?.created, COMMON_CELL_PROPS);
+}
+
+function getProductTypeCellContent(
+  theme: DefaultTheme,
+  rowData: RelayToFlat<ProductListQuery["products"]>[number],
+) {
+  const hue = stringToHue(rowData?.productType?.name);
+  const color = theme === "defaultDark" ? hueToPillColorDark(hue) : hueToPillColorLight(hue);
+
+  return pillCell(rowData.productType?.name, color, COMMON_CELL_PROPS);
+}
+
+function getCategoryCellContent(
+  theme: DefaultTheme,
+  rowData: RelayToFlat<ProductListQuery["products"]>[number],
+) {
+  if (!rowData.category) {
+    return readonlyTextCell("-", true);
   }
 
-  return {
-    label: rowData.productType?.name,
-    value: rowData.productType?.id,
-  };
+  const hue = stringToHue(rowData.category?.name);
+  const color = theme === "defaultDark" ? hueToPillColorDark(hue) : hueToPillColorLight(hue);
+
+  return pillCell(rowData.category?.name, color, COMMON_CELL_PROPS);
+}
+
+function getCollectionsCellContent(
+  theme: DefaultTheme,
+  rowData: RelayToFlat<ProductListQuery["products"]>[number],
+) {
+  if (rowData.collections === undefined || rowData.collections.length === 0) {
+    return readonlyTextCell("-", true);
+  }
+
+  const tags = rowData.collections.map(collection => {
+    const hue = stringToHue(collection.name);
+    const color = theme === "defaultDark" ? hueToPillColorDark(hue) : hueToPillColorLight(hue);
+
+    return {
+      tag: collection.name,
+      color: color.base,
+    };
+  });
+
+  return tagsCell(
+    tags,
+    tags.map(tag => tag.tag),
+    {
+      ...COMMON_CELL_PROPS,
+      allowOverlay: false,
+    },
+  );
 }
 
 function getAvailabilityCellContent(
   rowData: RelayToFlat<ProductListQuery["products"]>[number],
   intl: IntlShape,
-  selectedChannnel?: RelayToFlat<
-    ProductListQuery["products"]
-  >[number]["channelListings"][number],
+  selectedChannnel?: RelayToFlat<ProductListQuery["products"]>[number]["channelListings"][number],
 ) {
-  if (!!selectedChannnel) {
-    return readonlyTextCell(
+  if (selectedChannnel) {
+    return statusCell(
+      getChannelAvailabilityStatus(selectedChannnel),
       intl.formatMessage(getChannelAvailabilityLabel(selectedChannnel)),
+      COMMON_CELL_PROPS,
     );
   }
 
-  return readonlyTextCell(
-    rowData?.channelListings?.length
-      ? intl.formatMessage(messages.dropdownLabel, {
-          channelCount: rowData?.channelListings?.length,
-        })
-      : intl.formatMessage(messages.noChannels),
-  );
+  if (rowData?.channelListings?.length) {
+    return statusCell(
+      "success",
+      intl.formatMessage(messages.dropdownLabel, {
+        channelCount: rowData?.channelListings?.length,
+      }),
+      COMMON_CELL_PROPS,
+    );
+  } else {
+    return statusCell("error", intl.formatMessage(messages.noChannels), COMMON_CELL_PROPS);
+  }
 }
 
 function getDescriptionCellContent(
@@ -274,10 +333,10 @@ function getDescriptionCellContent(
   const value = change ?? rowData?.[columnId] ?? "";
 
   if (!value) {
-    return readonlyTextCell("");
+    return readonlyTextCell("", true);
   }
 
-  return readonlyTextCell(getDescriptionValue(value));
+  return readonlyTextCell(getDescriptionValue(value), true);
 }
 
 function getNameCellContent(
@@ -285,35 +344,33 @@ function getNameCellContent(
   rowData: RelayToFlat<ProductListQuery["products"]>[number],
 ) {
   const name = change?.name ?? rowData?.name ?? "";
-  return thumbnailCell(name, rowData?.thumbnail?.url ?? "", {
-    cursor: "pointer",
-  });
+
+  return thumbnailCell(name, rowData?.thumbnail?.url ?? "", COMMON_CELL_PROPS);
 }
 
 function getPriceCellContent(
   intl: IntlShape,
-  locale: Locale,
-  selectedChannnel?: RelayToFlat<
-    ProductListQuery["products"]
-  >[number]["channelListings"][number],
+  selectedChannnel?: RelayToFlat<ProductListQuery["products"]>[number]["channelListings"][number],
 ) {
   const from = selectedChannnel?.pricing?.priceRange?.start?.net;
   const to = selectedChannnel?.pricing?.priceRange?.stop?.net;
+  const priceValue = from?.amount === to?.amount ? from?.amount : [from?.amount, to?.amount];
 
-  return readonlyTextCell(getMoneyRange(locale, intl, from, to));
-}
+  const price = from
+    ? moneyCell(priceValue, from?.currency || "", COMMON_CELL_PROPS)
+    : readonlyTextCell("-");
 
-function getUpdatedAtrCellContent(
-  rowData: RelayToFlat<ProductListQuery["products"]>[number],
-  locale: Locale,
-) {
-  if (!rowData) {
-    return readonlyTextCell("");
-  }
-
-  return readonlyTextCell(
-    moment(rowData.updatedAt).locale(locale).format("lll"),
-  );
+  return selectedChannnel
+    ? price
+    : readonlyTextCell(
+        intl.formatMessage({
+          defaultMessage: "Select channel",
+          id: "jgURyO",
+          description: "product price",
+        }),
+        true,
+        "faded",
+      );
 }
 
 function getAttributeCellContent(
@@ -330,14 +387,13 @@ function getAttributeCellContent(
       if (productAttribute.values[0].date) {
         return readonlyTextCell(productAttribute.values[0].date);
       }
+
       if (productAttribute.values[0].dateTime) {
         return readonlyTextCell(productAttribute.values[0].dateTime);
       }
     }
 
-    const textValue = productAttribute.values
-      .map(value => value.name)
-      .join(", ");
+    const textValue = productAttribute.values.map(value => value.name).join(", ");
 
     return readonlyTextCell(textValue);
   }
@@ -345,20 +401,43 @@ function getAttributeCellContent(
   return readonlyTextCell("");
 }
 
+const MAX_DESCRIPTION_LENGHT = 100;
+
 export function getDescriptionValue(value: string) {
-  const parsed = JSON.parse(value);
+  try {
+    const parsed = JSON.parse(value);
 
-  if (parsed) {
-    const descriptionFirstParagraph = parsed?.blocks.find(
-      block => block.type === "paragraph",
-    );
+    if (parsed) {
+      const descriptionFirstParagraph = findFirstBlockWithText(parsed?.blocks);
 
-    if (descriptionFirstParagraph) {
-      return (descriptionFirstParagraph.data?.text ?? "").replace("&nbsp;", "");
+      if (descriptionFirstParagraph) {
+        const description = (descriptionFirstParagraph.data?.text ?? "")
+          // Regular expression to identify HTML tags in
+          // the input string. Replacing the identified
+          // HTML tag with a null string.
+          .replace(/(<([^>]+)>)/gi, "")
+          .replace(/&nbsp;/g, "");
+
+        if (description.length > MAX_DESCRIPTION_LENGHT) {
+          return description.slice(0, MAX_DESCRIPTION_LENGHT) + "...";
+        }
+
+        return description;
+      }
     }
+
+    return "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function findFirstBlockWithText(blocks?: Array<{ id: string; data: { text: string } }>) {
+  if (!blocks) {
+    return undefined;
   }
 
-  return "";
+  return blocks.find(block => block?.data?.text?.length > 0);
 }
 
 export function getColumnMetadata(column: string) {
@@ -418,6 +497,7 @@ type AttributesLazyQuery = (
   options?: QueryLazyOptions<
     Exact<{
       search: string;
+      type: AttributeTypeEnum;
       before?: string;
       after?: string;
       first?: number;
@@ -441,7 +521,7 @@ export const getAvailableAttributesData = ({
   mapEdgesToItems(availableColumnsAttributesData.data?.attributes) ??
   (availableColumnsAttributesData.loading
     ? undefined
-    : mapEdgesToItems(gridAttributesOpts.data?.availableAttributes) ?? []);
+    : (mapEdgesToItems(gridAttributesOpts.data?.availableAttributes) ?? []));
 
 export const getAttributesFetchMoreProps = ({
   queryAvailableColumnsAttributes,
@@ -456,6 +536,7 @@ export const getAttributesFetchMoreProps = ({
     queryAvailableColumnsAttributes({
       variables: {
         search: query,
+        type: AttributeTypeEnum.PRODUCT_TYPE,
         after:
           availableColumnsAttributesData.data?.attributes?.pageInfo.endCursor ??
           gridAttributesOpts.data?.availableAttributes?.pageInfo.endCursor,
@@ -468,21 +549,19 @@ export const getAttributesFetchMoreProps = ({
     queryAvailableColumnsAttributes({
       variables: {
         search: query,
-        before:
-          availableColumnsAttributesData.data?.attributes?.pageInfo.startCursor,
+        type: AttributeTypeEnum.PRODUCT_TYPE,
+        before: availableColumnsAttributesData.data?.attributes?.pageInfo.startCursor,
         last: 10,
         first: null,
         after: null,
       },
     });
-
   const hasNextPage =
     availableColumnsAttributesData.data?.attributes?.pageInfo?.hasNextPage ??
     gridAttributesOpts.data?.availableAttributes?.pageInfo?.hasNextPage ??
     false;
   const hasPreviousPage =
-    availableColumnsAttributesData.data?.attributes?.pageInfo
-      ?.hasPreviousPage ?? false;
+    availableColumnsAttributesData.data?.attributes?.pageInfo?.hasPreviousPage ?? false;
 
   return {
     hasNextPage,
@@ -490,4 +569,10 @@ export const getAttributesFetchMoreProps = ({
     onNextPage,
     onPreviousPage,
   };
+};
+export const getCellAction = (
+  availableColumns: readonly AvailableColumn[] | undefined,
+  column: number,
+) => {
+  return availableColumns[column]?.action;
 };

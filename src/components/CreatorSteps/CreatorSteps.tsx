@@ -1,7 +1,6 @@
-import { Typography } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
+import { Text } from "@saleor/macaw-ui-next";
 import clsx from "clsx";
-import React from "react";
 
 export interface Step<T> {
   label: string;
@@ -38,25 +37,20 @@ const useStyles = makeStyles(
   },
 );
 
-export interface CreatorStepsProps<T> {
+interface CreatorStepsProps<T> {
   currentStep: T;
   steps: Array<Step<T>>;
   onStepClick: (step: T) => void;
 }
 
 function makeCreatorSteps<T extends string | number>() {
-  const CreatorSteps: React.FC<CreatorStepsProps<T>> = ({
-    currentStep,
-    steps,
-    onStepClick,
-  }) => {
+  const CreatorSteps = ({ currentStep, steps, onStepClick }: CreatorStepsProps<T>) => {
     const classes = useStyles({});
 
     return (
       <div className={classes.root}>
         {steps.map((step, stepIndex) => {
-          const visitedStep =
-            steps.findIndex(step => step.value === currentStep) >= stepIndex;
+          const visitedStep = steps.findIndex(step => step.value === currentStep) >= stepIndex;
 
           return (
             <div
@@ -67,15 +61,16 @@ function makeCreatorSteps<T extends string | number>() {
               onClick={visitedStep ? () => onStepClick(step.value) : undefined}
               key={step.value}
             >
-              <Typography className={classes.label} variant="caption">
+              <Text className={classes.label} size={2} fontWeight="light">
                 {step.label}
-              </Typography>
+              </Text>
             </div>
           );
         })}
       </div>
     );
   };
+
   CreatorSteps.displayName = "CreatorSteps";
 
   return CreatorSteps;

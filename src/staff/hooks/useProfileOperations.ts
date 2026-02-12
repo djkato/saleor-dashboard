@@ -5,8 +5,8 @@ import {
   useUserAvatarUpdateMutation,
 } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
-import { commonMessages, errorMessages } from "@dashboard/intl";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
+import { errorMessages } from "@dashboard/intl";
 import { useIntl } from "react-intl";
 
 import { staffMemberDetailsUrl } from "../urls";
@@ -17,34 +17,27 @@ interface UseUserMutationProps {
   closeModal: () => void;
 }
 
-export const useProfileOperations = ({
-  refetch,
-  id,
-  closeModal,
-}: UseUserMutationProps) => {
+export const useProfileOperations = ({ refetch, id, closeModal }: UseUserMutationProps) => {
   const notify = useNotifier();
   const intl = useIntl();
   const navigate = useNavigator();
-
-  const [updateUserAccount, updateUserAccountOpts] =
-    useUserAccountUpdateMutation({
-      onCompleted: data => {
-        if (!data.accountUpdate?.errors.length) {
-          refetch();
-          notify({
-            status: "success",
-            text: intl.formatMessage(commonMessages.savedChanges),
-          });
-        }
-      },
-    });
-
+  const [updateUserAccount, updateUserAccountOpts] = useUserAccountUpdateMutation({
+    onCompleted: data => {
+      if (!data.accountUpdate?.errors.length) {
+        refetch();
+        notify({
+          status: "success",
+          text: intl.formatMessage({ id: "B5/YE0", defaultMessage: "Profile updated" }),
+        });
+      }
+    },
+  });
   const [updateUserAvatar] = useUserAvatarUpdateMutation({
     onCompleted: data => {
       if (!data.userAvatarUpdate?.errors.length) {
         notify({
           status: "success",
-          text: intl.formatMessage(commonMessages.savedChanges),
+          text: intl.formatMessage({ id: "6V+aAL", defaultMessage: "Avatar updated" }),
         });
         refetch();
         navigate(staffMemberDetailsUrl(id));
@@ -57,26 +50,24 @@ export const useProfileOperations = ({
       }
     },
   });
-
   const [deleteUserAvatar, deleteAvatarResult] = useUserAvatarDeleteMutation({
     onCompleted: data => {
       if (!data.userAvatarDelete?.errors.length) {
         notify({
           status: "success",
-          text: intl.formatMessage(commonMessages.savedChanges),
+          text: intl.formatMessage({ id: "Z/jtCO", defaultMessage: "Avatar deleted" }),
         });
         refetch();
         navigate(staffMemberDetailsUrl(id));
       }
     },
   });
-
   const [changePassword, changePasswordOpts] = useChangeUserPasswordMutation({
     onCompleted: data => {
       if (!data.passwordChange?.errors.length) {
         notify({
           status: "success",
-          text: intl.formatMessage(commonMessages.savedChanges),
+          text: intl.formatMessage({ id: "h9aBq7", defaultMessage: "Password changed" }),
         });
         closeModal();
       }

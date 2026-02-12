@@ -36,7 +36,14 @@ export const channelDetailsFragment = gql`
       markAsPaidStrategy
       deleteExpiredOrdersAfter
       allowUnpaidOrders
+    }
+    paymentSettings {
       defaultTransactionFlowStrategy
+    }
+    checkoutSettings {
+      automaticallyCompleteFullyPaidCheckouts
+      automaticCompletionDelay
+      automaticCompletionCutOffDate
     }
   }
 `;

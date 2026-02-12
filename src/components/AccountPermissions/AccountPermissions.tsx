@@ -1,7 +1,8 @@
-import { useUser } from "@dashboard/auth";
+import { useUser } from "@dashboard/auth/useUser";
 import { PermissionData } from "@dashboard/permissionGroups/components/PermissionGroupDetailsPage";
-import { Box, Text } from "@saleor/macaw-ui/next";
-import React, { ChangeEvent } from "react";
+import { Box, Text } from "@saleor/macaw-ui-next";
+import { ChangeEvent } from "react";
+import * as React from "react";
 import { useIntl } from "react-intl";
 
 import { Header } from "./components/Header";
@@ -17,30 +18,29 @@ interface AccountPermissionsProps {
     permissions: string[];
   };
   disabled: boolean;
+  disabledPermissionsTooltip?: string;
   description: string;
   errorMessage: string | undefined;
   fullAccessLabel: string;
   onChange: (event: React.ChangeEvent<any>, cb?: () => void) => void;
 }
 
-const AccountPermissions: React.FC<AccountPermissionsProps> = props => {
+const AccountPermissions = (props: AccountPermissionsProps) => {
   const {
     data,
     disabled,
+    disabledPermissionsTooltip,
     permissionsExceeded,
     onChange,
     description,
     fullAccessLabel,
     errorMessage,
   } = props;
-
   const permissions = Object.values(props?.permissions ?? {}).sort((a, b) =>
     a.name.localeCompare(b.name),
   );
-
   const intl = useIntl();
   const { user } = useUser();
-
   const handleFullAccessChange = () => {
     onChange({
       target: {
@@ -50,7 +50,6 @@ const AccountPermissions: React.FC<AccountPermissionsProps> = props => {
           : [],
       },
     } as ChangeEvent<any>);
-
     onChange({
       target: {
         name: "hasFullAccess",
@@ -58,9 +57,8 @@ const AccountPermissions: React.FC<AccountPermissionsProps> = props => {
       },
     } as ChangeEvent<any>);
   };
-
   const handlePermissionChange = (key: string, value: boolean) => {
-    const updatedPersmissions = !value
+    const updatedPermissions = !value
       ? data.permissions.concat([key])
       : data.permissions.filter(perm => perm !== key);
 
@@ -68,30 +66,24 @@ const AccountPermissions: React.FC<AccountPermissionsProps> = props => {
     onChange({
       target: {
         name: "hasFullAccess",
-        value: !!(
-          permissions.length === updatedPersmissions.length &&
-          !data.hasFullAccess
-        ),
+        value: !!(permissions.length === updatedPermissions.length && !data.hasFullAccess),
       },
     } as ChangeEvent<any>);
-
     onChange({
       target: {
         name: "permissions",
-        value: updatedPersmissions,
+        value: updatedPermissions,
       },
     } as ChangeEvent<any>);
   };
 
   return (
     <Box paddingX={9} paddingY={9} paddingBottom={0}>
-      <Text as="p" variant="bodyEmp" size="large" marginBottom={7}>
+      <Text as="p" size={5} fontWeight="medium" marginBottom={7}>
         {intl.formatMessage(messages.title)}
       </Text>
 
-      {permissionsExceeded && (
-        <PermissionsExceeded userPermissions={user?.userPermissions ?? []} />
-      )}
+      {permissionsExceeded && <PermissionsExceeded userPermissions={user?.userPermissions ?? []} />}
 
       {!permissionsExceeded && (
         <>
@@ -107,7 +99,7 @@ const AccountPermissions: React.FC<AccountPermissionsProps> = props => {
             width="100%"
             borderBottomStyle="solid"
             borderBottomWidth={1}
-            borderColor="neutralPlain"
+            borderColor="default1"
             height={1}
             margin={0}
           />
@@ -117,6 +109,7 @@ const AccountPermissions: React.FC<AccountPermissionsProps> = props => {
             permissions={permissions}
             onPermissionChange={handlePermissionChange}
             selectedPermissions={data.permissions}
+            disabledPermissionTooltip={disabledPermissionsTooltip}
           />
 
           {!!errorMessage && (
@@ -125,12 +118,12 @@ const AccountPermissions: React.FC<AccountPermissionsProps> = props => {
                 width="100%"
                 borderBottomStyle="solid"
                 borderBottomWidth={1}
-                borderColor="neutralPlain"
+                borderColor="default1"
                 height={1}
                 marginTop={6}
                 marginBottom={6}
               />
-              <Text as="p" variant="body" color="textCriticalSubdued">
+              <Text as="p" color="critical1">
                 {errorMessage}
               </Text>
             </>

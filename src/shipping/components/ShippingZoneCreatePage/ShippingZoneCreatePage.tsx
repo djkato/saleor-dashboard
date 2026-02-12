@@ -5,12 +5,12 @@ import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButto
 import CountryList from "@dashboard/components/CountryList";
 import Form from "@dashboard/components/Form";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
-import Savebar from "@dashboard/components/Savebar";
+import { Savebar } from "@dashboard/components/Savebar";
 import { CountryFragment, ShippingErrorFragment } from "@dashboard/graphql";
 import { SubmitPromise } from "@dashboard/hooks/useForm";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { shippingZonesListUrl } from "@dashboard/shipping/urls";
-import React from "react";
+import { useState } from "react";
 import { defineMessages, useIntl } from "react-intl";
 
 import ShippingZoneCountriesAssignDialog from "../ShippingZoneCountriesAssignDialog";
@@ -35,12 +35,11 @@ const messages = defineMessages({
   },
   noCountriesAssigned: {
     id: "y7mfbl",
-    defaultMessage:
-      "Currently, there are no countries assigned to this shipping zone",
+    defaultMessage: "Currently, there are no countries assigned to this shipping zone",
   },
 });
 
-export interface ShippingZoneCreatePageProps {
+interface ShippingZoneCreatePageProps {
   countries: CountryFragment[];
   restWorldCountries: string[];
   disabled: boolean;
@@ -49,20 +48,18 @@ export interface ShippingZoneCreatePageProps {
   onSubmit: (data: ShippingZoneCreateFormData) => SubmitPromise;
 }
 
-const ShippingZoneCreatePage: React.FC<ShippingZoneCreatePageProps> = ({
+const ShippingZoneCreatePage = ({
   countries,
   restWorldCountries,
   disabled,
   errors,
   onSubmit,
   saveButtonBarState,
-}) => {
+}: ShippingZoneCreatePageProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
-
-  const [isModalOpened, setModalStatus] = React.useState(false);
+  const [isModalOpened, setModalStatus] = useState(false);
   const toggleModal = () => setModalStatus(!isModalOpened);
-
   const initialForm: ShippingZoneCreateFormData = {
     countries: [],
     description: "",
@@ -70,26 +67,13 @@ const ShippingZoneCreatePage: React.FC<ShippingZoneCreatePageProps> = ({
   };
 
   return (
-    <Form
-      confirmLeave
-      initial={initialForm}
-      onSubmit={onSubmit}
-      disabled={disabled}
-    >
+    <Form confirmLeave initial={initialForm} onSubmit={onSubmit} disabled={disabled}>
       {({ change, data, isSaveDisabled, submit }) => (
         <DetailPageLayout gridTemplateColumns={1}>
-          <TopNav
-            href={shippingZonesListUrl()}
-            title={intl.formatMessage(messages.createZone)}
-          />
+          <TopNav href={shippingZonesListUrl()} title={intl.formatMessage(messages.createZone)} />
           <DetailPageLayout.Content>
             <div>
-              <ShippingZoneInfo
-                data={data}
-                disabled={disabled}
-                errors={errors}
-                onChange={change}
-              />
+              <ShippingZoneInfo data={data} disabled={disabled} errors={errors} onChange={change} />
               <CardSpacer />
               <CountryList
                 countries={data.countries.map(selectedCountry =>
@@ -102,9 +86,7 @@ const ShippingZoneCreatePage: React.FC<ShippingZoneCreatePageProps> = ({
                   change({
                     target: {
                       name: "countries",
-                      value: data.countries.filter(
-                        country => country !== countryCode,
-                      ),
+                      value: data.countries.filter(country => country !== countryCode),
                     },
                   } as any)
                 }
@@ -130,16 +112,20 @@ const ShippingZoneCreatePage: React.FC<ShippingZoneCreatePageProps> = ({
               onClose={toggleModal}
             />
           </DetailPageLayout.Content>
-          <Savebar
-            disabled={isSaveDisabled}
-            onCancel={() => navigate(shippingZonesListUrl())}
-            onSubmit={submit}
-            state={saveButtonBarState}
-          />
+          <Savebar>
+            <Savebar.Spacer />
+            <Savebar.CancelButton onClick={() => navigate(shippingZonesListUrl())} />
+            <Savebar.ConfirmButton
+              transitionState={saveButtonBarState}
+              onClick={submit}
+              disabled={isSaveDisabled}
+            />
+          </Savebar>
         </DetailPageLayout>
       )}
     </Form>
   );
 };
+
 ShippingZoneCreatePage.displayName = "ShippingZoneCreatePage";
 export default ShippingZoneCreatePage;

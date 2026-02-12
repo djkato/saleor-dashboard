@@ -1,8 +1,6 @@
-import { Card, CardContent } from "@material-ui/core";
-import React from "react";
+import { DashboardCard } from "@dashboard/components/Card";
+import { Text } from "@saleor/macaw-ui-next";
 import { defineMessages, FormattedMessage } from "react-intl";
-
-import CardTitle from "../../../components/CardTitle";
 
 const messages = defineMessages({
   title: {
@@ -12,19 +10,23 @@ const messages = defineMessages({
   },
   subtitle: {
     id: "8qL/tV",
-    defaultMessage:
-      "You will be able to define availability of product after creating variants.",
+    defaultMessage: "You will be able to define availability of product after creating variants.",
     description: "CannotDefineChannelsAvailabilityCard subtitle",
   },
 });
-
-const CannotDefineChannelsAvailabilityCard: React.FC = () => (
-  <Card>
-    <CardTitle title={<FormattedMessage {...messages.title} />} />
-    <CardContent>
-      <FormattedMessage {...messages.subtitle} />
-    </CardContent>
-  </Card>
+const CannotDefineChannelsAvailabilityCard = () => (
+  <DashboardCard gap={2}>
+    <DashboardCard.Header>
+      <DashboardCard.Title>
+        <FormattedMessage {...messages.title} />
+      </DashboardCard.Title>
+    </DashboardCard.Header>
+    <DashboardCard.Content>
+      <Text size={2} color="default2">
+        <FormattedMessage {...messages.subtitle} />
+      </Text>
+    </DashboardCard.Content>
+  </DashboardCard>
 );
 
 export default CannotDefineChannelsAvailabilityCard;

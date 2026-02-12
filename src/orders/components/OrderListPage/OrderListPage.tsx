@@ -1,50 +1,46 @@
 // @ts-strict-ignore
-import {
-  extensionMountPoints,
-  mapToMenuItems,
-  useExtensions,
-} from "@dashboard/apps/hooks/useExtensions";
 import { useUserAccessibleChannels } from "@dashboard/auth/hooks/useUserAccessibleChannels";
+import { useContextualLink } from "@dashboard/components/AppLayout/ContextualLinks/useContextualLink";
 import { LimitsInfo } from "@dashboard/components/AppLayout/LimitsInfo";
 import { ListFilters } from "@dashboard/components/AppLayout/ListFilters";
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
-import { ButtonWithDropdown } from "@dashboard/components/ButtonWithDropdown";
+import { ButtonGroupWithDropdown } from "@dashboard/components/ButtonGroupWithDropdown";
+import { DashboardCard } from "@dashboard/components/Card";
+import { useConditionalFilterContext } from "@dashboard/components/ConditionalFilter";
+import { createOrderQueryVariables } from "@dashboard/components/ConditionalFilter/queryVariables";
 import { useDevModeContext } from "@dashboard/components/DevModePanel/hooks";
 import { FilterPresetsSelect } from "@dashboard/components/FilterPresetsSelect";
 import { ListPageLayout } from "@dashboard/components/Layouts";
+import { extensionMountPoints } from "@dashboard/extensions/extensionMountPoints";
+import {
+  getExtensionItemsForOverviewCreate,
+  getExtensionsItemsForOrderOverviewActions,
+} from "@dashboard/extensions/getExtensionsItems";
+import { useExtensions } from "@dashboard/extensions/hooks/useExtensions";
 import { OrderListQuery, RefreshLimitsQuery } from "@dashboard/graphql";
 import { sectionNames } from "@dashboard/intl";
 import { orderMessages } from "@dashboard/orders/messages";
 import { DevModeQuery } from "@dashboard/orders/queries";
+import { OrderListUrlQueryParams, OrderListUrlSortField, orderUrl } from "@dashboard/orders/urls";
 import {
-  OrderListUrlQueryParams,
-  OrderListUrlSortField,
-  orderUrl,
-} from "@dashboard/orders/urls";
-import { getFilterVariables } from "@dashboard/orders/views/OrderList/filters";
-import {
-  FilterPageProps,
   PageListProps,
   RelayToFlat,
+  SearchPageProps,
   SortPage,
+  TabPageProps,
 } from "@dashboard/types";
 import { hasLimits, isLimitReached } from "@dashboard/utils/limits";
-import { Card } from "@material-ui/core";
-import { Box, Button, ChevronRightIcon, Tooltip } from "@saleor/macaw-ui/next";
-import React, { useState } from "react";
+import { Box, Button, Tooltip } from "@saleor/macaw-ui-next";
+import { useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import OrderLimitReached from "../OrderLimitReached";
 import { OrderListDatagrid } from "../OrderListDatagrid";
-import {
-  createFilterStructure,
-  OrderFilterKeys,
-  OrderListFilterOpts,
-} from "./filters";
 
-export interface OrderListPageProps
+interface OrderListPageProps
   extends PageListProps,
-    Omit<FilterPageProps<OrderFilterKeys, OrderListFilterOpts>, "onTabDelete">,
+    SearchPageProps,
+    Omit<TabPageProps, "onTabDelete">,
     SortPage<OrderListUrlSortField> {
   limits: RefreshLimitsQuery["shop"]["limits"];
   orders: RelayToFlat<OrderListQuery["orders"]>;
@@ -56,15 +52,12 @@ export interface OrderListPageProps
   onTabDelete: (tabIndex: number) => void;
 }
 
-const OrderListPage: React.FC<OrderListPageProps> = ({
+const OrderListPage = ({
   initialSearch,
-  filterOpts,
   limits,
   onAdd,
   onSearchChange,
   onSettingsOpen,
-  onFilterChange,
-  params,
   onTabChange,
   onTabDelete,
   onTabSave,
@@ -74,27 +67,27 @@ const OrderListPage: React.FC<OrderListPageProps> = ({
   currentTab,
   hasPresetsChanged,
   ...listProps
-}) => {
+}: OrderListPageProps) => {
   const intl = useIntl();
+  const subtitle = useContextualLink("order_list");
   const userAccessibleChannels = useUserAccessibleChannels();
   const hasAccessibleChannels = userAccessibleChannels.length > 0;
-  const filterStructure = createFilterStructure(intl, filterOpts);
   const limitsReached = isLimitReached(limits, "orders");
   const [isFilterPresetOpen, setFilterPresetOpen] = useState(false);
-
   const { ORDER_OVERVIEW_CREATE, ORDER_OVERVIEW_MORE_ACTIONS } = useExtensions(
     extensionMountPoints.ORDER_LIST,
   );
-  const extensionMenuItems = mapToMenuItems(ORDER_OVERVIEW_MORE_ACTIONS);
-  const extensionCreateButtonItems = mapToMenuItems(ORDER_OVERVIEW_CREATE);
-
+  const extensionMenuItems = getExtensionsItemsForOrderOverviewActions(ORDER_OVERVIEW_MORE_ACTIONS);
+  const extensionCreateButtonItems = getExtensionItemsForOverviewCreate(ORDER_OVERVIEW_CREATE);
   const context = useDevModeContext();
+  const { valueProvider } = useConditionalFilterContext();
 
   const openPlaygroundURL = () => {
     context.setDevModeContent(DevModeQuery);
+
     const variables = JSON.stringify(
       {
-        filter: getFilterVariables(params),
+        filter: createOrderQueryVariables(valueProvider.value),
         // TODO add sorting: Issue #3409
         // strange error when uncommenting this line
         // sortBy: getSortQueryVariables(params)
@@ -102,6 +95,7 @@ const OrderListPage: React.FC<OrderListPageProps> = ({
       null,
       2,
     );
+
     context.setVariables(variables);
     context.setDevModeVisibility(true);
   };
@@ -110,20 +104,12 @@ const OrderListPage: React.FC<OrderListPageProps> = ({
     <ListPageLayout>
       <TopNav
         title={intl.formatMessage(sectionNames.orders)}
+        subtitle={subtitle}
         withoutBorder
         isAlignToRight={false}
       >
-        <Box
-          __flex={1}
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-        >
+        <Box __flex={1} display="flex" justifyContent="space-between" alignItems="center">
           <Box display="flex">
-            <Box marginX={3} display="flex" alignItems="center">
-              <ChevronRightIcon />
-            </Box>
-
             <FilterPresetsSelect
               presetsChanged={hasPresetsChanged}
               onSelect={onTabChange}
@@ -135,9 +121,7 @@ const OrderListPage: React.FC<OrderListPageProps> = ({
               onSave={onTabSave}
               isOpen={isFilterPresetOpen}
               onOpenChange={setFilterPresetOpen}
-              selectAllLabel={intl.formatMessage(
-                orderMessages.filterPresetsAll,
-              )}
+              selectAllLabel={intl.formatMessage(orderMessages.filterPresetsAll)}
             />
           </Box>
 
@@ -169,7 +153,7 @@ const OrderListPage: React.FC<OrderListPageProps> = ({
             <Tooltip>
               <Tooltip.Trigger>
                 {extensionCreateButtonItems.length > 0 ? (
-                  <ButtonWithDropdown
+                  <ButtonGroupWithDropdown
                     onClick={onAdd}
                     testId={"create-order-button"}
                     options={extensionCreateButtonItems}
@@ -180,7 +164,7 @@ const OrderListPage: React.FC<OrderListPageProps> = ({
                       defaultMessage="Create order"
                       description="button"
                     />
-                  </ButtonWithDropdown>
+                  </ButtonGroupWithDropdown>
                 ) : (
                   <Button
                     data-test-id="create-order-button"
@@ -223,26 +207,24 @@ const OrderListPage: React.FC<OrderListPageProps> = ({
           </Box>
         </Box>
       </TopNav>
+
       {limitsReached && <OrderLimitReached />}
-      <Card>
+
+      <DashboardCard>
         <ListFilters
+          type="expression-filter"
           initialSearch={initialSearch}
-          onFilterChange={onFilterChange}
           onSearchChange={onSearchChange}
-          filterStructure={filterStructure}
           searchPlaceholder={intl.formatMessage({
             id: "wTHjt3",
             defaultMessage: "Search Orders...",
           })}
         />
-        <OrderListDatagrid
-          {...listProps}
-          hasRowHover={!isFilterPresetOpen}
-          rowAnchor={orderUrl}
-        />
-      </Card>
+        <OrderListDatagrid {...listProps} hasRowHover={!isFilterPresetOpen} rowAnchor={orderUrl} />
+      </DashboardCard>
     </ListPageLayout>
   );
 };
+
 OrderListPage.displayName = "OrderListPage";
 export default OrderListPage;

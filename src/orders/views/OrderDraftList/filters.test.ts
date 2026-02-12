@@ -4,8 +4,7 @@ import { OrderDraftListUrlFilters } from "@dashboard/orders/urls";
 import { getFilterQueryParams } from "@dashboard/utils/filters";
 import { stringifyQs } from "@dashboard/utils/urls";
 import { getExistingKeys, setFilterOptsStatus } from "@test/filters";
-import { config } from "@test/intl";
-import { createIntl } from "react-intl";
+import { testIntlInstance } from "@test/intl";
 
 import { getFilterQueryParam, getFilterVariables } from "./filters";
 
@@ -16,7 +15,6 @@ describe("Filtering query params", () => {
 
     expect(getExistingKeys(filterVariables)).toHaveLength(0);
   });
-
   it("should not be empty object if params given", () => {
     const params: OrderDraftListUrlFilters = {
       createdFrom: date.from,
@@ -28,10 +26,8 @@ describe("Filtering query params", () => {
     expect(getExistingKeys(filterVariables)).toHaveLength(2);
   });
 });
-
 describe("Filtering URL params", () => {
-  const intl = createIntl(config);
-
+  const intl = testIntlInstance;
   const filters = createFilterStructure(intl, {
     created: {
       active: false,
@@ -47,14 +43,10 @@ describe("Filtering URL params", () => {
   });
 
   it("should be empty if no active filters", () => {
-    const filterQueryParams = getFilterQueryParams(
-      filters,
-      getFilterQueryParam,
-    );
+    const filterQueryParams = getFilterQueryParams(filters, getFilterQueryParam);
 
     expect(getExistingKeys(filterQueryParams)).toHaveLength(0);
   });
-
   it("should not be empty if active filters are present", () => {
     const filterQueryParams = getFilterQueryParams(
       setFilterOptsStatus(filters, true),

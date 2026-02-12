@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { WindowTitle } from "@dashboard/components/WindowTitle";
 import {
   CategoryCreateMutation,
@@ -7,11 +6,10 @@ import {
   useUpdatePrivateMetadataMutation,
 } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import { getMutationErrors } from "@dashboard/misc";
 import createMetadataCreateHandler from "@dashboard/utils/handlers/metadataCreateHandler";
 import { getParsedDataForJsonStringField } from "@dashboard/utils/richText/misc";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import CategoryCreatePage from "../components/CategoryCreatePage";
@@ -19,20 +17,17 @@ import { CategoryCreateData } from "../components/CategoryCreatePage/form";
 import { categoryListUrl, categoryUrl } from "../urls";
 
 interface CategoryCreateViewProps {
-  parentId: string;
+  parentId?: string;
 }
 
-export const CategoryCreateView: React.FC<CategoryCreateViewProps> = ({
-  parentId,
-}) => {
+export const CategoryCreateView = ({ parentId }: CategoryCreateViewProps) => {
   const navigate = useNavigator();
   const notify = useNotifier();
   const intl = useIntl();
   const [updateMetadata] = useUpdateMetadataMutation({});
   const [updatePrivateMetadata] = useUpdatePrivateMetadataMutation({});
-
   const handleSuccess = (data: CategoryCreateMutation) => {
-    if (data.categoryCreate.errors.length === 0) {
+    if (data.categoryCreate?.errors.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
@@ -40,19 +35,18 @@ export const CategoryCreateView: React.FC<CategoryCreateViewProps> = ({
           defaultMessage: "Category created",
         }),
       });
-      navigate(categoryUrl(data.categoryCreate.category.id));
+      navigate(categoryUrl(data.categoryCreate.category?.id || ""));
     }
   };
-
   const [createCategory, createCategoryResult] = useCategoryCreateMutation({
     onCompleted: handleSuccess,
   });
-
   const handleCreate = async (formData: CategoryCreateData) => {
     const result = await createCategory({
       variables: {
         input: {
-          description: getParsedDataForJsonStringField(formData.description),
+          description:
+            formData.description && getParsedDataForJsonStringField(formData.description),
           name: formData.name,
           seo: {
             description: formData.seoDescription,
@@ -65,11 +59,10 @@ export const CategoryCreateView: React.FC<CategoryCreateViewProps> = ({
     });
 
     return {
-      id: result.data?.categoryCreate.category?.id || null,
+      id: result.data?.categoryCreate?.category?.id || "",
       errors: getMutationErrors(result),
     };
   };
-
   const handleSubmit = createMetadataCreateHandler(
     handleCreate,
     updateMetadata,
@@ -87,7 +80,7 @@ export const CategoryCreateView: React.FC<CategoryCreateViewProps> = ({
       />
       <CategoryCreatePage
         saveButtonBarState={createCategoryResult.status}
-        errors={createCategoryResult.data?.categoryCreate.errors || []}
+        errors={createCategoryResult.data?.categoryCreate?.errors || []}
         disabled={createCategoryResult.loading}
         backUrl={parentId ? categoryUrl(parentId) : categoryListUrl()}
         onSubmit={handleSubmit}
@@ -95,4 +88,3 @@ export const CategoryCreateView: React.FC<CategoryCreateViewProps> = ({
     </>
   );
 };
-export default CategoryCreateView;

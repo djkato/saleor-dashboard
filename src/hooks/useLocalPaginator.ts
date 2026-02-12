@@ -1,7 +1,7 @@
 // @ts-strict-ignore
 import { useEffect, useState } from "react";
 
-export interface PageInfo {
+interface PageInfo {
   endCursor: string | null;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
@@ -26,7 +26,6 @@ export function useLocalPaginationState(
   const [state, setState] = useState<PaginationState>({
     first: paginateBy,
   });
-
   const setPaginationState = (paginationState: PaginationState) => {
     if (paginationState.after) {
       setState({
@@ -63,9 +62,7 @@ export function useSectionLocalPaginationState(
   section: string,
 ): [PaginationState, (paginationState: PaginationState) => void] {
   const [paginationSection, setPaginationSection] = useState(section);
-  const [paginationState, setPaginationState] =
-    useLocalPaginationState(paginateBy);
-
+  const [paginationState, setPaginationState] = useLocalPaginationState(paginateBy);
   const fallbackPaginationState = {
     first: paginateBy,
   };
@@ -75,7 +72,6 @@ export function useSectionLocalPaginationState(
       setPaginationState({});
     }
   }, [section]);
-
   useEffect(() => {
     if (section !== paginationSection) {
       setPaginationSection(section);
@@ -88,27 +84,30 @@ export function useSectionLocalPaginationState(
   ];
 }
 
-function useLocalPaginator(
-  setPaginationState: (paginationState: PaginationState) => void,
-) {
+export interface LocalPagination {
+  loadNextPage: () => void;
+  loadPreviousPage: () => void;
+  paginatorType: "click";
+  pageInfo?: PageInfo;
+}
+
+function useLocalPaginator(setPaginationState: (paginationState: PaginationState) => void) {
   function paginate(
     pageInfo: PageInfo | undefined,
     paginationState: PaginationState,
-  ) {
+  ): LocalPagination {
     const loadNextPage = () =>
       setPaginationState({
         ...paginationState,
         after: pageInfo?.endCursor,
         before: undefined,
       });
-
     const loadPreviousPage = () =>
       setPaginationState({
         ...paginationState,
         after: undefined,
         before: pageInfo?.startCursor,
       });
-
     const newPageInfo = pageInfo
       ? {
           ...pageInfo,
@@ -124,6 +123,7 @@ function useLocalPaginator(
       pageInfo: newPageInfo,
     };
   }
+
   return paginate;
 }
 export default useLocalPaginator;

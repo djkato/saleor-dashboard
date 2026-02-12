@@ -1,23 +1,20 @@
-// @ts-strict-ignore
-import camelCase from "lodash/camelCase";
+import { FulfillmentStatus } from "@dashboard/graphql";
+import { MessageDescriptor } from "react-intl";
 
 import { orderTitleMessages } from "./messages";
-import { CardTitleLines, CardTitleStatus } from "./OrderCardTitle";
+import { CardTitleStatus } from "./OrderCardTitle";
 
-export const getOrderTitleMessage = (status: CardTitleStatus) =>
-  orderTitleMessages[camelCase(status)] || orderTitleMessages.unfulfilled;
+const STATUS_MESSAGE_MAP: Record<CardTitleStatus, MessageDescriptor> = {
+  [FulfillmentStatus.CANCELED]: orderTitleMessages.canceled,
+  [FulfillmentStatus.FULFILLED]: orderTitleMessages.fulfilled,
+  [FulfillmentStatus.REFUNDED]: orderTitleMessages.refunded,
+  [FulfillmentStatus.REFUNDED_AND_RETURNED]: orderTitleMessages.refundedAndReturned,
+  [FulfillmentStatus.REPLACED]: orderTitleMessages.replaced,
+  [FulfillmentStatus.RETURNED]: orderTitleMessages.returned,
+  [FulfillmentStatus.WAITING_FOR_APPROVAL]: orderTitleMessages.waitingForApproval,
+  unfulfilled: orderTitleMessages.unfulfilled,
+  draft: orderTitleMessages.draft,
+};
 
-export const getFulfillmentTotalQuantity = (
-  lines: CardTitleLines,
-  status: CardTitleStatus,
-) =>
-  status === "unfulfilled"
-    ? lines.reduce(
-        (resultQuantity, line) =>
-          resultQuantity + (line.quantityToFulfill ?? line.quantity),
-        0,
-      )
-    : lines.reduce(
-        (resultQuantity, { quantity }) => resultQuantity + quantity,
-        0,
-      );
+export const getOrderTitleMessage = (status?: CardTitleStatus): MessageDescriptor =>
+  status ? STATUS_MESSAGE_MAP[status] : orderTitleMessages.unfulfilled;

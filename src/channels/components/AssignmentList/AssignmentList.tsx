@@ -1,12 +1,8 @@
-// @ts-strict-ignore
-import Skeleton from "@dashboard/components/Skeleton";
 import { ReorderEvent } from "@dashboard/types";
-import { Typography } from "@material-ui/core";
-import { Accordion, Divider } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Accordion, Divider, Skeleton, Text } from "@saleor/macaw-ui-next";
 import { defineMessages, useIntl } from "react-intl";
 
-import AssignmentListFooter from "./AssignmentListFooter";
+import { AssignmentListFooter } from "./AssignmentListFooter";
 import Item from "./Item";
 import SortableContainer from "./SortableContainer";
 import { useStyles } from "./styles";
@@ -20,28 +16,20 @@ const messages = defineMessages({
   },
 });
 
-const AssignmentList: React.FC<AssignmentListProps> = props => {
-  const {
-    items,
-    itemsName,
-    totalCount = 0,
-    loading,
-    removeItem,
-    reorderItem,
-  } = props;
-
+export const AssignmentList = (props: AssignmentListProps) => {
+  const { items, itemsName, totalCount = 0, loading, removeItem, reorderItem } = props;
   const intl = useIntl();
   const classes = useStyles();
-
   const handleSortStart = () => {
     document.body.classList.add(classes.grabbing);
   };
-
   const handleSortEnd = (event: ReorderEvent) => {
     document.body.classList.remove(classes.grabbing);
-    reorderItem(event);
-  };
 
+    if (reorderItem) {
+      reorderItem(event);
+    }
+  };
   const hasMoreItemsToBeSelected = totalCount !== items.length;
 
   return (
@@ -51,9 +39,9 @@ const AssignmentList: React.FC<AssignmentListProps> = props => {
           {loading ? (
             <Skeleton />
           ) : (
-            <Typography variant="subtitle2" color="textSecondary">
+            <Text fontSize={2} color="default2">
               {`${items.length} ${itemsName.toLowerCase()}`}
-            </Typography>
+            </Text>
           )}
           <Accordion.TriggerButton dataTestId="expand-icon" />
         </Accordion.Trigger>
@@ -64,6 +52,7 @@ const AssignmentList: React.FC<AssignmentListProps> = props => {
             <Skeleton className={classes.skeleton} />
           ) : (
             <>
+              {/* @ts-expect-error legacy types */}
               <SortableContainer
                 axis="xy"
                 lockAxis="xy"
@@ -76,6 +65,7 @@ const AssignmentList: React.FC<AssignmentListProps> = props => {
                     <Item
                       key={itemIndex}
                       index={itemIndex}
+                      // @ts-expect-error legacy types
                       item={item}
                       onDelete={removeItem}
                       sortable={!!reorderItem}
@@ -86,15 +76,11 @@ const AssignmentList: React.FC<AssignmentListProps> = props => {
               {hasMoreItemsToBeSelected ? (
                 <AssignmentListFooter {...props} />
               ) : (
-                <Typography
-                  color="textSecondary"
-                  variant="subtitle1"
-                  className={classes.infoMessage}
-                >
+                <Text color="default2" fontSize={3} className={classes.infoMessage}>
                   {intl.formatMessage(messages.allSelectedMessage, {
                     itemsName: itemsName.toLowerCase(),
                   })}
-                </Typography>
+                </Text>
               )}
             </>
           )}
@@ -103,4 +89,3 @@ const AssignmentList: React.FC<AssignmentListProps> = props => {
     </Accordion>
   );
 };
-export default AssignmentList;

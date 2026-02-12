@@ -78,30 +78,8 @@ export const useStyles = makeStyles(
       },
     },
     viewContainer: {
-      minHeight: `calc(100vh - ${appLoaderHeight + 72}px - ${theme.spacing(
-        4,
-      )})`,
+      minHeight: `calc(100vh - ${appLoaderHeight + 72}px - ${theme.spacing(4)})`,
     },
   }),
   { name: "AppLayout" },
-);
-
-export const useFullSizeStyles = makeStyles(
-  () => ({
-    content: {
-      height: "100vh",
-      display: "flex",
-      flexDirection: "column",
-    },
-    viewContainer: {
-      flex: 1,
-      display: "flex",
-      flexDirection: "column",
-    },
-    view: {
-      flex: 1,
-    },
-    viewContainerWrapper: {},
-  }),
-  { name: "AppLayoutFullSize" },
 );

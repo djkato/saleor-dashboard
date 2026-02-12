@@ -1,6 +1,5 @@
 import { Name } from "@dashboard/featureFlags/availableFlags";
-import { Box, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Text } from "@saleor/macaw-ui-next";
 
 import { ToggleButton } from "./ToggleButton";
 
@@ -11,12 +10,7 @@ interface ContentProps {
   isEnabled: boolean;
 }
 
-export const Content = ({
-  flagName,
-  flagSlug,
-  component,
-  isEnabled,
-}: ContentProps) => {
+export const Content = ({ flagName, flagSlug, component, isEnabled }: ContentProps) => {
   const TabComponent = component;
 
   return (
@@ -24,17 +18,19 @@ export const Content = ({
       borderWidth={1}
       borderStyle="solid"
       borderLeftWidth={0}
-      backgroundColor="surfaceNeutralPlain"
-      borderColor="neutralHighlight"
+      backgroundColor="default1"
+      borderColor="default1"
       width="100%"
       overflowY="scroll"
       padding={3}
     >
       <Box display="flex" justifyContent="space-between">
-        <Text variant="heading">{flagName}</Text>
+        <Text size={5} fontWeight="bold">
+          {flagName}
+        </Text>
         <ToggleButton isEnabled={isEnabled} flagSlug={flagSlug} />
       </Box>
-      <Box fontSize="bodyMedium" paddingBottom={12}>
+      <Box size={4} paddingBottom={12}>
         <TabComponent />
       </Box>
     </Box>

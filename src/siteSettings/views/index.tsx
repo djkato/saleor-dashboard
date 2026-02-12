@@ -4,9 +4,8 @@ import {
   useShopSettingsUpdateMutation,
   useSiteSettingsQuery,
 } from "@dashboard/graphql";
-import useNotifier from "@dashboard/hooks/useNotifier";
-import { commonMessages, sectionNames } from "@dashboard/intl";
-import React from "react";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
+import { sectionNames } from "@dashboard/intl";
 import { useIntl } from "react-intl";
 
 import { extractMutationErrors, findInEnum } from "../../misc";
@@ -14,43 +13,31 @@ import SiteSettingsPage, {
   areAddressInputFieldsModified,
   SiteSettingsPageFormData,
 } from "../components/SiteSettingsPage";
-import { SiteSettingsUrlQueryParams } from "../urls";
 
-export interface SiteSettingsProps {
-  params: SiteSettingsUrlQueryParams;
-}
-
-export const SiteSettings: React.FC<SiteSettingsProps> = () => {
+const SiteSettings = () => {
   const notify = useNotifier();
   const intl = useIntl();
-
   const siteSettings = useSiteSettingsQuery({
     displayLoader: true,
   });
-
-  const [updateShopSettings, updateShopSettingsOpts] =
-    useShopSettingsUpdateMutation({
-      onCompleted: data => {
-        if (
-          [
-            ...(data?.shopAddressUpdate?.errors || []),
-            ...(data?.shopSettingsUpdate?.errors || []),
-          ].length === 0
-        ) {
-          notify({
-            status: "success",
-            text: intl.formatMessage(commonMessages.savedChanges),
-          });
-        }
-      },
-    });
-
+  const [updateShopSettings, updateShopSettingsOpts] = useShopSettingsUpdateMutation({
+    onCompleted: data => {
+      if (
+        [...(data?.shopAddressUpdate?.errors || []), ...(data?.shopSettingsUpdate?.errors || [])]
+          .length === 0
+      ) {
+        notify({
+          status: "success",
+          text: intl.formatMessage({ id: "jvz9Mr", defaultMessage: "Site settings updated" }),
+        });
+      }
+    },
+  });
   const errors = [
     ...(updateShopSettingsOpts.data?.shopSettingsUpdate?.errors || []),
     ...(updateShopSettingsOpts.data?.shopAddressUpdate?.errors || []),
   ];
   const loading = siteSettings.loading || updateShopSettingsOpts.loading;
-
   const handleUpdateShopSettings = async (data: SiteSettingsPageFormData) => {
     const addressInput = areAddressInputFieldsModified(data)
       ? {
@@ -73,11 +60,11 @@ export const SiteSettings: React.FC<SiteSettingsProps> = () => {
           addressInput,
           shopSettingsInput: {
             description: data.description,
-            reserveStockDurationAnonymousUser:
-              data.reserveStockDurationAnonymousUser || null,
+            reserveStockDurationAnonymousUser: data.reserveStockDurationAnonymousUser || null,
             reserveStockDurationAuthenticatedUser:
               data.reserveStockDurationAuthenticatedUser || null,
             enableAccountConfirmationByEmail: data.emailConfirmation,
+            limitQuantityPerCheckout: data.limitQuantityPerCheckout || null,
           },
         },
       }),
@@ -97,4 +84,5 @@ export const SiteSettings: React.FC<SiteSettingsProps> = () => {
     </>
   );
 };
+
 export default SiteSettings;

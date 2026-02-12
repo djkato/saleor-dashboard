@@ -1,11 +1,8 @@
-// @ts-strict-ignore
 import { CustomerListUrlSortField } from "@dashboard/customers/urls";
 import { UserSortField } from "@dashboard/graphql";
 import { createGetSortQueryVariables } from "@dashboard/utils/sort";
 
-export function getSortQueryField(
-  sort: CustomerListUrlSortField,
-): UserSortField {
+function getSortQueryField(sort: CustomerListUrlSortField): UserSortField | undefined {
   switch (sort) {
     case CustomerListUrlSortField.email:
       return UserSortField.EMAIL;
@@ -18,5 +15,4 @@ export function getSortQueryField(
   }
 }
 
-export const getSortQueryVariables =
-  createGetSortQueryVariables(getSortQueryField);
+export const getSortQueryVariables = createGetSortQueryVariables(getSortQueryField);

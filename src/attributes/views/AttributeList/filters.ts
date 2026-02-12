@@ -2,26 +2,16 @@ import {
   AttributeFilterKeys,
   AttributeListFilterOpts,
 } from "@dashboard/attributes/components/AttributeListPage";
-import { FilterElement } from "@dashboard/components/Filter";
+import { FilterElement } from "@dashboard/components/Filter/types";
 import { AttributeFilterInput } from "@dashboard/graphql";
 import { parseBoolean } from "@dashboard/misc";
 
-import {
-  createFilterTabUtils,
-  createFilterUtils,
-  getSingleValueQueryParam,
-} from "../../../utils/filters";
-import {
-  AttributeListUrlFilters,
-  AttributeListUrlFiltersEnum,
-  AttributeListUrlQueryParams,
-} from "../../urls";
+import { createFilterTabUtils, getSingleValueQueryParam } from "../../../utils/filters";
+import { AttributeListUrlFilters, AttributeListUrlFiltersEnum } from "../../urls";
 
-export const ATTRIBUTE_FILTERS_KEY = "attributeFilters";
+const ATTRIBUTE_FILTERS_KEY = "attributeFilters";
 
-export function getFilterOpts(
-  params: AttributeListUrlFilters,
-): AttributeListFilterOpts {
+export function getFilterOpts(params: AttributeListUrlFilters): AttributeListFilterOpts {
   return {
     filterableInStorefront: {
       active: params.filterableInStorefront !== undefined,
@@ -42,23 +32,17 @@ export function getFilterOpts(
   };
 }
 
-export function getFilterVariables(
-  params: AttributeListUrlFilters,
-): AttributeFilterInput {
+export function getFilterVariables(params: AttributeListUrlFilters): AttributeFilterInput {
   return {
     filterableInStorefront:
       params.filterableInStorefront !== undefined
         ? parseBoolean(params.filterableInStorefront, false)
         : undefined,
     isVariantOnly:
-      params.isVariantOnly !== undefined
-        ? parseBoolean(params.isVariantOnly, false)
-        : undefined,
+      params.isVariantOnly !== undefined ? parseBoolean(params.isVariantOnly, false) : undefined,
     search: params.query,
     valueRequired:
-      params.valueRequired !== undefined
-        ? parseBoolean(params.valueRequired, false)
-        : undefined,
+      params.valueRequired !== undefined ? parseBoolean(params.valueRequired, false) : undefined,
     visibleInStorefront:
       params.visibleInStorefront !== undefined
         ? parseBoolean(params.visibleInStorefront, false)
@@ -73,34 +57,17 @@ export function getFilterQueryParam(
 
   switch (name) {
     case AttributeFilterKeys.filterableInStorefront:
-      return getSingleValueQueryParam(
-        filter,
-        AttributeListUrlFiltersEnum.filterableInStorefront,
-      );
+      return getSingleValueQueryParam(filter, AttributeListUrlFiltersEnum.filterableInStorefront);
 
     case AttributeFilterKeys.isVariantOnly:
-      return getSingleValueQueryParam(
-        filter,
-        AttributeListUrlFiltersEnum.isVariantOnly,
-      );
+      return getSingleValueQueryParam(filter, AttributeListUrlFiltersEnum.isVariantOnly);
 
     case AttributeFilterKeys.valueRequired:
-      return getSingleValueQueryParam(
-        filter,
-        AttributeListUrlFiltersEnum.valueRequired,
-      );
+      return getSingleValueQueryParam(filter, AttributeListUrlFiltersEnum.valueRequired);
 
     case AttributeFilterKeys.visibleInStorefront:
-      return getSingleValueQueryParam(
-        filter,
-        AttributeListUrlFiltersEnum.visibleInStorefront,
-      );
+      return getSingleValueQueryParam(filter, AttributeListUrlFiltersEnum.visibleInStorefront);
   }
 }
 
 export const storageUtils = createFilterTabUtils<string>(ATTRIBUTE_FILTERS_KEY);
-
-export const { areFiltersApplied, getActiveFilters, getFiltersCurrentTab } =
-  createFilterUtils<AttributeListUrlQueryParams, AttributeListUrlFilters>(
-    AttributeListUrlFiltersEnum,
-  );

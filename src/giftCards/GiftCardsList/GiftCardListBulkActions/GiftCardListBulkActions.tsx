@@ -1,106 +1,90 @@
 import { ConfirmButton } from "@dashboard/components/ConfirmButton";
-import { IMessage } from "@dashboard/components/messages";
+import { INotification } from "@dashboard/components/notifications";
 import {
   useGiftCardBulkActivateMutation,
   useGiftCardBulkDeactivateMutation,
 } from "@dashboard/graphql";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import { getByIds } from "@dashboard/orders/components/OrderReturnPage/utils";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import { bulkEnableDisableSectionMessages as messages } from "../messages";
 import { useGiftCardList } from "../providers/GiftCardListProvider";
 import { GIFT_CARD_LIST_QUERY } from "../queries";
 
-export const GiftCardListBulkActions: React.FC = () => {
+export const GiftCardListBulkActions = () => {
   const intl = useIntl();
   const notify = useNotifier();
-
   const { selectedRowIds, clearRowSelection, giftCards } = useGiftCardList();
-
   const hasAnyEnabledCardsSelected = giftCards
     .filter(getByIds(selectedRowIds))
     .some(({ isActive }) => isActive);
-
   const areAllSelectedCardsActive = giftCards
     .filter(getByIds(selectedRowIds))
     .every(({ isActive }) => isActive);
-
   const hasAnyDisabledCardsSelected = giftCards
     .filter(getByIds(selectedRowIds))
     .some(({ isActive }) => !isActive);
-
   const areAllSelectedCardsDisabled = giftCards
     .filter(getByIds(selectedRowIds))
     .every(({ isActive }) => !isActive);
+  const [activateGiftCards, activateGiftCardsOpts] = useGiftCardBulkActivateMutation({
+    onCompleted: data => {
+      const notifierData: INotification = data?.giftCardBulkActivate?.errors?.length
+        ? {
+            status: "error",
+            text: intl.formatMessage(messages.errorActivateAlertText, {
+              count: data?.giftCardBulkActivate?.count,
+            }),
+          }
+        : {
+            status: "success",
+            text: intl.formatMessage(messages.successActivateAlertText, {
+              count: data?.giftCardBulkActivate?.count,
+            }),
+          };
 
-  const [activateGiftCards, activateGiftCardsOpts] =
-    useGiftCardBulkActivateMutation({
-      onCompleted: data => {
-        const notifierData: IMessage = !!data?.giftCardBulkActivate?.errors
-          ?.length
-          ? {
-              status: "error",
-              text: intl.formatMessage(messages.errorActivateAlertText, {
-                count: data?.giftCardBulkActivate?.count,
-              }),
-            }
-          : {
-              status: "success",
-              text: intl.formatMessage(messages.successActivateAlertText, {
-                count: data?.giftCardBulkActivate?.count,
-              }),
-            };
+      notify(notifierData);
 
-        notify(notifierData);
+      if (!data?.giftCardBulkActivate?.errors?.length) {
+        clearRowSelection();
+      }
+    },
+    refetchQueries: [GIFT_CARD_LIST_QUERY],
+  });
+  const [deactivateGiftCards, deactivateGiftCardsOpts] = useGiftCardBulkDeactivateMutation({
+    onCompleted: data => {
+      const notifierData: INotification = data?.giftCardBulkDeactivate?.errors?.length
+        ? {
+            status: "error",
+            text: intl.formatMessage(messages.errorDeactivateAlertText, {
+              count: data?.giftCardBulkDeactivate?.count,
+            }),
+          }
+        : {
+            status: "success",
+            text: intl.formatMessage(messages.successDeactivateAlertText, {
+              count: data?.giftCardBulkDeactivate?.count,
+            }),
+          };
 
-        if (!data?.giftCardBulkActivate?.errors?.length) {
-          clearRowSelection();
-        }
-      },
-      refetchQueries: [GIFT_CARD_LIST_QUERY],
-    });
+      notify(notifierData);
 
-  const [deactivateGiftCards, deactivateGiftCardsOpts] =
-    useGiftCardBulkDeactivateMutation({
-      onCompleted: data => {
-        const notifierData: IMessage = !!data?.giftCardBulkDeactivate?.errors
-          ?.length
-          ? {
-              status: "error",
-              text: intl.formatMessage(messages.errorDeactivateAlertText, {
-                count: data?.giftCardBulkDeactivate?.count,
-              }),
-            }
-          : {
-              status: "success",
-              text: intl.formatMessage(messages.successDeactivateAlertText, {
-                count: data?.giftCardBulkDeactivate?.count,
-              }),
-            };
-
-        notify(notifierData);
-
-        if (!data?.giftCardBulkDeactivate?.errors?.length) {
-          clearRowSelection();
-        }
-      },
-      refetchQueries: [GIFT_CARD_LIST_QUERY],
-    });
-
+      if (!data?.giftCardBulkDeactivate?.errors?.length) {
+        clearRowSelection();
+      }
+    },
+    refetchQueries: [GIFT_CARD_LIST_QUERY],
+  });
   const handleActivateGiftCards = async () => {
     await activateGiftCards({ variables: { ids: selectedRowIds } });
     clearRowSelection();
   };
-
   const handleDeactivateGiftCards = async () => {
     await deactivateGiftCards({ variables: { ids: selectedRowIds } });
     clearRowSelection();
   };
-
-  const isSelectionMixed =
-    hasAnyEnabledCardsSelected && hasAnyDisabledCardsSelected;
+  const isSelectionMixed = hasAnyEnabledCardsSelected && hasAnyDisabledCardsSelected;
 
   return (
     <>

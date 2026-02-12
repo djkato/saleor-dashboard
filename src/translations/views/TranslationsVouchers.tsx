@@ -5,11 +5,9 @@ import {
   useVoucherTranslationDetailsQuery,
 } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import useShop from "@dashboard/hooks/useShop";
-import { commonMessages } from "@dashboard/intl";
 import { stringifyQs } from "@dashboard/utils/urls";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import { extractMutationErrors, maybe } from "../../misc";
@@ -20,40 +18,32 @@ import { getParsedTranslationInputData } from "../utils";
 export interface TranslationsVouchersQueryParams {
   activeField: string;
 }
-export interface TranslationsVouchersProps {
+interface TranslationsVouchersProps {
   id: string;
   languageCode: LanguageCodeEnum;
   params: TranslationsVouchersQueryParams;
 }
 
-const TranslationsVouchers: React.FC<TranslationsVouchersProps> = ({
-  id,
-  languageCode,
-  params,
-}) => {
+const TranslationsVouchers = ({ id, languageCode, params }: TranslationsVouchersProps) => {
   const navigate = useNavigator();
   const notify = useNotifier();
   const shop = useShop();
   const intl = useIntl();
-
   const voucherTranslations = useVoucherTranslationDetailsQuery({
     variables: { id, language: languageCode },
   });
-
-  const [updateTranslations, updateTranslationsOpts] =
-    useUpdateVoucherTranslationsMutation({
-      onCompleted: data => {
-        if (data.voucherTranslate.errors.length === 0) {
-          voucherTranslations.refetch();
-          notify({
-            status: "success",
-            text: intl.formatMessage(commonMessages.savedChanges),
-          });
-          navigate("?", { replace: true });
-        }
-      },
-    });
-
+  const [updateTranslations, updateTranslationsOpts] = useUpdateVoucherTranslationsMutation({
+    onCompleted: data => {
+      if (data.voucherTranslate.errors.length === 0) {
+        voucherTranslations.refetch();
+        notify({
+          status: "success",
+          text: intl.formatMessage({ id: "WLyKAQ", defaultMessage: "Translation saved" }),
+        });
+        navigate("?", { replace: true });
+      }
+    },
+  });
   const onEdit = (field: string) =>
     navigate(
       "?" +
@@ -62,11 +52,9 @@ const TranslationsVouchers: React.FC<TranslationsVouchersProps> = ({
         }),
       { replace: true },
     );
-
   const onDiscard = () => {
     navigate("?", { replace: true });
   };
-
   const handleSubmit = (
     { name: fieldName }: TranslationField<TranslationInputFieldName>,
     data: string,
@@ -83,7 +71,6 @@ const TranslationsVouchers: React.FC<TranslationsVouchersProps> = ({
         },
       }),
     );
-
   const translation = voucherTranslations?.data?.translation;
 
   return (
@@ -97,13 +84,10 @@ const TranslationsVouchers: React.FC<TranslationsVouchersProps> = ({
       onEdit={onEdit}
       onDiscard={onDiscard}
       onSubmit={handleSubmit}
-      data={
-        translation?.__typename === "VoucherTranslatableContent"
-          ? translation
-          : null
-      }
+      data={translation?.__typename === "VoucherTranslatableContent" ? translation : null}
     />
   );
 };
+
 TranslationsVouchers.displayName = "TranslationsVouchers";
 export default TranslationsVouchers;

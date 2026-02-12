@@ -1,11 +1,19 @@
 // @ts-strict-ignore
-import { OrderDetailsGrantRefundFragment } from "@dashboard/graphql";
+import {
+  OrderDetailsGrantedRefundFragment,
+  OrderDetailsGrantRefundFragment,
+} from "@dashboard/graphql";
 import { exhaustiveCheck } from "@dashboard/utils/ts";
 
+import { getLineAvailableQuantity } from "./utils";
+
 export interface ReducerOrderLine {
+  orderLineId: string;
   selectedQuantity: number;
   availableQuantity: number;
+  initialQuantity?: number;
   unitPrice: number;
+  isDirty: boolean;
 }
 
 export interface GrantRefundState {
@@ -13,17 +21,22 @@ export interface GrantRefundState {
   refundShipping: boolean;
 }
 
-export type GrantRefundLineKeyValue = [string, ReducerOrderLine];
+type GrantRefundLineKeyValue = [string, ReducerOrderLine];
 
 export type GrantRefundAction =
   | {
       type: "setQuantity";
       lineId: string;
       amount: number;
+      unitPrice: number;
     }
   | {
       type: "setMaxQuantity";
-      lineIds: string[];
+      lines: Array<{
+        id: string;
+        quantity: number;
+        unitPrice: number;
+      }>;
     }
   | {
       type: "initState";
@@ -31,36 +44,27 @@ export type GrantRefundAction =
     }
   | {
       type: "toggleRefundShipping";
+    }
+  | {
+      type: "setRefundShipping";
+      refundShipping: boolean;
     };
 
 export const getGrantRefundReducerInitialState = (
   order: OrderDetailsGrantRefundFragment,
+  grantedRefund?: OrderDetailsGrantedRefundFragment,
 ): GrantRefundState => {
+  const toGrantRefundLine = createToGrantRefundLineMap(order, grantedRefund);
   const unfulfilledLines = order?.lines
     .filter(line => line.quantityToFulfill > 0)
-    .map<GrantRefundLineKeyValue>(line => [
-      line.id,
-      {
-        availableQuantity: line.quantity,
-        unitPrice: line.unitPrice.gross.amount,
-        selectedQuantity: 0,
-      },
-    ]);
-
+    .map(toGrantRefundLine);
   const fulfilmentLines = order.fulfillments
     .flatMap(fulfilment => fulfilment.lines)
-    .map<GrantRefundLineKeyValue>(line => [
-      line.id,
-      {
-        availableQuantity: line.quantity,
-        unitPrice: line.orderLine.unitPrice.gross.amount,
-        selectedQuantity: 0,
-      },
-    ]);
+    .map(toGrantRefundLine);
 
   return {
     lines: new Map([...unfulfilledLines, ...fulfilmentLines]),
-    refundShipping: false,
+    refundShipping: grantedRefund?.shippingCostsIncluded ?? false,
   };
 };
 
@@ -75,15 +79,13 @@ export function grantRefundReducer(
 ): GrantRefundState {
   switch (action.type) {
     case "setQuantity": {
-      if (!state.lines.has(action.lineId)) {
-        return state;
-      }
-
       const line = state.lines.get(action.lineId);
       const newLines = new Map(state.lines);
 
       newLines.set(action.lineId, {
         ...line,
+        isDirty: action.amount !== line.initialQuantity,
+        unitPrice: action.unitPrice,
         selectedQuantity: action.amount,
       });
 
@@ -92,16 +94,17 @@ export function grantRefundReducer(
         lines: newLines,
       };
     }
-
     case "setMaxQuantity": {
       const newLines = new Map(state.lines);
 
-      action.lineIds.forEach(lineId => {
-        const line = state.lines.get(lineId);
+      action.lines.forEach(line => {
+        const currentLine = state.lines.get(line.id);
 
-        newLines.set(lineId, {
-          ...line,
-          selectedQuantity: line.availableQuantity,
+        newLines.set(line.id, {
+          ...currentLine,
+          isDirty: line.quantity !== currentLine.initialQuantity,
+          unitPrice: line.unitPrice,
+          selectedQuantity: line.quantity,
         });
       });
 
@@ -110,19 +113,55 @@ export function grantRefundReducer(
         lines: newLines,
       };
     }
-
     case "initState": {
       return action.state;
     }
-
     case "toggleRefundShipping": {
       return {
         ...state,
         refundShipping: !state.refundShipping,
       };
     }
+    case "setRefundShipping": {
+      return {
+        ...state,
+        refundShipping: action.refundShipping,
+      };
+    }
 
     default:
       exhaustiveCheck(action);
   }
+}
+
+function createToGrantRefundLineMap(
+  order: OrderDetailsGrantRefundFragment,
+  grantedRefund?: OrderDetailsGrantedRefundFragment,
+) {
+  return (
+    line:
+      | OrderDetailsGrantRefundFragment["lines"][0]
+      | OrderDetailsGrantRefundFragment["fulfillments"][0]["lines"][0],
+  ): GrantRefundLineKeyValue => {
+    const initialQuantity =
+      grantedRefund?.lines?.find(initLine => initLine.orderLine.id === line.id)?.quantity ?? 0;
+
+    return [
+      line.id,
+      {
+        orderLineId: "orderLine" in line ? line.orderLine.id : line.id,
+        isDirty: false,
+        availableQuantity: getLineAvailableQuantity({
+          lineId: line.id,
+          lineQuntity: line.quantity,
+          grantRefunds: order?.grantedRefunds,
+          grantRefundId: grantedRefund?.id,
+        }),
+        unitPrice:
+          "orderLine" in line ? line.orderLine.unitPrice.gross.amount : line.unitPrice.gross.amount,
+        selectedQuantity: initialQuantity,
+        initialQuantity,
+      },
+    ];
+  };
 }

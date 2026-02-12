@@ -1,14 +1,13 @@
 // @ts-strict-ignore
 import PriceField, { PriceFieldProps } from "@dashboard/components/PriceField";
-import React from "react";
 
 import { useManualTransactionContext } from "../context";
 
-export const PriceInputField: React.FC<
-  Omit<PriceFieldProps, "currencySymbol" | "onChange" | "value">
-> = ({ disabled, ...props }) => {
-  const { currency, submitState, handleChangeAmount, amount } =
-    useManualTransactionContext();
+export const PriceInputField = ({
+  disabled,
+  ...props
+}: Omit<PriceFieldProps, "currencySymbol" | "onChange" | "value">) => {
+  const { currency, submitState, handleChangeAmount, amount } = useManualTransactionContext();
 
   return (
     <PriceField
@@ -17,11 +16,7 @@ export const PriceInputField: React.FC<
       disabled={submitState === "loading" || disabled}
       onChange={handleChangeAmount}
       value={amount?.toString() ?? ""}
-      InputProps={{
-        inputProps: {
-          "data-test-id": "transactAmountInput",
-        },
-      }}
+      data-test-id="transactAmountInput"
     />
   );
 };

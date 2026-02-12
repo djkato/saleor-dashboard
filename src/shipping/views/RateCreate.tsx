@@ -2,10 +2,7 @@
 import { createSortedShippingChannels } from "@dashboard/channels/utils";
 import ChannelsAvailabilityDialog from "@dashboard/components/ChannelsAvailabilityDialog";
 import { WindowTitle } from "@dashboard/components/WindowTitle";
-import {
-  PostalCodeRuleInclusionTypeEnum,
-  useShippingZoneChannelsQuery,
-} from "@dashboard/graphql";
+import { PostalCodeRuleInclusionTypeEnum, useShippingZoneChannelsQuery } from "@dashboard/graphql";
 import useChannels from "@dashboard/hooks/useChannels";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { sectionNames } from "@dashboard/intl";
@@ -27,37 +24,29 @@ import {
 import { useTaxClassFetchMore } from "@dashboard/taxes/utils/useTaxClassFetchMore";
 import { MinMax } from "@dashboard/types";
 import createDialogActionHandlers from "@dashboard/utils/handlers/dialogActionHandlers";
-import React from "react";
+import { useReducer } from "react";
 import { useIntl } from "react-intl";
 
 const FORM_ID = Symbol("shipping-zone-rates-create-form-id");
 
-export interface RateCreateProps {
+interface RateCreateProps {
   id: string;
   params: ShippingRateCreateUrlQueryParams;
 }
 
-export const RateCreate: React.FC<RateCreateProps> = ({ id, params }) => {
+const RateCreate = ({ id, params }: RateCreateProps) => {
   const navigate = useNavigator();
   const intl = useIntl();
-
   const [openModal, closeModal] = createDialogActionHandlers<
     ShippingRateCreateUrlDialog,
     ShippingRateCreateUrlQueryParams
   >(navigate, params => shippingRateCreateUrl(id, params), params);
-
-  const { data: shippingZoneData, loading: channelsLoading } =
-    useShippingZoneChannelsQuery({
-      displayLoader: true,
-      variables: { id },
-    });
-
+  const { data: shippingZoneData, loading: channelsLoading } = useShippingZoneChannelsQuery({
+    displayLoader: true,
+    variables: { id },
+  });
   const { taxClasses, fetchMoreTaxClasses } = useTaxClassFetchMore();
-
-  const allChannels = createSortedShippingChannels(
-    shippingZoneData?.shippingZone?.channels,
-  );
-
+  const allChannels = createSortedShippingChannels(shippingZoneData?.shippingZone?.channels);
   const {
     channelListElements,
     channelsToggle,
@@ -69,54 +58,41 @@ export const RateCreate: React.FC<RateCreateProps> = ({ id, params }) => {
     isChannelsModalOpen,
     setCurrentChannels,
     toggleAllChannels,
-  } = useChannels(
-    allChannels,
-    params?.action,
-    { closeModal, openModal },
-    { formId: FORM_ID },
-  );
-
-  const [state, dispatch] = React.useReducer(postalCodesReducer, {
+  } = useChannels(allChannels, params?.action, { closeModal, openModal }, { formId: FORM_ID });
+  const [state, dispatch] = useReducer(postalCodesReducer, {
     codesToDelete: [],
     havePostalCodesChanged: false,
     inclusionType: PostalCodeRuleInclusionTypeEnum.EXCLUDE,
     originalCodes: [],
     postalCodeRules: [],
   });
-
-  const { channelErrors, createShippingRate, errors, status } =
-    useShippingRateCreator(
-      id,
-      params.type,
-      state.postalCodeRules,
-      state.inclusionType,
-    );
-
+  const { channelErrors, createShippingRate, errors, status } = useShippingRateCreator(
+    id,
+    params.type,
+    state.postalCodeRules,
+    state.inclusionType,
+  );
   const onPostalCodeAssign = (rule: MinMax) => {
-    if (
-      state.postalCodeRules.filter(getPostalCodeRuleByMinMax(rule)).length > 0
-    ) {
+    if (state.postalCodeRules.filter(getPostalCodeRuleByMinMax(rule)).length > 0) {
       closeModal();
+
       return;
     }
 
     const newCode = getRuleObject(rule, state.inclusionType);
+
     dispatch({
       havePostalCodesChanged: true,
       postalCodeRules: [...state.postalCodeRules, newCode],
     });
     closeModal();
   };
-
-  const onPostalCodeInclusionChange = (
-    inclusion: PostalCodeRuleInclusionTypeEnum,
-  ) => {
+  const onPostalCodeInclusionChange = (inclusion: PostalCodeRuleInclusionTypeEnum) => {
     dispatch({
       inclusionType: inclusion,
       postalCodeRules: [],
     });
   };
-
   const onPostalCodeUnassign = code => {
     dispatch({
       havePostalCodesChanged: true,

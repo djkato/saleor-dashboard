@@ -1,4 +1,4 @@
-import { defineMessages } from "react-intl";
+import { defineMessage, defineMessages } from "react-intl";
 
 import { TransactionEventType } from "./types";
 
@@ -19,14 +19,34 @@ export const orderMessages = defineMessages({
   },
 });
 
-export const transactionEventTypeMap = defineMessages<
-  Exclude<TransactionEventType, "INFO">
->({
+export const orderDiscountTypeLabelMessages = defineMessages({
+  staffAdded: {
+    id: "QJG+d/",
+    defaultMessage: "Staff added",
+    description: "staff added type order discount",
+  },
+  voucher: {
+    id: "l4o0ar",
+    defaultMessage: "Voucher: {voucherName}",
+    description: "voucher type order discount",
+  },
+  promotion: {
+    id: "TBdxTP",
+    defaultMessage: "Promotion",
+    description: "promotion type order discount",
+  },
+  sale: {
+    id: "a/JR9Y",
+    defaultMessage: "Sale",
+    description: "sale type order discount",
+  },
+});
+
+export const transactionEventTypeMap = defineMessages<Exclude<TransactionEventType, "INFO">>({
   AUTHORIZATION: {
     defaultMessage: "Authorization",
     id: "qtF0Ft",
-    description:
-      "transaction event type, amount was authorized, but not captured",
+    description: "transaction event type, amount was authorized, but not captured",
   },
   CHARGE: {
     defaultMessage: "Capture",
@@ -46,8 +66,7 @@ export const transactionEventTypeMap = defineMessages<
   CHARGEBACK: {
     defaultMessage: "Chargeback",
     id: "DVgMit",
-    description:
-      "transaction event type, transaction was chargeback by payment provider",
+    description: "transaction event type, transaction was chargeback by payment provider",
   },
   AUTHORIZATION_ADJUSTMENT: {
     defaultMessage: "Authorization amount adjusted",
@@ -57,7 +76,21 @@ export const transactionEventTypeMap = defineMessages<
   REFUND_REVERSED: {
     defaultMessage: "Refund reversed",
     id: "of/+iV",
-    description:
-      "transaction event type, refund was reversed, funds are back to store account",
+    description: "transaction event type, refund was reversed, funds are back to store account",
   },
+});
+
+export const refundReasonSelectHelperMessages = defineMessages({
+  manageReasons: defineMessage({
+    defaultMessage: "Manage available refunds reasons",
+    id: "6ZubLQ",
+  }),
+  enableReasonsInSettings: defineMessage({
+    defaultMessage: "Enable refund reasons in settings",
+    id: "zIPK5M",
+  }),
+  noPermissionsHint: defineMessage({
+    defaultMessage: "Use refund settings to configure available reasons (permissions required)",
+    id: "lLKEMH",
+  }),
 });

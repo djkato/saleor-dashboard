@@ -5,26 +5,22 @@ import {
   DatagridChangeStateContext,
   useDatagridChangeState,
 } from "@dashboard/components/Datagrid/hooks/useDatagridChange";
-import { TablePaginationWithContext } from "@dashboard/components/TablePagination";
+import { DatagridPagination } from "@dashboard/components/TablePagination";
+import { getPrevLocationState } from "@dashboard/hooks/useBackLinkWithState";
 import useLocale from "@dashboard/hooks/useLocale";
 import { OrderDraft } from "@dashboard/orders/types";
 import { OrderDraftListUrlSortField, orderUrl } from "@dashboard/orders/urls";
 import { ListProps, SortPage } from "@dashboard/types";
 import { Item } from "@glideapps/glide-data-grid";
-import { Box } from "@saleor/macaw-ui/next";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useIntl } from "react-intl";
+import { useLocation } from "react-router";
 
-import {
-  createGetCellContent,
-  orderDraftListStaticColumnsAdapter,
-} from "./datagrid";
+import { createGetCellContent, orderDraftListStaticColumnsAdapter } from "./datagrid";
 import { messages } from "./messages";
 import { canBeSorted } from "./utils";
 
-interface OrderDraftListDatagridProps
-  extends ListProps,
-    SortPage<OrderDraftListUrlSortField> {
+interface OrderDraftListDatagridProps extends ListProps, SortPage<OrderDraftListUrlSortField> {
   orders: OrderDraft[];
   hasRowHover?: boolean;
   onRowClick?: (id: string) => void;
@@ -42,46 +38,42 @@ export const OrderDraftListDatagrid = ({
   onUpdateListSettings,
   onSelectOrderDraftIds,
 }: OrderDraftListDatagridProps) => {
+  const location = useLocation();
   const intl = useIntl();
   const { locale } = useLocale();
   const datagridState = useDatagridChangeState();
-
   const handleColumnChange = useCallback(
-    picked => {
+    (picked: string[]) => {
       if (onUpdateListSettings) {
         onUpdateListSettings("columns", picked.filter(Boolean));
       }
     },
     [onUpdateListSettings],
   );
-
   const memoizedStaticColumns = useMemo(
     () => orderDraftListStaticColumnsAdapter(intl, sort),
     [intl, sort],
   );
-
-  const { handlers, staticColumns, visibleColumns, selectedColumns } =
-    useColumns({
-      staticColumns: memoizedStaticColumns,
-      selectedColumns: settings?.columns ?? [],
-      onSave: handleColumnChange,
-    });
-
+  const { handlers, staticColumns, visibleColumns, selectedColumns } = useColumns({
+    gridName: "order_drafts_list",
+    staticColumns: memoizedStaticColumns,
+    selectedColumns: settings?.columns ?? [],
+    onSave: handleColumnChange,
+  });
   const getCellContent = useCallback(
     createGetCellContent({ orders, columns: visibleColumns, locale }),
     [visibleColumns, locale, orders],
   );
-
   const handleHeaderClick = useCallback(
     (col: number) => {
       const columnName = visibleColumns[col].id as OrderDraftListUrlSortField;
+
       if (canBeSorted(columnName)) {
         onSort(columnName);
       }
     },
     [visibleColumns, onSort],
   );
-
   const handleRowClick = useCallback(
     ([_, row]: Item) => {
       if (!onRowClick) {
@@ -89,14 +81,15 @@ export const OrderDraftListDatagrid = ({
       }
 
       const rowData = orders[row];
+
       onRowClick(rowData.id);
     },
     [onRowClick, orders],
   );
-
   const handleRowAnchor = useCallback(
     ([, row]: Item) => {
       const rowData = orders[row];
+
       return orderUrl(rowData.id);
     },
     [orders],
@@ -106,13 +99,13 @@ export const OrderDraftListDatagrid = ({
     <DatagridChangeStateContext.Provider value={datagridState}>
       <Datagrid
         readonly
-        rowMarkers="checkbox"
+        rowMarkers="checkbox-visible"
         columnSelect="single"
         freezeColumns={1}
         hasRowHover={hasRowHover}
         loading={disabled}
         availableColumns={visibleColumns}
-        verticalBorder={col => col > 0}
+        verticalBorder={false}
         getCellContent={getCellContent}
         getCellError={() => false}
         menuItems={() => []}
@@ -132,17 +125,16 @@ export const OrderDraftListDatagrid = ({
             onToggle={handlers.onToggle}
           />
         )}
+        navigatorOpts={{ state: getPrevLocationState(location) }}
       />
 
-      <Box paddingX={6}>
-        <TablePaginationWithContext
-          component="div"
-          colSpan={1}
-          settings={settings}
-          disabled={disabled}
-          onUpdateListSettings={onUpdateListSettings}
-        />
-      </Box>
+      <DatagridPagination
+        component="div"
+        colSpan={1}
+        settings={settings}
+        disabled={disabled}
+        onUpdateListSettings={onUpdateListSettings}
+      />
     </DatagridChangeStateContext.Provider>
   );
 };

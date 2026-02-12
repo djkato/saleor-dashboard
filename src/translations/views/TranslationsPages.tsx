@@ -6,66 +6,53 @@ import {
   useUpdatePageTranslationsMutation,
 } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import useShop from "@dashboard/hooks/useShop";
-import { commonMessages } from "@dashboard/intl";
 import { extractMutationErrors } from "@dashboard/misc";
 import { stringifyQs } from "@dashboard/utils/urls";
 import { OutputData } from "@editorjs/editorjs";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import TranslationsPagesPage from "../components/TranslationsPagesPage";
 import { PageTranslationInputFieldName, TranslationField } from "../types";
-import {
-  getAttributeValueTranslationsInputData,
-  getParsedTranslationInputData,
-} from "../utils";
+import { getAttributeValueTranslationsInputData, getParsedTranslationInputData } from "../utils";
 
 export interface TranslationsPagesQueryParams {
   activeField: string;
 }
-export interface TranslationsPagesProps {
+interface TranslationsPagesProps {
   id: string;
   languageCode: LanguageCodeEnum;
   params: TranslationsPagesQueryParams;
 }
 
-const TranslationsPages: React.FC<TranslationsPagesProps> = ({
-  id,
-  languageCode,
-  params,
-}) => {
+type HandleSubmitData = string | any;
+type HandleSubmitAttributeValue = OutputData | string;
+
+const TranslationsPages = ({ id, languageCode, params }: TranslationsPagesProps) => {
   const navigate = useNavigator();
   const notify = useNotifier();
   const shop = useShop();
   const intl = useIntl();
-
   const pageTranslations = usePageTranslationDetailsQuery({
     variables: { id, language: languageCode },
   });
-
   const onUpdate = (errors: unknown[]) => {
     if (errors.length === 0) {
       pageTranslations.refetch();
       notify({
         status: "success",
-        text: intl.formatMessage(commonMessages.savedChanges),
+        text: intl.formatMessage({ id: "WLyKAQ", defaultMessage: "Translation saved" }),
       });
       navigate("?", { replace: true });
     }
   };
-
-  const [updateTranslations, updateTranslationsOpts] =
-    useUpdatePageTranslationsMutation({
-      onCompleted: data => onUpdate(data.pageTranslate.errors),
-    });
-
-  const [updateAttributeValueTranslations] =
-    useUpdateAttributeValueTranslationsMutation({
-      onCompleted: data => onUpdate(data.attributeValueTranslate.errors),
-    });
-
+  const [updateTranslations, updateTranslationsOpts] = useUpdatePageTranslationsMutation({
+    onCompleted: data => onUpdate(data.pageTranslate.errors),
+  });
+  const [updateAttributeValueTranslations] = useUpdateAttributeValueTranslationsMutation({
+    onCompleted: data => onUpdate(data.attributeValueTranslate.errors),
+  });
   const onEdit = (field: string) =>
     navigate(
       "?" +
@@ -74,14 +61,12 @@ const TranslationsPages: React.FC<TranslationsPagesProps> = ({
         }),
       { replace: true },
     );
-
   const onDiscard = () => {
     navigate("?", { replace: true });
   };
-
   const handleSubmit = (
     { name: fieldName }: TranslationField<PageTranslationInputFieldName>,
-    data: string | any,
+    data: HandleSubmitData,
   ) =>
     extractMutationErrors(
       updateTranslations({
@@ -95,10 +80,9 @@ const TranslationsPages: React.FC<TranslationsPagesProps> = ({
         },
       }),
     );
-
   const handleAttributeValueSubmit = (
     { id, type }: TranslationField<PageTranslationInputFieldName>,
-    data: OutputData | string,
+    data: HandleSubmitAttributeValue,
   ) =>
     extractMutationErrors(
       updateAttributeValueTranslations({
@@ -109,7 +93,6 @@ const TranslationsPages: React.FC<TranslationsPagesProps> = ({
         },
       }),
     );
-
   const translation = pageTranslations?.data?.translation;
 
   return (
@@ -124,13 +107,10 @@ const TranslationsPages: React.FC<TranslationsPagesProps> = ({
       onDiscard={onDiscard}
       onSubmit={handleSubmit}
       onAttributeValueSubmit={handleAttributeValueSubmit}
-      data={
-        translation?.__typename === "PageTranslatableContent"
-          ? translation
-          : null
-      }
+      data={translation?.__typename === "PageTranslatableContent" ? translation : null}
     />
   );
 };
+
 TranslationsPages.displayName = "TranslationsPages";
 export default TranslationsPages;

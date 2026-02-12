@@ -1,11 +1,10 @@
-// @ts-strict-ignore
 import { getAppMountUriForRedirect } from "@dashboard/utils/urls";
 import { useEffect } from "react";
 import urlJoin from "url-join";
 import useRouter from "use-react-router";
 
-import { useUser } from "..";
 import { loginCallbackPath } from "../urls";
+import { useUser } from "../useUser";
 import { useAuthParameters } from "./useAuthParameters";
 
 const PLUGIN_ID_PARAM = "saleorPluginId";
@@ -14,11 +13,10 @@ export const useAuthRedirection = () => {
   const router = useRouter();
   const params = new URLSearchParams(router.location.search);
   const shouldRedirect = params.has(PLUGIN_ID_PARAM);
-  const { authenticated, authenticating, requestLoginByExternalPlugin } =
+  const { authenticated, authenticating, requestLoginByExternalPlugin, isCredentialsLogin } =
     useUser();
   const { setRequestedExternalPluginId } = useAuthParameters();
   const pluginId = params.get(PLUGIN_ID_PARAM);
-
   const handleAuthentication = async () => {
     setRequestedExternalPluginId(pluginId);
 
@@ -27,8 +25,7 @@ export const useAuthRedirection = () => {
       getAppMountUriForRedirect(),
       loginCallbackPath,
     );
-
-    const response = await requestLoginByExternalPlugin(pluginId, {
+    const response = await requestLoginByExternalPlugin!(pluginId!, {
       redirectUri,
     });
     const data = JSON.parse(response?.authenticationData || "");
@@ -46,6 +43,6 @@ export const useAuthRedirection = () => {
 
   return {
     authenticated,
-    authenticating: authenticating || shouldRedirect,
+    authenticating: (authenticating || shouldRedirect) && !isCredentialsLogin, // Prevent redirecting when user is logging in with credentials
   };
 };

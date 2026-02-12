@@ -1,22 +1,12 @@
 // @ts-strict-ignore
 import { numberCellEmptyValue } from "@dashboard/components/Datagrid/customCells/NumberCell";
 import { DatagridChange } from "@dashboard/components/Datagrid/hooks/useDatagridChange";
-import {
-  ProductFragment,
-  ProductVariantStocksUpdateInput,
-} from "@dashboard/graphql";
-import {
-  getColumnStock,
-  isCurrentRow,
-} from "@dashboard/products/utils/datagrid";
+import { ProductFragment, ProductVariantStocksUpdateInput } from "@dashboard/graphql";
+import { getColumnStock, isCurrentRow } from "@dashboard/products/utils/datagrid";
 
-export function getStockData(
-  data: DatagridChange[],
-  currentIndex: number,
-  removedIds: number[],
-) {
+export function getStockData(data: DatagridChange[], currentIndex: number) {
   return data
-    .filter(change => byHavingStockColumn(change, currentIndex, removedIds))
+    .filter(change => byHavingStockColumn(change, currentIndex))
     .map(toStockData)
     .filter(byStockWithQuantity);
 }
@@ -24,11 +14,10 @@ export function getStockData(
 export function getVaraintUpdateStockData(
   data: DatagridChange[],
   currentIndex: number,
-  removedIds: number[],
   variant: ProductFragment["variants"][number],
 ) {
   return data
-    .filter(change => byHavingStockColumn(change, currentIndex, removedIds))
+    .filter(change => byHavingStockColumn(change, currentIndex))
     .map(toStockData)
     .reduce<ProductVariantStocksUpdateInput>(toUpdateStockData(variant), {
       create: [],
@@ -38,10 +27,7 @@ export function getVaraintUpdateStockData(
 }
 
 function toUpdateStockData(variant: ProductFragment["variants"][number]) {
-  return (
-    acc: ProductVariantStocksUpdateInput,
-    stock: ReturnType<typeof toStockData>,
-  ) => {
+  return (acc: ProductVariantStocksUpdateInput, stock: ReturnType<typeof toStockData>) => {
     const variantStock = variant.stocks.find(
       variantStock => variantStock.warehouse.id === stock.warehouse,
     );
@@ -50,6 +36,7 @@ function toUpdateStockData(variant: ProductFragment["variants"][number]) {
       if (variantStock) {
         acc.remove.push(variantStock.id);
       }
+
       return acc;
     }
 
@@ -77,13 +64,6 @@ function byStockWithQuantity(stock: { quantity: unknown }) {
   return stock.quantity !== numberCellEmptyValue;
 }
 
-function byHavingStockColumn(
-  change: DatagridChange,
-  currentIndex: number,
-  removedIds: number[],
-) {
-  return (
-    getColumnStock(change.column) &&
-    isCurrentRow(change.row, currentIndex, removedIds)
-  );
+function byHavingStockColumn(change: DatagridChange, currentIndex: number) {
+  return getColumnStock(change.column) && isCurrentRow(change.row, currentIndex);
 }

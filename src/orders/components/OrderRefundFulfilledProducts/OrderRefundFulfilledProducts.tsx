@@ -1,25 +1,15 @@
 // @ts-strict-ignore
-import { Button } from "@dashboard/components/Button";
-import CardTitle from "@dashboard/components/CardTitle";
+import { DashboardCard } from "@dashboard/components/Card";
 import Money from "@dashboard/components/Money";
-import Skeleton from "@dashboard/components/Skeleton";
+import { QuantityInput } from "@dashboard/components/QuantityInput";
 import TableCellAvatar from "@dashboard/components/TableCellAvatar";
 import TableRowLink from "@dashboard/components/TableRowLink";
 import { OrderRefundDataQuery } from "@dashboard/graphql";
 import { FormsetChange } from "@dashboard/hooks/useFormset";
 import { renderCollection } from "@dashboard/misc";
-import {
-  Card,
-  CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TextField,
-  Typography,
-} from "@material-ui/core";
+import { Table, TableBody, TableCell, TableHead } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import { Button, Skeleton, Text } from "@saleor/macaw-ui-next";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import { OrderRefundFormData } from "../OrderRefundPage/form";
@@ -77,9 +67,7 @@ interface OrderRefundFulfilledProductsProps {
   onSetMaximalQuantities: () => void;
 }
 
-const OrderRefundFulfilledProducts: React.FC<
-  OrderRefundFulfilledProductsProps
-> = props => {
+const OrderRefundFulfilledProducts = (props: OrderRefundFulfilledProductsProps) => {
   const {
     fulfillment,
     data,
@@ -92,26 +80,26 @@ const OrderRefundFulfilledProducts: React.FC<
   const intl = useIntl();
 
   return (
-    <Card>
-      <CardTitle
-        title={
+    <DashboardCard>
+      <DashboardCard.Header>
+        <DashboardCard.Title>
           <>
             {getTitle(fulfillment.status, intl)}
             {fulfillment && (
-              <Typography className={classes.orderNumber} variant="body1">
+              <Text className={classes.orderNumber} fontSize={3}>
                 {`#${orderNumber}-${fulfillment?.fulfillmentOrder}`}
-              </Typography>
+              </Text>
             )}
           </>
-        }
-      />
-      <CardContent className={classes.cartContent}>
+        </DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content className={classes.cartContent}>
         <Button
           className={classes.setMaximalQuantityButton}
           onClick={onSetMaximalQuantities}
-          data-test-id={
-            "set-maximal-quantity-fulfilled-button-" + fulfillment?.id
-          }
+          data-test-id={"set-maximal-quantity-fulfilled-button-" + fulfillment?.id}
+          variant="secondary"
+          size="small"
         >
           <FormattedMessage
             id="2W4EBM"
@@ -119,7 +107,7 @@ const OrderRefundFulfilledProducts: React.FC<
             description="button"
           />
         </Button>
-      </CardContent>
+      </DashboardCard.Content>
       <Table>
         <TableHead>
           <TableRowLink>
@@ -157,10 +145,9 @@ const OrderRefundFulfilledProducts: React.FC<
           {renderCollection(
             fulfillment?.lines,
             line => {
-              const selectedLineQuantity =
-                data.refundedFulfilledProductQuantities.find(
-                  refundedLine => refundedLine.id === line.id,
-                );
+              const selectedLineQuantity = data.refundedFulfilledProductQuantities.find(
+                refundedLine => refundedLine.id === line.id,
+              );
               const isError =
                 Number(selectedLineQuantity?.value) > line?.quantity ||
                 Number(selectedLineQuantity?.value) < 0;
@@ -168,11 +155,7 @@ const OrderRefundFulfilledProducts: React.FC<
               return (
                 <TableRowLink key={line?.id}>
                   <TableCellAvatar thumbnail={line?.orderLine?.thumbnail?.url}>
-                    {line?.orderLine?.productName ? (
-                      line?.orderLine?.productName
-                    ) : (
-                      <Skeleton />
-                    )}
+                    {line?.orderLine?.productName ? line?.orderLine?.productName : <Skeleton />}
                   </TableCellAvatar>
                   <TableCell>
                     {line?.orderLine?.unitPrice ? (
@@ -183,40 +166,18 @@ const OrderRefundFulfilledProducts: React.FC<
                   </TableCell>
                   <TableCell className={classes.colQuantity}>
                     {line?.quantity ? (
-                      <TextField
+                      <QuantityInput
                         disabled={disabled}
-                        type="number"
-                        inputProps={{
-                          className: classes.quantityInnerInput,
-                          "data-test-id": "quantityInput" + line?.id,
-                          max: (line?.quantity).toString(),
-                          min: 0,
-                          style: { textAlign: "right" },
-                        }}
-                        fullWidth
-                        value={selectedLineQuantity?.value}
+                        className={classes.quantityInnerInputNoRemaining}
+                        data-test-id={"quantityInput" + line?.id}
+                        value={Number(selectedLineQuantity?.value || 0)}
                         onChange={event =>
-                          onRefundedProductQuantityChange(
-                            line.id,
-                            event.target.value,
-                          )
+                          onRefundedProductQuantityChange(line.id, event.target.value)
                         }
-                        InputProps={{
-                          endAdornment: line?.quantity && (
-                            <div className={classes.remainingQuantity}>
-                              / {line?.quantity}
-                            </div>
-                          ),
-                        }}
+                        max={line?.quantity}
+                        min={0}
+                        textAlign="right"
                         error={isError}
-                        helperText={
-                          isError &&
-                          intl.formatMessage({
-                            id: "xoyCZ/",
-                            defaultMessage: "Improper value",
-                            description: "error message",
-                          })
-                        }
                       />
                     ) : (
                       <Skeleton />
@@ -240,18 +201,16 @@ const OrderRefundFulfilledProducts: React.FC<
             () => (
               <TableRowLink>
                 <TableCell colSpan={4}>
-                  <FormattedMessage
-                    id="Q1Uzbb"
-                    defaultMessage="No products found"
-                  />
+                  <FormattedMessage id="Q1Uzbb" defaultMessage="No products found" />
                 </TableCell>
               </TableRowLink>
             ),
           )}
         </TableBody>
       </Table>
-    </Card>
+    </DashboardCard>
   );
 };
+
 OrderRefundFulfilledProducts.displayName = "OrderRefundFulfilledProducts";
 export default OrderRefundFulfilledProducts;

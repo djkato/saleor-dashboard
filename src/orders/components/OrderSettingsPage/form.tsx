@@ -1,13 +1,7 @@
-import {
-  OrderSettingsFragment,
-  ShopOrderSettingsFragment,
-} from "@dashboard/graphql";
-import useForm, {
-  CommonUseFormResult,
-  SubmitPromise,
-} from "@dashboard/hooks/useForm";
+import { OrderSettingsFragment, ShopOrderSettingsFragment } from "@dashboard/graphql";
+import useForm, { CommonUseFormResult, SubmitPromise } from "@dashboard/hooks/useForm";
 import useHandleFormSubmit from "@dashboard/hooks/useHandleFormSubmit";
-import React from "react";
+import * as React from "react";
 
 export interface OrderSettingsFormData {
   automaticallyConfirmAllNewOrders: boolean;
@@ -16,9 +10,8 @@ export interface OrderSettingsFormData {
   automaticallyFulfillNonShippableGiftCard: boolean;
 }
 
-export type UseOrderSettingsFormResult =
-  CommonUseFormResult<OrderSettingsFormData>;
-export interface OrderSettingsFormProps {
+type UseOrderSettingsFormResult = CommonUseFormResult<OrderSettingsFormData>;
+interface OrderSettingsFormProps {
   children: (props: UseOrderSettingsFormResult) => React.ReactNode;
   orderSettings: OrderSettingsFragment;
   shop: ShopOrderSettingsFragment;
@@ -33,8 +26,7 @@ function getOrderSeettingsFormData(
   return {
     automaticallyFulfillNonShippableGiftCard:
       orderSettings?.automaticallyFulfillNonShippableGiftCard,
-    automaticallyConfirmAllNewOrders:
-      orderSettings?.automaticallyConfirmAllNewOrders,
+    automaticallyConfirmAllNewOrders: orderSettings?.automaticallyConfirmAllNewOrders,
     fulfillmentAutoApprove: shop?.fulfillmentAutoApprove,
     fulfillmentAllowUnpaid: shop?.fulfillmentAllowUnpaid,
   };
@@ -53,13 +45,12 @@ function useOrderSettingsForm(
       confirmLeave: true,
     },
   );
-
   const handleFormSubmit = useHandleFormSubmit({
     formId,
     onSubmit,
   });
-
   const submit = () => handleFormSubmit(data);
+
   setIsSubmitDisabled(disabled);
 
   return {
@@ -70,13 +61,13 @@ function useOrderSettingsForm(
   };
 }
 
-const OrderSettingsForm: React.FC<OrderSettingsFormProps> = ({
+const OrderSettingsForm = ({
   children,
   orderSettings,
   shop,
   onSubmit,
   disabled,
-}) => {
+}: OrderSettingsFormProps) => {
   const props = useOrderSettingsForm(orderSettings, shop, onSubmit, disabled);
 
   return <form onSubmit={props.submit}>{children(props)}</form>;

@@ -11,6 +11,10 @@ export const messages = defineMessages({
     defaultMessage: "SKU (Stock Keeping Unit)",
     description: "input label",
   },
+  stock: {
+    id: "vuKrlW",
+    defaultMessage: "Stock",
+  },
   variantInPreorder: {
     id: "eAFU/E",
     defaultMessage: "Variant currently in preorder",
@@ -23,8 +27,7 @@ export const messages = defineMessages({
   },
   trackInventoryDescription: {
     id: "Wyl25+",
-    defaultMessage:
-      "Active inventory tracking will automatically calculate changes of stock",
+    defaultMessage: "Active inventory tracking will automatically calculate changes of stock",
     description: "product inventory, checkbox description",
   },
   quantity: {
@@ -49,15 +52,15 @@ export const messages = defineMessages({
     description: "variant stocks section subtitle",
   },
   configureWarehouseForVariant: {
-    id: "D8nsBc",
+    id: "NCp87D",
     defaultMessage:
-      "There are no warehouses set up for your store. To add stock quantity to the variant please <a>configure a warehouse</a>",
+      "There are no warehouses set up for this variant. To add stock quantity to the variant <a>configure a warehouse</a> or use existing one by clicking button below.",
     description: "no warehouses info",
   },
   configureWarehouseForProduct: {
-    id: "RLBLPQ",
+    id: "BHr3fj",
     defaultMessage:
-      "There are no warehouses set up for your store. To add stock quantity to the product please <a>configure a warehouse</a>",
+      "There are no warehouses set up for this product. To add stock quantity to the product <a>configure a warehouse</a> or use existing one by clicking button below.",
     description: "no warehouses info",
   },
   assignWarehouse: {
@@ -72,13 +75,13 @@ export const messages = defineMessages({
     description: "info text",
   },
   endDateCancel: {
-    id: "v9ILn/",
-    defaultMessage: "CANCEL END DATE",
+    id: "bk2M4q",
+    defaultMessage: "Cancel end date",
     description: "button",
   },
   endDateSetup: {
-    id: "9IWg/f",
-    defaultMessage: "SETUP END DATE",
+    id: "tqJwfo",
+    defaultMessage: "Set end date",
     description: "button",
   },
   preorderProductsAvailability: {
@@ -117,5 +120,15 @@ export const messages = defineMessages({
     id: "MNZY28",
     defaultMessage: "Channel threshold",
     description: "table column header",
+  },
+  warehouseMessageVariantOnCreate: {
+    id: "BaxGjT",
+    defaultMessage: "Assigning the stocks will be possible after the variant is saved.",
+    description: "variant stocks section subtitle",
+  },
+  warehouseMessageProductOnCreate: {
+    id: "lhfPkc",
+    defaultMessage: "Assigning the stocks will be possible after the product is saved.",
+    description: "variant stocks section subtitle",
   },
 });

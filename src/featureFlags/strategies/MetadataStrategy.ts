@@ -12,14 +12,13 @@ export const flagListToMetadata = (
   return [{ key: METADATA_KEY, value: JSON.stringify(list) }];
 };
 
-export const flagListFromMetadata = (
+// TODO: Typescript will fail if there are *no* flags on the array. We need to fix that
+const flagListFromMetadata = (
   metadata: Array<Omit<MetadataItemFragment, "__typename">>,
 ): FlagList => {
   const defaultsList = asFlagValue();
   const rawFlags = metadata.find(x => x.key === METADATA_KEY);
-  const flagList = rawFlags
-    ? JSON.parse(rawFlags.value)
-    : (defaultsList as FlagList);
+  const flagList = rawFlags ? JSON.parse(rawFlags.value) : (defaultsList as FlagList);
 
   return Object.keys(defaultsList).reduce((list: FlagList, key: string) => {
     list[key as AvailableFlags.Name] = defaultsList[key as AvailableFlags.Name];

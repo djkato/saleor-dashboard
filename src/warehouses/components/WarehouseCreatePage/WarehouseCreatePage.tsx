@@ -6,12 +6,9 @@ import CompanyAddressInput from "@dashboard/components/CompanyAddressInput";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import Form from "@dashboard/components/Form";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
-import Savebar from "@dashboard/components/Savebar";
+import { Savebar } from "@dashboard/components/Savebar";
 import { AddressTypeInput } from "@dashboard/customers/types";
-import {
-  CountryWithCodeFragment,
-  WarehouseErrorFragment,
-} from "@dashboard/graphql";
+import { CountryWithCodeFragment, WarehouseErrorFragment } from "@dashboard/graphql";
 import useAddressValidation from "@dashboard/hooks/useAddressValidation";
 import { SubmitPromise } from "@dashboard/hooks/useForm";
 import useNavigator from "@dashboard/hooks/useNavigator";
@@ -19,15 +16,15 @@ import useStateFromProps from "@dashboard/hooks/useStateFromProps";
 import createSingleAutocompleteSelectHandler from "@dashboard/utils/handlers/singleAutocompleteSelectChangeHandler";
 import { mapCountriesToChoices } from "@dashboard/utils/maps";
 import { warehouseListUrl } from "@dashboard/warehouses/urls";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import WarehouseInfo from "../WarehouseInfo";
 
 export interface WarehouseCreatePageFormData extends AddressTypeInput {
   name: string;
+  email: string;
 }
-export interface WarehouseCreatePageProps {
+interface WarehouseCreatePageProps {
   countries: CountryWithCodeFragment[];
   disabled: boolean;
   errors: WarehouseErrorFragment[];
@@ -41,26 +38,23 @@ const initialForm: WarehouseCreatePageFormData = {
   country: "",
   countryArea: "",
   name: "",
+  email: "",
   phone: "",
   postalCode: "",
   streetAddress1: "",
   streetAddress2: "",
 };
-
-const WarehouseCreatePage: React.FC<WarehouseCreatePageProps> = ({
+const WarehouseCreatePage = ({
   countries,
   disabled,
   errors,
   saveButtonBarState,
   onSubmit,
-}) => {
+}: WarehouseCreatePageProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
-
   const [displayCountry, setDisplayCountry] = useStateFromProps("");
-
-  const { errors: validationErrors, submit: handleSubmit } =
-    useAddressValidation(onSubmit);
+  const { errors: validationErrors, submit: handleSubmit } = useAddressValidation(onSubmit);
 
   return (
     <Form confirmLeave initial={initialForm} onSubmit={handleSubmit}>
@@ -71,7 +65,6 @@ const WarehouseCreatePage: React.FC<WarehouseCreatePageProps> = ({
           setDisplayCountry,
           countryChoices,
         );
-
         const handleCountrySelect = createCountryHandler(countrySelect, set);
 
         return (
@@ -86,12 +79,7 @@ const WarehouseCreatePage: React.FC<WarehouseCreatePageProps> = ({
             />
             <DetailPageLayout.Content>
               <div>
-                <WarehouseInfo
-                  data={data}
-                  disabled={disabled}
-                  errors={errors}
-                  onChange={change}
-                />
+                <WarehouseInfo data={data} disabled={disabled} errors={errors} onChange={change} />
                 <CardSpacer />
                 <CompanyAddressInput
                   countries={countryChoices}
@@ -108,12 +96,15 @@ const WarehouseCreatePage: React.FC<WarehouseCreatePageProps> = ({
                   onCountryChange={handleCountrySelect}
                 />
               </div>
-              <Savebar
-                disabled={disabled}
-                onCancel={() => navigate(warehouseListUrl())}
-                onSubmit={submit}
-                state={saveButtonBarState}
-              />
+              <Savebar>
+                <Savebar.Spacer />
+                <Savebar.CancelButton onClick={() => navigate(warehouseListUrl())} />
+                <Savebar.ConfirmButton
+                  transitionState={saveButtonBarState}
+                  onClick={submit}
+                  disabled={disabled}
+                />
+              </Savebar>
             </DetailPageLayout.Content>
           </DetailPageLayout>
         );

@@ -5,6 +5,7 @@ export const fragmentOrderEvent = gql`
     id
     amount
     shippingCostsIncluded
+
     date
     email
     emailType
@@ -28,6 +29,9 @@ export const fragmentOrderEvent = gql`
       id
       number
     }
+    related {
+      id
+    }
     message
     quantity
     transactionReference
@@ -37,11 +41,19 @@ export const fragmentOrderEvent = gql`
       email
       firstName
       lastName
+      avatar(size: 128) {
+        url
+      }
     }
     app {
       id
       name
       appUrl
+      brand {
+        logo {
+          default(size: 128)
+        }
+      }
     }
     lines {
       quantity
@@ -99,6 +111,7 @@ export const fragmentOrderLine = gql`
     }
     productName
     productSku
+    isGift
     quantity
     quantityFulfilled
     quantityToFulfill
@@ -139,6 +152,115 @@ export const fragmentOrderLine = gql`
   }
 `;
 
+// Slim fragment for order line mutations - includes only data that changes
+// when lines are added/updated/deleted (lines + pricing + shipping if no longer required)
+export const fragmentOrderLinesUpdate = gql`
+  fragment OrderLinesUpdate on Order {
+    id
+    lines {
+      ...OrderLine
+    }
+    subtotal {
+      gross {
+        ...Money
+      }
+      net {
+        ...Money
+      }
+    }
+    total {
+      gross {
+        ...Money
+      }
+      net {
+        ...Money
+      }
+      tax {
+        ...Money
+      }
+    }
+    undiscountedTotal {
+      gross {
+        ...Money
+      }
+      net {
+        ...Money
+      }
+    }
+    # Shipping can change when lines are deleted/added
+    # (shippingMethod, shippingPrice, shippingMethodName are reset when isShippingRequired becomes false)
+    isShippingRequired
+    shippingMethod {
+      id
+    }
+    shippingPrice {
+      gross {
+        amount
+        currency
+      }
+    }
+    shippingMethodName
+    collectionPointName
+    # Available shipping methods can change based on order contents (weight, items)
+    shippingMethods {
+      id
+      name
+      price {
+        ...Money
+      }
+      active
+      message
+    }
+    # Discounts shown in order summary
+    discounts {
+      ...OrderDiscount
+    }
+  }
+`;
+
+export const fragmentOrderLineMetadata = gql`
+  fragment OrderLineMetadata on OrderLine {
+    metadata {
+      ...MetadataItem
+    }
+    privateMetadata {
+      ...MetadataItem
+    }
+    variant {
+      metadata {
+        ...MetadataItem
+      }
+      privateMetadata @include(if: $hasManageProducts) {
+        ...MetadataItem
+      }
+    }
+  }
+`;
+
+export const fragmentOrderLineMetadataDetails = gql`
+  fragment OrderLineMetadataDetails on OrderLine {
+    id
+    productName
+    productSku
+    quantity
+    thumbnail {
+      url
+    }
+    variant {
+      id
+      name
+    }
+    ...OrderLineMetadata
+  }
+`;
+
+export const fragmentOrderLineWithMetadata = gql`
+  fragment OrderLineWithMetadata on OrderLine {
+    ...OrderLine
+    ...OrderLineMetadata
+  }
+`;
+
 export const fragmentRefundOrderLine = gql`
   fragment RefundOrderLine on OrderLine {
     id
@@ -159,6 +281,7 @@ export const fulfillmentFragment = gql`
   fragment Fulfillment on Fulfillment {
     ...Metadata
     id
+    created
     lines {
       id
       quantity
@@ -176,6 +299,17 @@ export const fulfillmentFragment = gql`
   }
 `;
 
+export const fulfillmentFragmentWithMetadata = gql`
+  fragment FulfillmentWithMetadata on Fulfillment {
+    ...Fulfillment
+    lines {
+      orderLine {
+        ...OrderLineWithMetadata
+      }
+    }
+  }
+`;
+
 export const invoiceFragment = gql`
   fragment Invoice on Invoice {
     id
@@ -186,11 +320,24 @@ export const invoiceFragment = gql`
   }
 `;
 
+export const orderDiscount = gql`
+  fragment OrderDiscount on OrderDiscount {
+    id
+    type
+    name
+    calculationMode: valueType
+    value
+    reason
+    amount {
+      ...Money
+    }
+  }
+`;
+
 export const fragmentOrderDetails = gql`
   fragment OrderDetails on Order {
     id
-    # TODO: remove me
-    token
+    displayGrossPrices
     ...Metadata
     billingAddress {
       ...Address
@@ -212,14 +359,7 @@ export const fragmentOrderDetails = gql`
     created
     customerNote
     discounts {
-      id
-      type
-      calculationMode: valueType
-      value
-      reason
-      amount {
-        ...Money
-      }
+      ...OrderDiscount
     }
     events {
       ...OrderEvent
@@ -354,7 +494,20 @@ export const fragmentOrderDetails = gql`
         markAsPaidStrategy
       }
     }
-    isPaid
+    chargeStatus
+    authorizeStatus
+  }
+`;
+
+export const fragmentOrderDetailsWithMetadata = gql`
+  fragment OrderDetailsWithMetadata on Order {
+    ...OrderDetails
+    fulfillments {
+      ...FulfillmentWithMetadata
+    }
+    lines {
+      ...OrderLine
+    }
   }
 `;
 
@@ -431,16 +584,27 @@ export const fragmentOrderLineStockData = gql`
   }
 `;
 
-export const transactionEvent = gql`
-  fragment TransactionEvent on TransactionEvent {
+export const transactionBaseEvent = gql`
+  fragment TransactionBaseEvent on TransactionEvent {
     id
     pspReference
     amount {
       ...Money
     }
+    externalUrl
     type
     message
     createdAt
+    reasonReference {
+      id
+      title
+    }
+  }
+`;
+
+export const transactionEvent = gql`
+  fragment TransactionEvent on TransactionEvent {
+    ...TransactionBaseEvent
     createdBy {
       ... on User {
         ...StaffMemberAvatar
@@ -453,13 +617,23 @@ export const transactionEvent = gql`
   }
 `;
 
+export const transactionBaseItemFragment = gql`
+  fragment TransactionBaseItem on TransactionItem {
+    id
+    name
+    actions
+    events {
+      ...TransactionBaseEvent
+    }
+  }
+`;
+
 export const transactionItemFragment = gql`
   fragment TransactionItem on TransactionItem {
-    id
+    ...TransactionBaseItem
     pspReference
-    actions
-    name
     externalUrl
+    createdAt
     events {
       ...TransactionEvent
     }
@@ -530,19 +704,25 @@ export const fragmentOrderGiftcard = gql`
       orderId
       date
       balance {
-        initialBalance {
-          ...Money
-        }
-        currentBalance {
-          ...Money
-        }
-        oldInitialBalance {
-          ...Money
-        }
-        oldCurrentBalance {
-          ...Money
-        }
+        ...OrderGiftCardEventBalance
       }
+    }
+  }
+`;
+
+export const fragmentOrderGiftCardEventBalance = gql`
+  fragment OrderGiftCardEventBalance on GiftCardEventBalance {
+    initialBalance {
+      ...Money
+    }
+    currentBalance {
+      ...Money
+    }
+    oldInitialBalance {
+      ...Money
+    }
+    oldCurrentBalance {
+      ...Money
     }
   }
 `;
@@ -551,17 +731,38 @@ export const fragmentOrderGrantedRefunds = gql`
   fragment OrderGrantedRefund on OrderGrantedRefund {
     id
     createdAt
+    shippingCostsIncluded
+    status
     amount {
       currency
       amount
     }
+    transactionEvents {
+      id
+    }
     reason
+    reasonReference {
+      id
+      title
+    }
     user {
       ...UserBaseAvatar
     }
     app {
       id
       name
+      brand {
+        logo {
+          default(format: WEBP, size: 64)
+        }
+      }
+    }
+    lines {
+      id
+      quantity
+      orderLine {
+        id
+      }
     }
   }
 `;
@@ -576,10 +777,36 @@ export const orderLineGrantRefund = gql`
     quantity
     quantityToFulfill
     variantName
-    productName
     unitPrice {
       gross {
         ...Money
+      }
+    }
+  }
+`;
+
+export const orderDetailsGrantedRefund = gql`
+  fragment OrderDetailsGrantedRefund on OrderGrantedRefund {
+    id
+    reason
+    reasonReference {
+      id
+      title
+    }
+    amount {
+      ...Money
+    }
+    shippingCostsIncluded
+    transaction {
+      id
+    }
+    status
+    lines {
+      id
+      quantity
+      reason
+      orderLine {
+        ...OrderLine
       }
     }
   }
@@ -619,6 +846,25 @@ export const fragmentOrderDetailsGrantRefund = gql`
       gross {
         ...Money
       }
+    }
+    grantedRefunds {
+      ...OrderDetailsGrantedRefund
+    }
+    transactions {
+      ...TransactionItem
+    }
+  }
+`;
+
+export const fragmentActivities = gql`
+  fragment Activities on OrderEvent {
+    date
+    email
+    message
+    orderNumber
+    type
+    user {
+      email
     }
   }
 `;

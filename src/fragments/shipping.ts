@@ -5,11 +5,18 @@ export const shippingZoneFragment = gql`
     ...Metadata
     id
     countries {
-      code
-      country
+      ...Country
     }
     name
     description
+    priceRange {
+      start {
+        ...Money
+      }
+      stop {
+        ...Money
+      }
+    }
   }
 `;
 
@@ -67,12 +74,7 @@ export const shippingMethodTypeFragment = gql`
 export const shippingMethodWithExcludedProductsFragment = gql`
   fragment ShippingMethodWithExcludedProducts on ShippingMethodType {
     ...ShippingMethodType
-    excludedProducts(
-      before: $before
-      after: $after
-      first: $first
-      last: $last
-    ) {
+    excludedProducts(before: $before, after: $after, first: $first, last: $last) {
       pageInfo {
         hasNextPage
         hasPreviousPage

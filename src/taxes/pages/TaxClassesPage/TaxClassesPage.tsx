@@ -1,13 +1,15 @@
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
-import CardTitle from "@dashboard/components/CardTitle";
+import { CardTitle } from "@dashboard/components/CardTitle/CardTitle";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import Grid from "@dashboard/components/Grid";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
 import { Metadata } from "@dashboard/components/Metadata";
-import Savebar from "@dashboard/components/Savebar";
-import Skeleton from "@dashboard/components/Skeleton";
+import { ResponsiveTable } from "@dashboard/components/ResponsiveTable";
+import { Savebar } from "@dashboard/components/Savebar";
+import { TablePagination } from "@dashboard/components/TablePagination";
+import TableRowLink from "@dashboard/components/TableRowLink";
 import VerticalSpacer from "@dashboard/components/VerticalSpacer";
-import { configurationMenuUrl } from "@dashboard/configuration";
+import { configurationMenuUrl } from "@dashboard/configuration/urls";
 import { TaxClassFragment } from "@dashboard/graphql";
 import { useClientPagination } from "@dashboard/hooks/useClientPagination/useClientPagination";
 import { SubmitPromise } from "@dashboard/hooks/useForm";
@@ -18,34 +20,18 @@ import TaxPageTitle from "@dashboard/taxes/components/TaxPageTitle";
 import { taxesMessages } from "@dashboard/taxes/messages";
 import { TaxClassesPageFormData } from "@dashboard/taxes/types";
 import { useAutofocus } from "@dashboard/taxes/utils/useAutofocus";
-import { isLastElement } from "@dashboard/taxes/utils/utils";
 import { getFormErrors } from "@dashboard/utils/errors";
 import getTaxesErrorMessage from "@dashboard/utils/errors/taxes";
-import {
-  Card,
-  CardContent,
-  Divider,
-  InputAdornment,
-  TextField,
-} from "@material-ui/core";
-import {
-  List,
-  ListHeader,
-  ListItem,
-  ListItemCell,
-  PageTab,
-  PageTabs,
-  SearchIcon,
-} from "@saleor/macaw-ui";
-import { Box } from "@saleor/macaw-ui/next";
-import React, { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, TableBody, TableCell, TableHead, TextField } from "@material-ui/core";
+import { PageTab, PageTabs } from "@saleor/macaw-ui";
+import { Box } from "@saleor/macaw-ui-next";
+import { useEffect, useMemo, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import TaxInput from "../../components/TaxInput";
-import { TaxPagination } from "../../components/TaxPagination";
 import TaxClassesForm from "./form";
 import { useStyles } from "./styles";
-import TaxClassesMenu from "./TaxClassesMenu";
+import { TaxClassesMenu } from "./TaxClassesMenu";
 
 interface TaxClassesPageProps {
   taxClasses: TaxClassFragment[] | undefined;
@@ -59,7 +45,7 @@ interface TaxClassesPageProps {
   onTaxClassUpdate: (data: TaxClassesPageFormData) => SubmitPromise;
 }
 
-export const TaxClassesPage: React.FC<TaxClassesPageProps> = props => {
+const TaxClassesPage = (props: TaxClassesPageProps) => {
   const {
     taxClasses,
     selectedTaxClassId,
@@ -74,7 +60,6 @@ export const TaxClassesPage: React.FC<TaxClassesPageProps> = props => {
   const intl = useIntl();
   const navigate = useNavigator();
   const classes = useStyles();
-
   const [query, setQuery] = useState("");
   const {
     rowNumber,
@@ -84,15 +69,11 @@ export const TaxClassesPage: React.FC<TaxClassesPageProps> = props => {
     changeCurrentPage,
     changeRowNumber,
   } = useClientPagination();
-
   const currentTaxClass = useMemo(
     () => taxClasses?.find(getById(selectedTaxClassId)),
     [selectedTaxClassId, taxClasses],
   );
-
-  const nameInputRef = useAutofocus(currentTaxClass?.id === "new", [
-    currentTaxClass?.id,
-  ]);
+  const nameInputRef = useAutofocus(currentTaxClass?.id === "new", [currentTaxClass?.id]);
 
   useEffect(() => {
     restartPagination();
@@ -109,32 +90,29 @@ export const TaxClassesPage: React.FC<TaxClassesPageProps> = props => {
         const filteredRates = data.updateTaxClassRates.filter(
           rate => rate.label.search(new RegExp(parseQuery(query), "i")) >= 0,
         );
-
-        const {
-          data: paginatedRates,
-          hasNextPage,
-          hasPreviousPage,
-        } = paginate(filteredRates);
-
+        const { data: paginatedRates, hasNextPage, hasPreviousPage } = paginate(filteredRates);
         const formErrors = getFormErrors(["name"], validationErrors);
 
         return (
           <DetailPageLayout gridTemplateColumns={1}>
-            <TopNav title={<TaxPageTitle />} />
+            <TopNav title={<TaxPageTitle />} href={configurationMenuUrl} />
             <DetailPageLayout.Content>
               <Box padding={6}>
                 <PageTabs value="tax-classes" onChange={handleTabChange}>
                   <PageTab
                     label={intl.formatMessage(taxesMessages.channelsSection)}
                     value="channels"
+                    data-test-id="channels-tab"
                   />
                   <PageTab
                     label={intl.formatMessage(taxesMessages.countriesSection)}
                     value="countries"
+                    data-test-id="countries-tab"
                   />
                   <PageTab
                     label={intl.formatMessage(taxesMessages.taxClassesSection)}
                     value="tax-classes"
+                    data-test-id="tax-classes-tab"
                   />
                 </PageTabs>
                 <VerticalSpacer spacing={2} />
@@ -145,157 +123,102 @@ export const TaxClassesPage: React.FC<TaxClassesPageProps> = props => {
                     onTaxClassDelete={onTaxClassDelete}
                     onCreateNew={onCreateNewButtonClick}
                   />
-                  {taxClasses?.length !== 0 && (
+                  {currentTaxClass && (
                     <div>
                       <Card>
-                        <CardTitle
-                          title={intl.formatMessage(
-                            taxesMessages.generalInformation,
-                          )}
-                        />
+                        <CardTitle title={intl.formatMessage(taxesMessages.generalInformation)} />
                         <CardContent>
                           <TextField
                             value={data?.name}
                             onChange={change}
                             name="name"
+                            data-test-id="class-name-input"
                             variant="outlined"
-                            placeholder={intl.formatMessage(
-                              taxesMessages.taxRateName,
-                            )}
+                            placeholder={intl.formatMessage(taxesMessages.taxRateName)}
                             fullWidth
                             inputProps={{ className: classes.namePadding }}
                             inputRef={nameInputRef}
                             error={!!formErrors.name}
-                            helperText={getTaxesErrorMessage(
-                              formErrors.name,
-                              intl,
-                            )}
+                            helperText={getTaxesErrorMessage(formErrors.name, intl)}
                           />
                         </CardContent>
                       </Card>
                       <VerticalSpacer spacing={3} />
                       <Card>
-                        <CardTitle
-                          title={intl.formatMessage(
-                            taxesMessages.taxClassRates,
-                          )}
-                        />
+                        <CardTitle title={intl.formatMessage(taxesMessages.taxClassRates)} />
                         {currentTaxClass?.countries.length === 0 ? (
                           <CardContent className={classes.supportText}>
                             <FormattedMessage
                               {...taxesMessages.noRatesInTaxClass}
                               values={{
-                                tab: (
-                                  <b>
-                                    {intl.formatMessage(
-                                      taxesMessages.countriesSection,
-                                    )}
-                                  </b>
-                                ),
+                                tab: <b>{intl.formatMessage(taxesMessages.countriesSection)}</b>,
                               }}
                             />
                           </CardContent>
                         ) : (
-                          <>
-                            <CardContent>
-                              <TextField
-                                value={query}
-                                variant="outlined"
-                                onChange={e => setQuery(e.target.value)}
-                                placeholder={intl.formatMessage(
-                                  taxesMessages.searchTaxClasses,
-                                )}
-                                fullWidth
-                                InputProps={{
-                                  startAdornment: (
-                                    <InputAdornment position="start">
-                                      <SearchIcon />
-                                    </InputAdornment>
-                                  ),
-                                }}
-                                inputProps={{
-                                  className: classes.searchPadding,
-                                }}
-                              />
-                            </CardContent>
-                            <List gridTemplate={["5fr 2fr"]}>
-                              <ListHeader>
-                                <ListItem>
-                                  <ListItemCell>
-                                    <FormattedMessage
-                                      {...taxesMessages.countryNameHeader}
-                                    />
-                                  </ListItemCell>
-                                  <ListItemCell className={classes.right}>
-                                    <FormattedMessage
-                                      {...taxesMessages.taxRateHeader}
-                                    />
-                                  </ListItemCell>
-                                </ListItem>
-                              </ListHeader>
-                              <Divider />
-                              {paginatedRates?.map(
-                                (countryRate, countryRateIndex) => (
-                                  <React.Fragment key={countryRate.id}>
-                                    <ListItem
-                                      hover={false}
-                                      className={classes.noDivider}
-                                    >
-                                      <ListItemCell>
-                                        {countryRate.label}
-                                      </ListItemCell>
-                                      <ListItemCell>
-                                        <TaxInput
-                                          value={countryRate.value}
-                                          change={e =>
-                                            handlers.handleRateChange(
-                                              countryRate.id,
-                                              e.target.value,
-                                            )
-                                          }
-                                        />
-                                      </ListItemCell>
-                                    </ListItem>
-                                    {!isLastElement(
-                                      filteredRates,
-                                      countryRateIndex,
-                                    ) && <Divider />}
-                                  </React.Fragment>
-                                ),
-                              ) ?? (
-                                <>
-                                  <Skeleton />
-                                  <VerticalSpacer />
-                                </>
-                              )}
-
-                              <TaxPagination
-                                rowNumber={rowNumber}
-                                setRowNumber={changeRowNumber}
-                                hasNextPage={hasNextPage}
-                                hasPrevPage={hasPreviousPage}
-                                currentPage={currentPage}
-                                setCurrentPage={changeCurrentPage}
-                              />
-                            </List>
-                          </>
+                          <CardContent>
+                            <ResponsiveTable
+                              search={{
+                                placeholder: intl.formatMessage(taxesMessages.searchTaxCountries),
+                                initialValue: query,
+                                onSearchChange: setQuery,
+                              }}
+                              filteredItemsCount={filteredRates.length}
+                              footer={
+                                <TablePagination
+                                  rowNumber={rowNumber}
+                                  onRowNumberChange={changeRowNumber}
+                                  hasNextPage={hasNextPage}
+                                  hasPreviousPage={hasPreviousPage}
+                                  onNextPage={() => changeCurrentPage(currentPage + 1)}
+                                  onPreviousPage={() => changeCurrentPage(currentPage - 1)}
+                                />
+                              }
+                            >
+                              <TableHead>
+                                <TableRowLink>
+                                  <TableCell>
+                                    <FormattedMessage {...taxesMessages.countryNameHeader} />
+                                  </TableCell>
+                                  <TableCell>
+                                    <FormattedMessage {...taxesMessages.taxRateHeader} />
+                                  </TableCell>
+                                </TableRowLink>
+                              </TableHead>
+                              <TableBody>
+                                {paginatedRates?.map(countryRate => (
+                                  <TableRowLink key={countryRate.id} data-test-id="country-rows">
+                                    <TableCell>{countryRate.label}</TableCell>
+                                    <TableCell>
+                                      <TaxInput
+                                        value={countryRate.value}
+                                        change={e =>
+                                          handlers.handleRateChange(countryRate.id, e.target.value)
+                                        }
+                                      />
+                                    </TableCell>
+                                  </TableRowLink>
+                                ))}
+                              </TableBody>
+                            </ResponsiveTable>
+                          </CardContent>
                         )}
                       </Card>
                       <VerticalSpacer spacing={3} />
-                      <Metadata
-                        data={data}
-                        onChange={handlers.changeMetadata}
-                      />
+                      <Metadata data={data} onChange={handlers.changeMetadata} />
                     </div>
                   )}
                 </Grid>
               </Box>
-              <Savebar
-                state={savebarState}
-                disabled={disabled}
-                onSubmit={submit}
-                onCancel={() => navigate(configurationMenuUrl)}
-              />
+              <Savebar>
+                <Savebar.Spacer />
+                <Savebar.CancelButton onClick={() => navigate(configurationMenuUrl)} />
+                <Savebar.ConfirmButton
+                  transitionState={savebarState}
+                  onClick={submit}
+                  disabled={disabled}
+                />
+              </Savebar>
             </DetailPageLayout.Content>
           </DetailPageLayout>
         );

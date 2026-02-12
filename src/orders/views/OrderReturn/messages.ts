@@ -13,8 +13,18 @@ export const messages = defineMessages({
     description: "order return error title when cannot refund",
   },
   successAlert: {
-    id: "/z9uo1",
-    defaultMessage: "Successfully returned products!",
+    id: "j+pYrh",
+    defaultMessage: "Products returned",
+    description: "order returned success message",
+  },
+  successAlertWithGrant: {
+    id: "NPT+At",
+    defaultMessage: "Products returned, refund granted",
+    description: "order returned success message",
+  },
+  successAlertWithSend: {
+    id: "G+UQmN",
+    defaultMessage: "Products returned, refund sent",
     description: "order returned success message",
   },
 });

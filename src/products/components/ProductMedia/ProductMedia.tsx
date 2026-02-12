@@ -2,19 +2,11 @@
 import { DashboardCard } from "@dashboard/components/Card";
 import ImageUpload from "@dashboard/components/ImageUpload";
 import MediaTile from "@dashboard/components/MediaTile";
-import Skeleton from "@dashboard/components/Skeleton";
 import { ProductMediaFragment, ProductMediaType } from "@dashboard/graphql";
 import { ReorderAction } from "@dashboard/types";
 import createMultiFileUploadHandler from "@dashboard/utils/handlers/multiFileUploadHandler";
-import {
-  Box,
-  Button,
-  Dropdown,
-  List,
-  sprinkles,
-  Text,
-} from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Button, Dropdown, List, Skeleton, sprinkles, Text } from "@saleor/macaw-ui-next";
+import * as React from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
@@ -30,11 +22,9 @@ interface SortableMediaProps {
   onDelete: () => void;
 }
 
-const SortableMedia = SortableElement<SortableMediaProps>(
-  ({ media, editHref, onDelete }) => (
-    <MediaTile media={media} editHref={editHref} onDelete={onDelete} />
-  ),
-);
+const SortableMedia = SortableElement<SortableMediaProps>(({ media, editHref, onDelete }) => (
+  <MediaTile media={media} editHref={editHref} onDelete={onDelete} />
+));
 
 interface MediaListContainerProps {
   className: string;
@@ -75,7 +65,8 @@ interface ProductMediaProps {
   openMediaUrlModal: () => any;
 }
 
-const ProductMedia: React.FC<ProductMediaProps> = props => {
+/** @deprecated This component should use @dnd-kit instead of react-sortable-hoc */
+const ProductMedia = (props: ProductMediaProps) => {
   const {
     media,
     getImageEditUrl,
@@ -84,20 +75,16 @@ const ProductMedia: React.FC<ProductMediaProps> = props => {
     onImageUpload,
     openMediaUrlModal,
   } = props;
-
   const intl = useIntl();
   const imagesUpload = React.useRef<HTMLInputElement>(null);
   const anchor = React.useRef<HTMLButtonElement>();
-  const [imagesToUpload, setImagesToUpload] = React.useState<
-    ProductMediaFragment[]
-  >([]);
-
+  const [imagesToUpload, setImagesToUpload] = React.useState<ProductMediaFragment[]>([]);
   const handleImageUpload = createMultiFileUploadHandler(onImageUpload, {
-    onAfterUpload: () =>
-      setImagesToUpload(prevImagesToUpload => prevImagesToUpload.slice(1)),
+    onAfterUpload: () => setImagesToUpload(prevImagesToUpload => prevImagesToUpload.slice(1)),
     onStart: files => {
       Array.from(files).forEach((file, fileIndex) => {
         const reader = new FileReader();
+
         reader.onload = event => {
           setImagesToUpload(prevImagesToUpload => [
             ...prevImagesToUpload,
@@ -119,9 +106,11 @@ const ProductMedia: React.FC<ProductMediaProps> = props => {
 
   return (
     <DashboardCard>
-      <DashboardCard.Title>
-        <Box display="flex" justifyContent="space-between" cursor="pointer">
+      <DashboardCard.Header>
+        <DashboardCard.Title>
           <FormattedMessage {...messages.media} />
+        </DashboardCard.Title>
+        <DashboardCard.Toolbar>
           <Dropdown>
             <Dropdown.Trigger>
               <Button
@@ -137,8 +126,8 @@ const ProductMedia: React.FC<ProductMediaProps> = props => {
               <List
                 padding={2}
                 borderRadius={4}
-                boxShadow="overlay"
-                backgroundColor="surfaceNeutralPlain"
+                boxShadow="defaultOverlay"
+                backgroundColor="default1"
               >
                 <Dropdown.Item>
                   <List.Item
@@ -165,8 +154,8 @@ const ProductMedia: React.FC<ProductMediaProps> = props => {
               </List>
             </Dropdown.Content>
           </Dropdown>
-        </Box>
-      </DashboardCard.Title>
+        </DashboardCard.Toolbar>
+      </DashboardCard.Header>
       <DashboardCard.Content>
         <Box>
           <Box
@@ -212,9 +201,9 @@ const ProductMedia: React.FC<ProductMediaProps> = props => {
                     preview={imagesToUpload}
                     onSortEnd={onImageReorder}
                     className={sprinkles({
-                      display: "grid",
+                      display: "flex",
                       gap: 5,
-                      gridTemplateColumns: { mobile: 2, tablet: 3, desktop: 4 },
+                      flexWrap: "wrap",
                       opacity: isDragActive ? "0.2" : "1",
                     })}
                     onDelete={onImageDelete}
@@ -231,5 +220,6 @@ const ProductMedia: React.FC<ProductMediaProps> = props => {
     </DashboardCard>
   );
 };
+
 ProductMedia.displayName = "ProductMedia";
 export default ProductMedia;

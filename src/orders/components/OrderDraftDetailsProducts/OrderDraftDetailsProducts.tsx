@@ -1,9 +1,9 @@
-import Skeleton from "@dashboard/components/Skeleton";
 import { OrderDetailsFragment, OrderErrorFragment } from "@dashboard/graphql";
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import { Skeleton } from "@saleor/macaw-ui-next";
 
 import { OrderDraftDetailsDatagrid } from "../OrderDraftDetailsDatagrid/OrderDraftDetailsDatagrid";
+
 export interface FormData {
   quantity: number;
 }
@@ -23,17 +23,18 @@ interface OrderDraftDetailsProductsProps {
   loading: boolean;
   onOrderLineChange: (id: string, data: FormData) => void;
   onOrderLineRemove: (id: string) => void;
+  onOrderLineShowMetadata: (id: string) => void;
 }
 
-const OrderDraftDetailsProducts: React.FC<OrderDraftDetailsProductsProps> = ({
+const OrderDraftDetailsProducts = ({
   order,
   errors,
   loading,
   onOrderLineChange,
   onOrderLineRemove,
-}) => {
+  onOrderLineShowMetadata,
+}: OrderDraftDetailsProductsProps) => {
   const classes = useStyles();
-
   const lines = order?.lines ?? [];
   const formErrors = errors.filter(error => error.field === "lines");
 
@@ -48,6 +49,7 @@ const OrderDraftDetailsProducts: React.FC<OrderDraftDetailsProductsProps> = ({
       onOrderLineRemove={onOrderLineRemove}
       onOrderLineChange={onOrderLineChange}
       errors={formErrors}
+      onOrderLineShowMetadata={onOrderLineShowMetadata}
     />
   );
 };

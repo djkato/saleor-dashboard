@@ -3,31 +3,16 @@ import { AddressTypeInput } from "@dashboard/customers/types";
 import { AccountErrorFragment, OrderErrorFragment } from "@dashboard/graphql";
 import { commonMessages } from "@dashboard/intl";
 import { getFormErrors } from "@dashboard/utils/errors";
-import { TextField } from "@material-ui/core";
-import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import { Box, Combobox, Input, Option } from "@saleor/macaw-ui-next";
+import * as React from "react";
+import { ChangeEvent } from "react";
 import { useIntl } from "react-intl";
 
-import FormSpacer from "../FormSpacer";
-import SingleAutocompleteSelectField, {
-  SingleAutocompleteChoiceType,
-} from "../SingleAutocompleteSelectField";
 import { getErrorMessage } from "./getErrorMessage";
 import { useAddressValidation } from "./useAddressValidation";
 
-const useStyles = makeStyles(
-  theme => ({
-    root: {
-      display: "grid",
-      gridColumnGap: theme.spacing(2),
-      gridTemplateColumns: "1fr 1fr",
-    },
-  }),
-  { name: "AddressEdit" },
-);
-
 interface AddressEditProps {
-  countries: SingleAutocompleteChoiceType[];
+  countries: Option[];
   countryDisplayValue: string;
   data: AddressTypeInput;
   disabled?: boolean;
@@ -49,26 +34,13 @@ const PossibleFormFields = {
   STREET_ADDRESS_1: "streetAddress1",
   STREET_ADDRESS_2: "streetAddress2",
 } as const;
+const formFields: Array<keyof AddressTypeInput> = Object.values(PossibleFormFields);
 
-const formFields: Array<keyof AddressTypeInput> =
-  Object.values(PossibleFormFields);
-
-const AddressEdit: React.FC<AddressEditProps> = props => {
-  const {
-    countries,
-    countryDisplayValue,
-    data,
-    disabled,
-    errors,
-    onChange,
-    onCountryChange,
-  } = props;
-  const classes = useStyles(props);
+export const AddressEdit = (props: AddressEditProps) => {
+  const { countries, countryDisplayValue, data, disabled, errors, onChange, onCountryChange } =
+    props;
   const intl = useIntl();
-  const { areas, isFieldAllowed, getDisplayValue } = useAddressValidation(
-    data.country,
-  );
-
+  const { areas, isFieldAllowed, getDisplayValue } = useAddressValidation(data.country);
   const formErrors = getFormErrors<
     keyof AddressTypeInput,
     AccountErrorFragment | OrderErrorFragment
@@ -76,46 +48,42 @@ const AddressEdit: React.FC<AddressEditProps> = props => {
 
   return (
     <>
-      <div className={classes.root}>
+      <Box display="grid" gap={2} __gridTemplateColumns="1fr 1fr">
         <div>
-          <TextField
+          <Input
             disabled={disabled}
+            data-test-id="first-name-input"
             error={!!formErrors.firstName}
             helperText={getErrorMessage(formErrors.firstName, intl)}
             label={intl.formatMessage(commonMessages.firstName)}
             name="firstName"
             onChange={onChange}
             value={data.firstName}
-            fullWidth
-            InputProps={{
-              // Setting 'autoComplete: "new-password"' is the only way to
-              // disable Chrome's autofill on forms as of early 2022
-              autoComplete: "new-password",
-              spellCheck: false,
-            }}
+            width="100%"
+            spellCheck={false}
+            autoComplete="new-password"
           />
         </div>
         <div>
-          <TextField
+          <Input
             disabled={disabled}
+            data-test-id="last-name-input"
             error={!!formErrors.lastName}
             helperText={getErrorMessage(formErrors.lastName, intl)}
             label={intl.formatMessage(commonMessages.lastName)}
             name="lastName"
             onChange={onChange}
             value={data.lastName}
-            fullWidth
-            InputProps={{
-              autoComplete: "new-password",
-              spellCheck: false,
-            }}
+            width="100%"
+            spellCheck={false}
+            autoComplete="new-password"
           />
         </div>
-      </div>
-      <FormSpacer />
-      <div className={classes.root}>
+      </Box>
+      <Box display="grid" gap={2} __gridTemplateColumns="1fr 1fr">
         <div>
-          <TextField
+          <Input
+            data-test-id="company-name-input"
             disabled={disabled}
             error={!!formErrors.companyName}
             helperText={getErrorMessage(formErrors.companyName, intl)}
@@ -126,18 +94,16 @@ const AddressEdit: React.FC<AddressEditProps> = props => {
             name="companyName"
             onChange={onChange}
             value={data.companyName}
-            fullWidth
-            InputProps={{
-              autoComplete: "new-password",
-              spellCheck: false,
-            }}
+            width="100%"
+            spellCheck={false}
+            autoComplete="new-password"
           />
         </div>
         <div>
-          <TextField
+          <Input
             disabled={disabled}
+            data-test-id="phone-input"
             error={!!formErrors.phone}
-            fullWidth
             helperText={getErrorMessage(formErrors.phone, intl)}
             label={intl.formatMessage({
               id: "O95R3Z",
@@ -146,16 +112,15 @@ const AddressEdit: React.FC<AddressEditProps> = props => {
             name="phone"
             value={data.phone}
             onChange={onChange}
-            InputProps={{
-              autoComplete: "new-password",
-              spellCheck: false,
-            }}
+            width="100%"
+            spellCheck={false}
+            autoComplete="new-password"
           />
         </div>
-      </div>
-      <FormSpacer />
-      <TextField
+      </Box>
+      <Input
         disabled={disabled}
+        data-test-id="address-line-1-input"
         error={!!formErrors.streetAddress1}
         helperText={getErrorMessage(formErrors.streetAddress1, intl)}
         label={intl.formatMessage({
@@ -165,15 +130,13 @@ const AddressEdit: React.FC<AddressEditProps> = props => {
         name="streetAddress1"
         onChange={onChange}
         value={data.streetAddress1}
-        fullWidth
-        InputProps={{
-          autoComplete: "new-password",
-          spellCheck: false,
-        }}
+        width="100%"
+        spellCheck={false}
+        autoComplete="new-password"
       />
-      <FormSpacer />
-      <TextField
+      <Input
         disabled={disabled}
+        data-test-id="address-line-2-input"
         error={!!formErrors.streetAddress2}
         helperText={getErrorMessage(formErrors.streetAddress2, intl)}
         label={intl.formatMessage({
@@ -183,17 +146,15 @@ const AddressEdit: React.FC<AddressEditProps> = props => {
         name="streetAddress2"
         onChange={onChange}
         value={data.streetAddress2}
-        fullWidth
-        InputProps={{
-          autoComplete: "new-password",
-          spellCheck: false,
-        }}
+        width="100%"
+        spellCheck={false}
+        autoComplete="new-password"
       />
-      <FormSpacer />
-      <div className={classes.root}>
+      <Box display="grid" gap={2} __gridTemplateColumns="1fr 1fr">
         <div>
-          <TextField
+          <Input
             disabled={disabled}
+            data-test-id="city-input"
             error={!!formErrors.city}
             helperText={getErrorMessage(formErrors.city, intl)}
             label={intl.formatMessage({
@@ -203,16 +164,15 @@ const AddressEdit: React.FC<AddressEditProps> = props => {
             name="city"
             onChange={onChange}
             value={data.city}
-            fullWidth
-            InputProps={{
-              autoComplete: "new-password",
-              spellCheck: false,
-            }}
+            width="100%"
+            spellCheck={false}
+            autoComplete="new-password"
           />
         </div>
         <div>
-          <TextField
+          <Input
             disabled={disabled}
+            data-test-id="zip-input"
             error={!!formErrors.postalCode}
             label={intl.formatMessage({
               id: "oYGfnY",
@@ -221,64 +181,75 @@ const AddressEdit: React.FC<AddressEditProps> = props => {
             name="postalCode"
             onChange={onChange}
             value={data.postalCode}
-            fullWidth
-            InputProps={{
-              autoComplete: "new-password",
-              spellCheck: false,
-            }}
+            width="100%"
+            spellCheck={false}
+            autoComplete="new-password"
           />
         </div>
-      </div>
+      </Box>
 
-      <FormSpacer />
-      <div className={classes.root}>
+      <Box display="grid" gap={2} __gridTemplateColumns="1fr 1fr">
         <div>
-          <SingleAutocompleteSelectField
-            disabled={disabled}
-            autocomplete="new-password"
+          <Combobox
             data-test-id="address-edit-country-select-field"
-            displayValue={countryDisplayValue}
+            autoComplete="off"
+            spellCheck={false}
+            disabled={disabled}
             error={!!formErrors.country}
             helperText={getErrorMessage(formErrors.country, intl)}
             label={intl.formatMessage({
               id: "vONi+O",
               defaultMessage: "Country",
             })}
+            options={countries}
             name="country"
-            onChange={onCountryChange}
-            value={data.country}
-            choices={countries}
-            InputProps={{
-              spellCheck: false,
+            value={{
+              label: countryDisplayValue,
+              value: data.country,
             }}
+            onChange={v =>
+              onCountryChange({
+                target: {
+                  name: "country",
+                  value: v?.value ?? "",
+                },
+                // must assert, we use fake event because Combobox doesn't expose inner event, and upper handlers require it
+              } as ChangeEvent<any>)
+            }
           />
         </div>
         <div>
           {isFieldAllowed(PossibleFormFields.COUNTRY_AREA) && (
-            <SingleAutocompleteSelectField
-              disabled={disabled}
-              autocomplete="new-password"
+            <Combobox
               data-test-id="address-edit-country-area-field"
-              displayValue={getDisplayValue(data.countryArea)}
+              autoComplete="off"
+              spellCheck={false}
+              disabled={disabled}
               error={!!formErrors.countryArea}
               helperText={getErrorMessage(formErrors.countryArea, intl)}
               label={intl.formatMessage({
                 id: "AuwpCm",
                 defaultMessage: "Country area",
               })}
+              options={areas}
               name="countryArea"
-              onChange={onChange}
-              value={data.countryArea}
-              choices={areas}
-              InputProps={{
-                spellCheck: false,
+              value={{
+                label: getDisplayValue(data.countryArea),
+                value: data.countryArea,
               }}
+              onChange={v =>
+                onChange({
+                  target: {
+                    name: "countryArea",
+                    value: v?.value ?? "",
+                  },
+                  // must cast, we use fake event because Combobox doesn't expose inner event, and upper handlers require it
+                } as ChangeEvent<any>)
+              }
             />
           )}
         </div>
-      </div>
+      </Box>
     </>
   );
 };
-AddressEdit.displayName = "AddressEdit";
-export default AddressEdit;

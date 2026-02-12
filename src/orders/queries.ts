@@ -6,7 +6,8 @@ export const orderListQuery = gql`
     $after: String
     $last: Int
     $before: String
-    $filter: OrderFilterInput
+    $where: OrderWhereInput
+    $search: String
     $sort: OrderSortingInput
   ) {
     orders(
@@ -14,7 +15,8 @@ export const orderListQuery = gql`
       after: $after
       first: $first
       last: $last
-      filter: $filter
+      where: $where
+      search: $search
       sortBy: $sort
     ) {
       edges {
@@ -22,6 +24,10 @@ export const orderListQuery = gql`
           __typename
           billingAddress {
             ...Address
+          }
+          channel {
+            name
+            id
           }
           created
           id
@@ -37,6 +43,7 @@ export const orderListQuery = gql`
             }
           }
           userEmail
+          chargeStatus
         }
       }
       pageInfo {
@@ -72,6 +79,10 @@ export const orderDraftListQuery = gql`
             ...Address
           }
           created
+          channel {
+            name
+            id
+          }
           id
           number
           paymentStatus
@@ -117,6 +128,36 @@ export const orderDetailsQuery = gql`
   }
 `;
 
+export const orderDetailsWithMetadataQuery = gql`
+  query OrderDetailsWithMetadata($id: ID!, $hasManageProducts: Boolean!) {
+    order(id: $id) {
+      ...OrderDetailsWithMetadata
+    }
+    shop {
+      countries {
+        code
+        country
+      }
+      defaultWeightUnit
+      fulfillmentAllowUnpaid
+      fulfillmentAutoApprove
+      availablePaymentGateways {
+        ...PaymentGateway
+      }
+    }
+  }
+`;
+
+export const orderLinesMetadata = gql`
+  query OrderLinesMetadata($id: ID!, $hasManageProducts: Boolean!) {
+    order(id: $id) {
+      lines {
+        ...OrderLineMetadataDetails
+      }
+    }
+  }
+`;
+
 export const orderDetailsGrantedRefund = gql`
   query OrderDetailsGrantRefund($id: ID!) {
     order(id: $id) {
@@ -129,13 +170,6 @@ export const orderDetailsGrantedRefundEdit = gql`
   query OrderDetailsGrantRefundEdit($id: ID!) {
     order(id: $id) {
       ...OrderDetailsGrantRefund
-      grantedRefunds {
-        id
-        reason
-        amount {
-          ...Money
-        }
-      }
     }
   }
 `;
@@ -219,6 +253,22 @@ export const orderRefundData = gql`
   }
 `;
 
+export const orderTransactionsData = gql`
+  query OrderTransactionsData($orderId: ID!) {
+    order(id: $orderId) {
+      id
+      transactions {
+        ...TransactionItem
+      }
+      total {
+        gross {
+          ...Money
+        }
+      }
+    }
+  }
+`;
+
 export const channelUsabilityData = gql`
   query ChannelUsabilityData($channel: String!) {
     products(channel: $channel) {
@@ -260,6 +310,17 @@ export const DevModeQuery = /* GraphQL */ `
           userEmail
           isPaid
         }
+      }
+    }
+  }
+`;
+
+export const refundSettings = gql`
+  query RefundSettings {
+    refundSettings {
+      reasonReferenceType {
+        id
+        name
       }
     }
   }

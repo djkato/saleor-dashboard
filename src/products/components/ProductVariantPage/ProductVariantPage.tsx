@@ -1,11 +1,16 @@
 // @ts-strict-ignore
+import { QueryResult } from "@apollo/client";
 import {
   getReferenceAttributeEntityTypeFromAttribute,
-  mergeAttributeValues,
+  handleContainerReferenceAssignment,
 } from "@dashboard/attributes/utils/data";
+import { hasPermission } from "@dashboard/auth/misc";
+import { useUser } from "@dashboard/auth/useUser";
 import { ChannelPriceData } from "@dashboard/channels/utils";
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
-import AssignAttributeValueDialog from "@dashboard/components/AssignAttributeValueDialog";
+import AssignAttributeValueDialog, {
+  AssignAttributeValueDialogFilterChangeMap,
+} from "@dashboard/components/AssignAttributeValueDialog";
 import {
   AttributeInput,
   Attributes,
@@ -14,29 +19,40 @@ import {
 import CardSpacer from "@dashboard/components/CardSpacer";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import Grid from "@dashboard/components/Grid";
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
-import { MetadataFormData } from "@dashboard/components/Metadata";
+import Link from "@dashboard/components/Link";
 import { Metadata } from "@dashboard/components/Metadata/Metadata";
-import Savebar from "@dashboard/components/Savebar";
+import { Savebar } from "@dashboard/components/Savebar";
 import {
+  PermissionEnum,
   ProductChannelListingErrorFragment,
   ProductErrorWithAttributesFragment,
   ProductVariantFragment,
   SearchAttributeValuesQuery,
+  SearchCategoriesQuery,
+  SearchCollectionsQuery,
   SearchPagesQuery,
   SearchProductsQuery,
-  WarehouseFragment,
+  SearchWarehousesQuery,
 } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { VariantDetailsChannelsAvailabilityCard } from "@dashboard/products/components/ProductVariantChannels/ChannelsAvailabilityCard";
 import { productUrl } from "@dashboard/products/urls";
 import { getSelectedMedia } from "@dashboard/products/utils/data";
-import { FetchMoreProps, RelayToFlat, ReorderAction } from "@dashboard/types";
-import React from "react";
-import { defineMessages, useIntl } from "react-intl";
+import { productTypeUrl } from "@dashboard/productTypes/urls";
+import { TranslationsButton } from "@dashboard/translations/components/TranslationsButton/TranslationsButton";
+import { productVariantUrl } from "@dashboard/translations/urls";
+import { useCachedLocales } from "@dashboard/translations/useCachedLocales";
+import { Container, FetchMoreProps, RelayToFlat, ReorderAction } from "@dashboard/types";
+import { mapEdgesToItems } from "@dashboard/utils/maps";
+import { Box, Skeleton, Text, Tooltip } from "@saleor/macaw-ui-next";
+import { CircleHelp } from "lucide-react";
+import { useState } from "react";
+import { defineMessages, FormattedMessage, useIntl } from "react-intl";
 
 import { ProductShipping } from "../ProductShipping";
-import { ProductStockInput, ProductStocks } from "../ProductStocks";
+import { ProductStocks } from "../ProductStocks";
 import { useManageChannels } from "../ProductVariantChannels/useManageChannels";
 import { VariantChannelsDialog } from "../ProductVariantChannels/VariantChannelsDialog";
 import ProductVariantCheckoutSettings from "../ProductVariantCheckoutSettings/ProductVariantCheckoutSettings";
@@ -47,11 +63,13 @@ import ProductVariantName from "../ProductVariantName";
 import ProductVariantNavigation from "../ProductVariantNavigation";
 import { ProductVariantPrice } from "../ProductVariantPrice";
 import ProductVariantSetDefault from "../ProductVariantSetDefault";
-import ProductVariantUpdateForm, {
+import {
   ProductVariantUpdateData,
+  ProductVariantUpdateForm,
   ProductVariantUpdateHandlers,
   ProductVariantUpdateSubmitData,
 } from "./form";
+import { VariantAttributesSection } from "./VariantAttributesSection";
 
 const messages = defineMessages({
   nonSelectionAttributes: {
@@ -66,25 +84,8 @@ const messages = defineMessages({
   },
 });
 
-export interface ProductVariantPageFormData extends MetadataFormData {
-  costPrice: string;
-  price: string;
-  sku: string;
-  trackInventory: boolean;
-  weight: string;
-}
-
-export interface ProductVariantPageSubmitData
-  extends ProductVariantPageFormData {
-  attributes: AttributeInput[];
-  addStocks: ProductStockInput[];
-  updateStocks: ProductStockInput[];
-  removeStocks: string[];
-}
-
 function byAttributeScope(scope: VariantAttributeScope) {
-  return (attribute: AttributeInput) =>
-    attribute.data.variantAttributeScope === scope;
+  return (attribute: AttributeInput) => attribute.data.variantAttributeScope === scope;
 }
 
 interface ProductVariantPageProps {
@@ -96,24 +97,30 @@ interface ProductVariantPageProps {
   header: string;
   channels: ChannelPriceData[];
   channelErrors: ProductChannelListingErrorFragment[];
+  /** Whether the product type supports variant attributes */
+  hasVariants: boolean;
   loading?: boolean;
   placeholderImage?: string;
   saveButtonBarState: ConfirmButtonTransitionState;
   variant?: ProductVariantFragment;
-  warehouses: WarehouseFragment[];
   referencePages?: RelayToFlat<SearchPagesQuery["search"]>;
   referenceProducts?: RelayToFlat<SearchProductsQuery["search"]>;
-  attributeValues: RelayToFlat<
-    SearchAttributeValuesQuery["attribute"]["choices"]
-  >;
+  referenceCategories?: RelayToFlat<SearchCategoriesQuery["search"]>;
+  referenceCollections?: RelayToFlat<SearchCollectionsQuery["search"]>;
+  attributeValues: RelayToFlat<SearchAttributeValuesQuery["attribute"]["choices"]>;
   fetchMoreReferencePages?: FetchMoreProps;
   fetchMoreReferenceProducts?: FetchMoreProps;
+  fetchMoreReferenceCategories?: FetchMoreProps;
+  fetchMoreReferenceCollections?: FetchMoreProps;
   fetchMoreAttributeValues?: FetchMoreProps;
   fetchReferencePages?: (data: string) => void;
   fetchReferenceProducts?: (data: string) => void;
+  fetchReferenceCategories?: (data: string) => void;
+  fetchReferenceCollections?: (data: string) => void;
   fetchAttributeValues: (query: string, attributeId: string) => void;
   onAssignReferencesClick: (attribute: AttributeInput) => void;
   onCloseDialog: () => void;
+  onFilterChange?: AssignAttributeValueDialogFilterChangeMap;
   onVariantPreorderDeactivate: (id: string) => void;
   variantDeactivatePreoderButtonState: ConfirmButtonTransitionState;
   onVariantReorder: ReorderAction;
@@ -122,23 +129,28 @@ interface ProductVariantPageProps {
   onSubmit: (data: ProductVariantUpdateSubmitData) => any;
   onSetDefaultVariant: () => any;
   onWarehouseConfigure: () => any;
+  fetchMoreWarehouses: () => void;
+  searchWarehousesResult: QueryResult<SearchWarehousesQuery>;
+  searchWarehouses: (query: string) => void;
 }
 
-const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
+export const ProductVariantPage = ({
   productId,
   channels,
   channelErrors,
   defaultVariantId,
   defaultWeightUnit,
   errors: apiErrors,
+  hasVariants,
   header,
   loading,
   placeholderImage,
   saveButtonBarState,
   variant,
-  warehouses,
   referencePages = [],
   referenceProducts = [],
+  referenceCategories = [],
+  referenceCollections = [],
   attributeValues,
   onDelete,
   onSubmit,
@@ -149,78 +161,117 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
   onWarehouseConfigure,
   assignReferencesAttributeId,
   onAssignReferencesClick,
+  onFilterChange,
   fetchReferencePages,
   fetchReferenceProducts,
+  fetchReferenceCategories,
+  fetchReferenceCollections,
   fetchAttributeValues,
   fetchMoreReferencePages,
   fetchMoreReferenceProducts,
+  fetchMoreReferenceCategories,
+  fetchMoreReferenceCollections,
   fetchMoreAttributeValues,
   onCloseDialog,
   onAttributeSelectBlur,
-}) => {
+  fetchMoreWarehouses,
+  searchWarehousesResult,
+  searchWarehouses,
+}: ProductVariantPageProps) => {
   const intl = useIntl();
+  const { user } = useUser();
+  const canTranslate = user && hasPermission(PermissionEnum.MANAGE_TRANSLATIONS, user);
+  const { lastUsedLocaleOrFallback } = useCachedLocales();
   const navigate = useNavigator();
-  const { isOpen: isManageChannelsModalOpen, toggle: toggleManageChannels } =
-    useManageChannels();
-  const [isModalOpened, setModalStatus] = React.useState(false);
+  const { isOpen: isManageChannelsModalOpen, toggle: toggleManageChannels } = useManageChannels();
+  const [isModalOpened, setModalStatus] = useState(false);
   const toggleModal = () => setModalStatus(!isModalOpened);
-
-  const [isEndPreorderModalOpened, setIsEndPreorderModalOpened] =
-    React.useState(false);
-
-  const productMedia = [...(variant?.product?.media ?? [])]?.sort(
-    (prev, next) => (prev.sortOrder > next.sortOrder ? 1 : -1),
+  const [isEndPreorderModalOpened, setIsEndPreorderModalOpened] = useState(false);
+  const productMedia = [...(variant?.product?.media ?? [])]?.sort((prev, next) =>
+    prev.sortOrder > next.sortOrder ? 1 : -1,
   );
-
   const canOpenAssignReferencesAttributeDialog = !!assignReferencesAttributeId;
-
   const handleDeactivatePreorder = async () => {
     await onVariantPreorderDeactivate(variant.id);
     setIsEndPreorderModalOpened(false);
   };
-
   const handleAssignReferenceAttribute = (
-    attributeValues: string[],
+    attributeValues: Container[],
     data: ProductVariantUpdateData,
     handlers: ProductVariantUpdateHandlers,
   ) => {
-    handlers.selectAttributeReference(
+    handleContainerReferenceAssignment(
       assignReferencesAttributeId,
-      mergeAttributeValues(
-        assignReferencesAttributeId,
-        attributeValues,
-        data.attributes,
-      ),
+      attributeValues,
+      data.attributes,
+      handlers,
     );
     onCloseDialog();
   };
 
   return (
     <DetailPageLayout gridTemplateColumns={1}>
-      <TopNav href={productUrl(productId)} title={header}>
+      <TopNav
+        href={productUrl(productId)}
+        title={
+          loading ? (
+            <Skeleton __width="200px" />
+          ) : (
+            <Box display="flex" alignItems="center" gap={1}>
+              <Text
+                size={6}
+                color="default2"
+                ellipsis
+                __maxWidth="200px"
+                title={variant?.product?.name}
+              >
+                {variant?.product?.name}
+              </Text>
+              <Text size={6} color="default2">
+                /
+              </Text>
+              <Text size={6}>{header}</Text>
+            </Box>
+          )
+        }
+      >
         {variant?.product?.defaultVariant?.id !== variant?.id && (
-          <ProductVariantSetDefault onSetDefaultVariant={onSetDefaultVariant} />
+          <Box marginRight={3}>
+            <ProductVariantSetDefault onSetDefaultVariant={onSetDefaultVariant} />
+          </Box>
+        )}
+        {canTranslate && (
+          <TranslationsButton
+            onClick={() =>
+              navigate(productVariantUrl(lastUsedLocaleOrFallback, productId, variant?.id))
+            }
+          />
         )}
       </TopNav>
       <DetailPageLayout.Content>
         <ProductVariantUpdateForm
+          key={variant?.id}
           variant={variant}
           onSubmit={onSubmit}
-          warehouses={warehouses}
           currentChannels={channels}
           referencePages={referencePages}
           referenceProducts={referenceProducts}
+          referenceCategories={referenceCategories}
+          referenceCollections={referenceCollections}
           fetchReferencePages={fetchReferencePages}
           fetchMoreReferencePages={fetchMoreReferencePages}
           fetchReferenceProducts={fetchReferenceProducts}
           fetchMoreReferenceProducts={fetchMoreReferenceProducts}
+          fetchReferenceCategories={fetchReferenceCategories}
+          fetchMoreReferenceCategories={fetchMoreReferenceCategories}
+          fetchReferenceCollections={fetchReferenceCollections}
+          fetchMoreReferenceCollections={fetchMoreReferenceCollections}
           assignReferencesAttributeId={assignReferencesAttributeId}
           loading={loading}
         >
           {({
             change,
             data,
-            formErrors,
             validationErrors,
             isSaveDisabled,
             handlers,
@@ -234,8 +285,8 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
               byAttributeScope(VariantAttributeScope.VARIANT_SELECTION),
             );
             const media = getSelectedMedia(productMedia, data.media);
-
             const errors = [...apiErrors, ...validationErrors];
+            const priceVariantErrors = [...channelErrors, ...validationErrors];
 
             return (
               <>
@@ -247,6 +298,7 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
                       defaultVariantId={defaultVariantId}
                       fallbackThumbnail={variant?.product?.thumbnail?.url}
                       variants={variant?.product.variants}
+                      loading={loading}
                       onReorder={onVariantReorder}
                     />
                   </div>
@@ -260,39 +312,71 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
                     <CardSpacer />
                     <VariantDetailsChannelsAvailabilityCard
                       variant={variant}
+                      listings={data.channelListings}
+                      disabled={loading}
                       onManageClick={toggleManageChannels}
                     />
-                    {nonSelectionAttributes.length > 0 && (
-                      <>
-                        <Attributes
-                          title={intl.formatMessage(
-                            messages.nonSelectionAttributes,
-                          )}
-                          attributes={nonSelectionAttributes}
-                          attributeValues={attributeValues}
-                          loading={loading}
-                          disabled={loading}
-                          errors={errors}
-                          onChange={handlers.selectAttribute}
-                          onMultiChange={handlers.selectAttributeMultiple}
-                          onFileChange={handlers.selectAttributeFile}
-                          onReferencesRemove={handlers.selectAttributeReference}
-                          onReferencesAddClick={onAssignReferencesClick}
-                          onReferencesReorder={handlers.reorderAttributeValue}
-                          fetchAttributeValues={fetchAttributeValues}
-                          fetchMoreAttributeValues={fetchMoreAttributeValues}
-                          onAttributeSelectBlur={onAttributeSelectBlur}
-                          richTextGetters={attributeRichTextGetters}
-                        />
-                        <CardSpacer />
-                      </>
+                    {variant?.product?.productType && (
+                      <VariantAttributesSection
+                        title={intl.formatMessage(messages.nonSelectionAttributes)}
+                        attributes={nonSelectionAttributes}
+                        totalAttributesCount={data.attributes.length}
+                        selectionAttributesExist={selectionAttributes.length > 0}
+                        hasVariants={hasVariants}
+                        attributeValues={attributeValues}
+                        productTypeName={variant.product.productType.name}
+                        productTypeUrl={productTypeUrl(variant.product.productType.id)}
+                        loading={loading}
+                        errors={errors}
+                        onChange={handlers.selectAttribute}
+                        onMultiChange={handlers.selectAttributeMultiple}
+                        onFileChange={handlers.selectAttributeFile}
+                        onReferencesRemove={handlers.selectAttributeReference}
+                        onReferencesAddClick={onAssignReferencesClick}
+                        onReferencesReorder={handlers.reorderAttributeValue}
+                        fetchAttributeValues={fetchAttributeValues}
+                        fetchMoreAttributeValues={fetchMoreAttributeValues}
+                        onAttributeSelectBlur={onAttributeSelectBlur}
+                        richTextGetters={attributeRichTextGetters}
+                      />
                     )}
-                    {selectionAttributes.length > 0 && (
+                    {hasVariants && selectionAttributes.length > 0 && (
                       <>
+                        <CardSpacer />
                         <Attributes
-                          title={intl.formatMessage(
-                            messages.selectionAttributesHeader,
-                          )}
+                          title={
+                            <Box display="flex" alignItems="center" gap={2}>
+                              <Text size={5} fontWeight="bold">
+                                {intl.formatMessage(messages.selectionAttributesHeader)}
+                              </Text>
+                              <Tooltip>
+                                <Tooltip.Trigger>
+                                  <Box color="default2" display="flex" alignItems="center">
+                                    <CircleHelp
+                                      size={iconSize.small}
+                                      strokeWidth={iconStrokeWidthBySize.small}
+                                    />
+                                  </Box>
+                                </Tooltip.Trigger>
+                                <Tooltip.Content side="bottom">
+                                  <Tooltip.Arrow />
+                                  <FormattedMessage
+                                    id="LhGd2m"
+                                    defaultMessage="Attributes that define variant options customers can choose from on the storefront.{br}Can be adjusted in the {productTypeLink} settings."
+                                    description="tooltip for variant selection attributes"
+                                    values={{
+                                      br: <br />,
+                                      productTypeLink: variant?.product?.productType ? (
+                                        <Link href={productTypeUrl(variant.product.productType.id)}>
+                                          {variant.product.productType.name}
+                                        </Link>
+                                      ) : null,
+                                    }}
+                                  />
+                                </Tooltip.Content>
+                              </Tooltip>
+                            </Box>
+                          }
                           attributes={selectionAttributes}
                           attributeValues={attributeValues}
                           loading={loading}
@@ -313,7 +397,7 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
                       </>
                     )}
                     <ProductVariantMedia
-                      disabled={loading}
+                      disabled={loading || productMedia.length === 0}
                       media={media}
                       placeholderImage={placeholderImage}
                       onImageAdd={toggleModal}
@@ -321,13 +405,11 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
                     <CardSpacer />
                     <ProductVariantPrice
                       disabled={!variant}
-                      ProductVariantChannelListings={data.channelListings.map(
-                        channel => ({
-                          ...channel.data,
-                          ...channel.value,
-                        }),
-                      )}
-                      errors={channelErrors}
+                      productVariantChannelListings={data.channelListings.map(channel => ({
+                        ...channel.data,
+                        ...channel.value,
+                      }))}
+                      errors={priceVariantErrors}
                       loading={loading}
                       onChange={handlers.changeChannels}
                     />
@@ -349,43 +431,42 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
                     />
                     <CardSpacer />
                     <ProductStocks
-                      productVariantChannelListings={data.channelListings.map(
-                        channel => ({
-                          ...channel.data,
-                          ...channel.value,
-                        }),
-                      )}
-                      onVariantChannelListingChange={handlers.changeChannels}
+                      productVariantChannelListings={data.channelListings.map(channel => ({
+                        ...channel.data,
+                        ...channel.value,
+                      }))}
+                      warehouses={mapEdgesToItems(searchWarehousesResult?.data?.search) ?? []}
+                      fetchMoreWarehouses={fetchMoreWarehouses}
+                      hasMoreWarehouses={
+                        searchWarehousesResult?.data?.search?.pageInfo?.hasNextPage
+                      }
                       data={data}
-                      disabled={loading}
+                      loading={loading}
                       hasVariants={true}
                       errors={errors}
-                      formErrors={formErrors}
                       stocks={data.stocks}
-                      warehouses={warehouses}
                       onChange={handlers.changeStock}
                       onFormDataChange={change}
-                      onChangePreorderEndDate={handlers.changePreorderEndDate}
-                      onEndPreorderTrigger={
-                        !!variant?.preorder
-                          ? () => setIsEndPreorderModalOpened(true)
-                          : null
-                      }
                       onWarehouseStockAdd={handlers.addStock}
                       onWarehouseStockDelete={handlers.deleteStock}
                       onWarehouseConfigure={onWarehouseConfigure}
+                      isCreate={false}
+                      searchWarehouses={searchWarehouses}
                     />
                     <CardSpacer />
                     <Metadata data={data} onChange={handlers.changeMetadata} />
                   </div>
                 </Grid>
-                <Savebar
-                  disabled={isSaveDisabled}
-                  state={saveButtonBarState}
-                  onCancel={() => navigate(productUrl(productId))}
-                  onDelete={onDelete}
-                  onSubmit={submit}
-                />
+                <Savebar>
+                  <Savebar.DeleteButton onClick={onDelete} />
+                  <Savebar.Spacer />
+                  <Savebar.CancelButton onClick={() => navigate(productUrl(productId))} />
+                  <Savebar.ConfirmButton
+                    transitionState={saveButtonBarState}
+                    onClick={submit}
+                    disabled={isSaveDisabled}
+                  />
+                </Savebar>
                 {canOpenAssignReferencesAttributeDialog && (
                   <AssignAttributeValueDialog
                     entityType={getReferenceAttributeEntityTypeFromAttribute(
@@ -395,6 +476,9 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
                     confirmButtonState={"default"}
                     products={referenceProducts}
                     pages={referencePages}
+                    collections={referenceCollections}
+                    categories={referenceCategories}
+                    attribute={data.attributes.find(({ id }) => id === assignReferencesAttributeId)}
                     hasMore={handlers.fetchMoreReferences?.hasMore}
                     open={canOpenAssignReferencesAttributeDialog}
                     onFetch={handlers.fetchReferences}
@@ -402,12 +486,9 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
                     loading={handlers.fetchMoreReferences?.loading}
                     onClose={onCloseDialog}
                     onSubmit={attributeValues =>
-                      handleAssignReferenceAttribute(
-                        attributeValues,
-                        data,
-                        handlers,
-                      )
+                      handleAssignReferenceAttribute(attributeValues, data, handlers)
                     }
+                    onFilterChange={onFilterChange}
                   />
                 )}
                 {variant && (
@@ -445,5 +526,5 @@ const ProductVariantPage: React.FC<ProductVariantPageProps> = ({
     </DetailPageLayout>
   );
 };
+
 ProductVariantPage.displayName = "ProductVariantPage";
-export default ProductVariantPage;

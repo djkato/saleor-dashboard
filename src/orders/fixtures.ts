@@ -8,12 +8,16 @@ import {
   JobStatusEnum,
   MarkAsPaidStrategyEnum,
   OrderAction,
+  OrderAuthorizeStatusEnum,
+  OrderChargeStatusEnum,
   OrderDetailsFragment,
   OrderDetailsQuery,
+  OrderDetailsWithMetadataFragment,
   OrderEventsEmailsEnum,
   OrderEventsEnum,
   OrderFulfillLineFragment,
   OrderGrantedRefundFragment,
+  OrderGrantedRefundStatusEnum,
   OrderListQuery,
   OrderPaymentFragment,
   OrderSettingsFragment,
@@ -33,19 +37,14 @@ import {
 } from "@dashboard/graphql";
 import { staffMember } from "@dashboard/staff/fixtures";
 import { RelayToFlat } from "@dashboard/types";
-import {
-  warehouseForPickup,
-  warehouseList,
-} from "@dashboard/warehouses/fixtures";
+import { warehouseForPickup, warehouseList } from "@dashboard/warehouses/fixtures";
 import { MessageDescriptor } from "react-intl";
 
 import { transformOrderStatus, transformPaymentStatus } from "../misc";
 
 export const MOCK_PAYMENT_GATEWAY_ID = "saleor.dummy.payment";
 
-export const prepareMoney = (
-  amount?: number,
-): OrderDetailsQuery["order"]["totalAuthorized"] => ({
+export const prepareMoney = (amount?: number): OrderDetailsQuery["order"]["totalAuthorized"] => ({
   __typename: "Money",
   amount: amount ?? ORDER_AMOUNT,
   currency: "USD",
@@ -79,28 +78,28 @@ export const shop: OrderDetailsQuery["shop"] = {
 
 export const clients: RelayToFlat<SearchCustomersQuery["search"]> = [
   {
-    __typename: "User" as "User",
+    __typename: "User" as const,
     email: "test.client1@example.com",
     firstName: "John",
     id: "c1",
     lastName: "Doe",
   },
   {
-    __typename: "User" as "User",
+    __typename: "User" as const,
     email: "test.client2@example.com",
     firstName: "Dough",
     id: "c2",
     lastName: "Jones",
   },
   {
-    __typename: "User" as "User",
+    __typename: "User" as const,
     email: "test.client3@example.com",
     firstName: "Jonas",
     id: "c3",
     lastName: "Dough",
   },
   {
-    __typename: "User" as "User",
+    __typename: "User" as const,
     email: "test.client4@example.com",
     firstName: "Bill",
     id: "c4",
@@ -115,6 +114,7 @@ export const orderTransactions: TransactionItemFragment[] = [
     pspReference: "ord_3d41ih",
     actions: [],
     externalUrl: null,
+    createdAt: "2022-08-12T14:10:22.226875+00:00",
     events: [
       {
         id: "VHJhbnNhY3Rpb25FdmVudDox",
@@ -123,6 +123,7 @@ export const orderTransactions: TransactionItemFragment[] = [
         type: TransactionEventTypeEnum.CHARGE_SUCCESS,
         createdBy: null,
         externalUrl: null,
+        reasonReference: null,
         message: null,
         amount: {
           amount: 58.98,
@@ -147,6 +148,7 @@ export const orderTransactions: TransactionItemFragment[] = [
     name: "test",
     pspReference: "123",
     externalUrl: null,
+    createdAt: "2022-08-12T14:10:22.226875+00:00",
     actions: [],
     events: [
       {
@@ -157,6 +159,7 @@ export const orderTransactions: TransactionItemFragment[] = [
         createdBy: null,
         externalUrl: null,
         message: null,
+        reasonReference: null,
         amount: {
           amount: 35.42,
           currency: "USD",
@@ -171,6 +174,7 @@ export const orderTransactions: TransactionItemFragment[] = [
         type: TransactionEventTypeEnum.REFUND_REQUEST,
         createdBy: null,
         externalUrl: null,
+        reasonReference: null,
         message: null,
         amount: {
           amount: 33.21,
@@ -184,6 +188,7 @@ export const orderTransactions: TransactionItemFragment[] = [
         pspReference: "SDFDS34543SS",
         createdAt: "2022-08-12T16:14:29.119138+00:00",
         type: TransactionEventTypeEnum.REFUND_SUCCESS,
+        reasonReference: null,
         createdBy: null,
         externalUrl: null,
         message: null,
@@ -233,6 +238,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MjA=",
     number: "20",
     paymentStatus: PaymentChargeStatusEnum.FULLY_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.FULL,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -243,6 +249,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "laura.stone@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -269,6 +280,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTk=",
     number: "19",
     paymentStatus: PaymentChargeStatusEnum.FULLY_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.FULL,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -279,6 +291,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "elizabeth.vaughn@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -287,6 +304,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTg=",
     number: "18",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.DRAFT,
     total: {
       __typename: "TaxedMoney",
@@ -297,6 +315,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "david.lawson@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -323,6 +346,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTc=",
     number: "17",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -333,6 +357,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "aaron.randall@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -359,6 +388,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTY=",
     number: "16",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -369,6 +399,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "laura.jensen@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -395,6 +430,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTU=",
     number: "15",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -405,6 +441,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "jenna.villa@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -431,6 +472,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTQ=",
     number: "14",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -441,6 +483,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "wesley.davis@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -467,6 +514,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTM=",
     number: "13",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -477,6 +525,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "anthony.gonzalez@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -503,6 +556,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTI=",
     number: "12",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -513,6 +567,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "denise.freeman@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -539,6 +598,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTE=",
     number: "11",
     paymentStatus: PaymentChargeStatusEnum.FULLY_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.FULL,
     status: OrderStatus.UNFULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -549,6 +609,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "james.ball@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -575,6 +640,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MTA=",
     number: "10",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.CANCELED,
     total: {
       __typename: "TaxedMoney",
@@ -585,6 +651,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "michael.martinez@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -611,6 +682,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6OQ==",
     number: "9",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.PARTIALLY_FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -621,6 +693,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "melissa.simon@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -647,6 +724,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6OA==",
     number: "8",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.PARTIALLY_FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -657,6 +735,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "justin.mccoy@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -683,6 +766,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6Nw==",
     number: "7",
     paymentStatus: PaymentChargeStatusEnum.FULLY_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.FULL,
     status: OrderStatus.PARTIALLY_FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -693,6 +777,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "anthony.gonzalez@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -719,6 +808,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6Ng==",
     number: "6",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -729,6 +819,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "bradley.ford@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -755,6 +850,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6NQ==",
     number: "5",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.PARTIALLY_FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -765,6 +861,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "david.lawson@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -791,6 +892,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6NA==",
     number: "4",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.PARTIALLY_FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -801,6 +903,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "lauren.watson@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -827,6 +934,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6Mw==",
     number: "3",
     paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.NONE,
     status: OrderStatus.PARTIALLY_FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -837,6 +945,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "mark.lee@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -863,6 +976,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6Mg==",
     number: "2",
     paymentStatus: PaymentChargeStatusEnum.FULLY_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.FULL,
     status: OrderStatus.PARTIALLY_FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -873,6 +987,11 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "kara.murphy@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
   {
     __typename: "Order",
@@ -899,6 +1018,7 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
     id: "T3JkZXI6MQ==",
     number: "1",
     paymentStatus: PaymentChargeStatusEnum.FULLY_CHARGED,
+    chargeStatus: OrderChargeStatusEnum.FULL,
     status: OrderStatus.PARTIALLY_FULFILLED,
     total: {
       __typename: "TaxedMoney",
@@ -909,20 +1029,21 @@ export const orders: RelayToFlat<OrderListQuery["orders"]> = [
       },
     },
     userEmail: "curtis.bailey@example.com",
+    channel: {
+      name: "Test channel",
+      id: "Q2hhbm5lbDox",
+      __typename: "Channel",
+    },
   },
 ];
 
 export const ORDER_AMOUNT = 234.93;
 
-export const order = (placeholder: string): OrderDetailsFragment => ({
+export const order = (placeholder: string): OrderDetailsWithMetadataFragment => ({
   __typename: "Order",
   giftCards: [],
-  actions: [
-    OrderAction.CAPTURE,
-    OrderAction.MARK_AS_PAID,
-    OrderAction.REFUND,
-    OrderAction.VOID,
-  ],
+  displayGrossPrices: true,
+  actions: [OrderAction.CAPTURE, OrderAction.MARK_AS_PAID, OrderAction.REFUND, OrderAction.VOID],
   shippingMethods: [
     {
       __typename: "ShippingMethod",
@@ -1003,6 +1124,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
   events: [
     {
       __typename: "OrderEvent",
+      related: null,
       amount: null,
       date: "2018-09-17T13:22:24.376193+00:00",
       discount: null,
@@ -1022,6 +1144,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
         __typename: "App",
         name: "Testapp",
         appUrl: "https://www.google.com/",
+        brand: null,
       },
       user: {
         __typename: "User",
@@ -1029,10 +1152,12 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
         firstName: "John",
         id: "QWRkcmVzczoxNQ==",
         lastName: "Doe",
+        avatar: null,
       },
     },
     {
       __typename: "OrderEvent",
+      related: null,
       amount: null,
       date: "2018-09-17T13:22:24.376193+00:00",
       discount: null,
@@ -1077,6 +1202,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
         __typename: "App",
         name: "Testapp",
         appUrl: "https://www.google.com/",
+        brand: null,
       },
       user: {
         __typename: "User",
@@ -1084,10 +1210,12 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
         firstName: "Jane",
         id: "QWRkcmVzczoxNQ==",
         lastName: "Doe",
+        avatar: null,
       },
     },
     {
       __typename: "OrderEvent",
+      related: null,
       amount: null,
       date: "2019-09-17T13:22:24.376193+00:00",
       discount: null,
@@ -1107,6 +1235,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
     },
     {
       __typename: "OrderEvent",
+      related: null,
       amount: null,
       date: "2019-09-17T13:22:24.376193+00:00",
       discount: null,
@@ -1126,6 +1255,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
     },
     {
       __typename: "OrderEvent",
+      related: null,
       amount: null,
       date: "2019-09-17T13:22:24.376193+00:00",
       discount: null,
@@ -1145,6 +1275,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
     },
     {
       __typename: "OrderEvent",
+      related: null,
       amount: null,
       date: "2019-09-17T13:22:24.376193+00:00",
       discount: null,
@@ -1164,6 +1295,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
     },
     {
       __typename: "OrderEvent",
+      related: null,
       amount: null,
       date: "2019-09-17T13:22:24.376193+00:00",
       discount: null,
@@ -1183,6 +1315,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
     },
     {
       __typename: "OrderEvent",
+      related: null,
       amount: null,
       date: "2019-09-17T13:22:24.376193+00:00",
       discount: null,
@@ -1207,6 +1340,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
       fulfillmentOrder: 2,
       id: "RnVsZmlsbG1lbnQ6MjQ=",
       metadata: [],
+      created: "2019-09-17T13:22:24.376193+00:00",
       privateMetadata: [],
       lines: [
         {
@@ -1221,6 +1355,9 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
             quantity: 2,
             quantityFulfilled: 2,
             quantityToFulfill: 0,
+            isGift: false,
+            metadata: [],
+            privateMetadata: [],
             allocations: [
               {
                 id: "allocation_test_id",
@@ -1234,7 +1371,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
               },
             ],
             thumbnail: {
-              __typename: "Image" as "Image",
+              __typename: "Image" as const,
               url: placeholder,
             },
             totalPrice: {
@@ -1291,6 +1428,8 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
               name: "XS",
               quantityAvailable: 10,
               preorder: null,
+              metadata: [],
+              privateMetadata: [],
               product: {
                 __typename: "Product",
                 id: "UHJvZHVjdDo1",
@@ -1335,6 +1474,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
       id: "RnVsZmlsbG1lbnQ6OQ==",
       metadata: [],
       privateMetadata: [],
+      created: "2019-09-17T13:22:24.376193+00:00",
       lines: [
         {
           __typename: "FulfillmentLine",
@@ -1348,6 +1488,9 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
             quantity: 2,
             quantityFulfilled: 2,
             quantityToFulfill: 0,
+            isGift: false,
+            metadata: [],
+            privateMetadata: [],
             allocations: [
               {
                 id: "allocation_test_id",
@@ -1361,7 +1504,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
               },
             ],
             thumbnail: {
-              __typename: "Image" as "Image",
+              __typename: "Image" as const,
               url: placeholder,
             },
             totalPrice: {
@@ -1418,6 +1561,8 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
               name: "XS",
               quantityAvailable: 10,
               preorder: null,
+              metadata: [],
+              privateMetadata: [],
               product: {
                 __typename: "Product",
                 id: "UHJvZHVjdDo1",
@@ -1458,7 +1603,6 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
     },
   ],
   id: "T3JkZXI6OQ==",
-  token: "e5cfc543-6a62-472f-8b80-6a2311f9ff14",
   invoices: [
     {
       __typename: "Invoice",
@@ -1481,6 +1625,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
       quantity: 3,
       quantityFulfilled: 0,
       quantityToFulfill: 3,
+      isGift: false,
       allocations: [
         {
           id: "allocation_test_id",
@@ -1494,7 +1639,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
         },
       ],
       thumbnail: {
-        __typename: "Image" as "Image",
+        __typename: "Image" as const,
         url: placeholder,
       },
       totalPrice: {
@@ -1591,6 +1736,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
       quantity: 2,
       quantityFulfilled: 2,
       quantityToFulfill: 0,
+      isGift: false,
       allocations: [
         {
           id: "allocation_test_id",
@@ -1604,7 +1750,7 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
         },
       ],
       thumbnail: {
-        __typename: "Image" as "Image",
+        __typename: "Image" as const,
         url: placeholder,
       },
       totalPrice: {
@@ -1702,6 +1848,8 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
   ],
   number: "9",
   paymentStatus: PaymentChargeStatusEnum.NOT_CHARGED,
+  chargeStatus: OrderChargeStatusEnum.NONE,
+  authorizeStatus: OrderAuthorizeStatusEnum.NONE,
   privateMetadata: [],
   shippingAddress: {
     __typename: "Address",
@@ -1802,8 +1950,11 @@ export const order = (placeholder: string): OrderDetailsFragment => ({
   transactions: orderTransactions,
 });
 
-export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
-  __typename: "Order" as "Order",
+export const draftOrder = (placeholder: string): OrderDetailsWithMetadataFragment => ({
+  __typename: "Order" as const,
+  chargeStatus: OrderChargeStatusEnum.NONE,
+  displayGrossPrices: true,
+  authorizeStatus: OrderAuthorizeStatusEnum.NONE,
   giftCards: [],
   actions: [OrderAction.CAPTURE],
   shippingMethods: [],
@@ -1843,7 +1994,6 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
   events: [],
   fulfillments: [],
   id: "T3JkZXI6MjQ=",
-  token: "e5cfc543-6a62-472f-8b80-6a2311f9ff14",
   invoices: [
     {
       __typename: "Invoice",
@@ -1858,7 +2008,7 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
   isShippingRequired: false,
   lines: [
     {
-      __typename: "OrderLine" as "OrderLine",
+      __typename: "OrderLine" as const,
       id: "T3JkZXJMaW5lOjQ1",
       isShippingRequired: false,
       productName: "Davis Group (Hard)",
@@ -1866,6 +2016,7 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
       quantity: 2,
       quantityFulfilled: 0,
       quantityToFulfill: 2,
+      isGift: false,
       allocations: [
         {
           id: "allocation_test_id",
@@ -1879,7 +2030,7 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
         },
       ],
       thumbnail: {
-        __typename: "Image" as "Image",
+        __typename: "Image" as const,
         url: placeholder,
       },
       totalPrice: {
@@ -1918,14 +2069,14 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
       unitDiscountType: null,
       unitDiscountValue: 0,
       unitPrice: {
-        __typename: "TaxedMoney" as "TaxedMoney",
+        __typename: "TaxedMoney" as const,
         gross: {
-          __typename: "Money" as "Money",
+          __typename: "Money" as const,
           amount: 65.95,
           currency: "USD",
         },
         net: {
-          __typename: "Money" as "Money",
+          __typename: "Money" as const,
           amount: 65.95,
           currency: "USD",
         },
@@ -1968,7 +2119,7 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
       },
     },
     {
-      __typename: "OrderLine" as "OrderLine",
+      __typename: "OrderLine" as const,
       id: "T3JkZXJMaW5lOjQ2",
       isShippingRequired: false,
       productName: "Anderson PLC (15-1337)",
@@ -1976,6 +2127,7 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
       quantity: 2,
       quantityFulfilled: 0,
       quantityToFulfill: 2,
+      isGift: false,
       allocations: [
         {
           id: "allocation_test_id",
@@ -1989,7 +2141,7 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
         },
       ],
       thumbnail: {
-        __typename: "Image" as "Image",
+        __typename: "Image" as const,
         url: placeholder,
       },
       totalPrice: {
@@ -2028,14 +2180,14 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
       unitDiscountType: null,
       unitDiscountValue: 0,
       unitPrice: {
-        __typename: "TaxedMoney" as "TaxedMoney",
+        __typename: "TaxedMoney" as const,
         gross: {
-          __typename: "Money" as "Money",
+          __typename: "Money" as const,
           amount: 68.2,
           currency: "USD",
         },
         net: {
-          __typename: "Money" as "Money",
+          __typename: "Money" as const,
           amount: 68.2,
           currency: "USD",
         },
@@ -2088,41 +2240,41 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
   collectionPointName: null,
   deliveryMethod: null,
   shippingPrice: {
-    __typename: "TaxedMoney" as "TaxedMoney",
+    __typename: "TaxedMoney" as const,
     gross: {
-      __typename: "Money" as "Money",
+      __typename: "Money" as const,
       amount: 0,
       currency: "USD",
     },
   },
   status: "DRAFT" as OrderStatus.DRAFT,
   subtotal: {
-    __typename: "TaxedMoney" as "TaxedMoney",
+    __typename: "TaxedMoney" as const,
     gross: {
-      __typename: "Money" as "Money",
+      __typename: "Money" as const,
       amount: 168.3,
       currency: "USD",
     },
     net: {
-      __typename: "Money" as "Money",
+      __typename: "Money" as const,
       amount: 168.3,
       currency: "USD",
     },
   },
   total: {
-    __typename: "TaxedMoney" as "TaxedMoney",
+    __typename: "TaxedMoney" as const,
     gross: {
-      __typename: "Money" as "Money",
+      __typename: "Money" as const,
       amount: 168.3,
       currency: "USD",
     },
     net: {
-      __typename: "Money" as "Money",
+      __typename: "Money" as const,
       amount: 100,
       currency: "USD",
     },
     tax: {
-      __typename: "Money" as "Money",
+      __typename: "Money" as const,
       amount: 68.3,
       currency: "USD",
     },
@@ -2130,7 +2282,7 @@ export const draftOrder = (placeholder: string): OrderDetailsFragment => ({
   totalAuthorized: prepareMoney(234.93),
   totalCaptured: prepareMoney(0),
   totalBalance: {
-    __typename: "Money" as "Money",
+    __typename: "Money" as const,
     amount: 168.3,
     currency: "USD",
   },
@@ -2177,9 +2329,7 @@ export const flatOrders = orders.map(order => ({
   } as any),
 }));
 
-export const fulfillOrderLine = (
-  placeholderImage: string,
-): OrderFulfillLineFragment => ({
+export const fulfillOrderLine = (placeholderImage: string): OrderFulfillLineFragment => ({
   __typename: "OrderLine",
   id: "T3JkZXJMaW5lOjIz",
   isShippingRequired: false,
@@ -2200,7 +2350,7 @@ export const fulfillOrderLine = (
     },
   ],
   thumbnail: {
-    __typename: "Image" as "Image",
+    __typename: "Image" as const,
     url: placeholderImage,
   },
   variant: {
@@ -2256,16 +2406,16 @@ export const orderLineSearch = (
   placeholderImage: string,
 ): RelayToFlat<SearchOrderVariantQuery["search"]> => [
   {
-    __typename: "Product" as "Product",
+    __typename: "Product" as const,
     id: "UHJvZHVjdDo3Mg==",
     name: "Apple Juice",
     thumbnail: {
-      __typename: "Image" as "Image",
+      __typename: "Image" as const,
       url: placeholderImage,
     },
     variants: [
       {
-        __typename: "ProductVariant" as "ProductVariant",
+        __typename: "ProductVariant" as const,
         id: "UHJvZHVjdFZhcmlhbnQ6MjAy",
         name: "500ml",
         sku: "93855755",
@@ -2291,7 +2441,7 @@ export const orderLineSearch = (
         },
       },
       {
-        __typename: "ProductVariant" as "ProductVariant",
+        __typename: "ProductVariant" as const,
         id: "UHJvZHVjdFZhcmlhbnQ6MjAz",
         name: "1l",
         sku: "43226647",
@@ -2317,7 +2467,7 @@ export const orderLineSearch = (
         },
       },
       {
-        __typename: "ProductVariant" as "ProductVariant",
+        __typename: "ProductVariant" as const,
         id: "UHJvZHVjdFZhcmlhbnQ6MjA0",
         name: "2l",
         sku: "80884671",
@@ -2345,16 +2495,16 @@ export const orderLineSearch = (
     ],
   },
   {
-    __typename: "Product" as "Product",
+    __typename: "Product" as const,
     id: "UHJvZHVjdDo3NQ==",
     name: "Pineapple Juice",
     thumbnail: {
-      __typename: "Image" as "Image",
+      __typename: "Image" as const,
       url: placeholderImage,
     },
     variants: [
       {
-        __typename: "ProductVariant" as "ProductVariant",
+        __typename: "ProductVariant" as const,
         id: "UHJvZHVjdFZhcmlhbnQ6MjEx",
         name: "500ml",
         sku: "43200242",
@@ -2380,7 +2530,7 @@ export const orderLineSearch = (
         },
       },
       {
-        __typename: "ProductVariant" as "ProductVariant",
+        __typename: "ProductVariant" as const,
         id: "UHJvZHVjdFZhcmlhbnQ6MjEy",
         name: "1l",
         sku: "79129513",
@@ -2406,7 +2556,7 @@ export const orderLineSearch = (
         },
       },
       {
-        __typename: "ProductVariant" as "ProductVariant",
+        __typename: "ProductVariant" as const,
         id: "UHJvZHVjdFZhcmlhbnQ6MjEz",
         name: "2l",
         sku: "75799450",
@@ -2597,6 +2747,7 @@ export const transactionApp: AppAvatarFragment = {
   name: "Checkout App",
   id: "1234",
   __typename: "App",
+  brand: null,
 };
 
 export const transactionEvent: Omit<TransactionEventFragment, "createdBy"> & {
@@ -2609,6 +2760,7 @@ export const transactionEvent: Omit<TransactionEventFragment, "createdBy"> & {
   message: null,
   externalUrl: null,
   createdBy: transactionApp,
+  reasonReference: null,
   amount: {
     amount: 58.98,
     currency: "USD",
@@ -2635,6 +2787,7 @@ export const transactions: Record<
       pspReference: "ord_3d41ih",
       actions: [TransactionActionEnum.CANCEL, TransactionActionEnum.CHARGE],
       externalUrl: null,
+      createdAt: "2022-08-12T14:10:22.226875+00:00",
       events: [
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
@@ -2642,6 +2795,7 @@ export const transactions: Record<
           createdAt: "2022-08-12T14:10:22.226875+00:00",
           type: TransactionEventTypeEnum.AUTHORIZATION_SUCCESS,
           message: null,
+          reasonReference: null,
           externalUrl: null,
           createdBy: transactionApp,
           amount: {
@@ -2670,6 +2824,7 @@ export const transactions: Record<
       pspReference: "ord_3d41ih",
       externalUrl: null,
       actions: [],
+      createdAt: "2022-08-12T14:10:22.226875+00:00",
       events: [
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
@@ -2677,6 +2832,7 @@ export const transactions: Record<
           createdAt: "2022-08-12T14:22:22.226875+00:00",
           type: TransactionEventTypeEnum.CHARGE_REQUEST,
           message: null,
+          reasonReference: null,
           externalUrl: null,
           createdBy: staffMember,
           amount: {
@@ -2693,6 +2849,7 @@ export const transactions: Record<
           type: TransactionEventTypeEnum.AUTHORIZATION_SUCCESS,
           message: null,
           externalUrl: null,
+          reasonReference: null,
           createdBy: transactionApp,
           amount: {
             amount: 58.98,
@@ -2720,6 +2877,7 @@ export const transactions: Record<
       pspReference: "ord_3d41ih",
       actions: [TransactionActionEnum.REFUND],
       externalUrl: null,
+      createdAt: "2022-08-12T14:10:22.226875+00:00",
       events: [
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
@@ -2727,6 +2885,7 @@ export const transactions: Record<
           createdAt: "2022-08-12T14:40:22.226875+00:00",
           type: TransactionEventTypeEnum.CHARGE_SUCCESS,
           message: null,
+          reasonReference: null,
           externalUrl: null,
           createdBy: transactionApp,
           amount: {
@@ -2741,6 +2900,7 @@ export const transactions: Record<
           pspReference: "XCFDROVCDF232332DFGS",
           createdAt: "2022-08-12T14:22:22.226875+00:00",
           type: TransactionEventTypeEnum.CHARGE_REQUEST,
+          reasonReference: null,
           message: null,
           externalUrl: null,
           createdBy: staffMember,
@@ -2755,6 +2915,7 @@ export const transactions: Record<
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "XCFDSDXCDF232332DFGS",
           createdAt: "2022-08-12T14:10:22.226875+00:00",
+          reasonReference: null,
           type: TransactionEventTypeEnum.AUTHORIZATION_SUCCESS,
           message: null,
           externalUrl: null,
@@ -2785,6 +2946,7 @@ export const transactions: Record<
       pspReference: "ord_3d41ih",
       actions: [TransactionActionEnum.REFUND],
       externalUrl: null,
+      createdAt: "2022-08-12T14:10:22.226875+00:00",
       events: [
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
@@ -2793,6 +2955,7 @@ export const transactions: Record<
           type: TransactionEventTypeEnum.CHARGE_SUCCESS,
           message: null,
           externalUrl: null,
+          reasonReference: null,
           createdBy: transactionApp,
           amount: {
             amount: 10,
@@ -2805,6 +2968,7 @@ export const transactions: Record<
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "XCFDROVCDF232332DFGS",
           createdAt: "2022-08-12T14:22:22.226875+00:00",
+          reasonReference: null,
           type: TransactionEventTypeEnum.CHARGE_REQUEST,
           message: null,
           externalUrl: null,
@@ -2819,6 +2983,7 @@ export const transactions: Record<
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "XCFDSDXCDF232332DFGS",
+          reasonReference: null,
           createdAt: "2022-08-12T14:10:22.226875+00:00",
           type: TransactionEventTypeEnum.AUTHORIZATION_SUCCESS,
           message: null,
@@ -2850,6 +3015,7 @@ export const transactions: Record<
       pspReference: "ord_3d41ih",
       actions: [TransactionActionEnum.CHARGE],
       externalUrl: null,
+      createdAt: "2022-08-12T14:10:22.226875+00:00",
       events: [
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
@@ -2858,6 +3024,7 @@ export const transactions: Record<
           type: TransactionEventTypeEnum.CHARGE_FAILURE,
           message: null,
           externalUrl: null,
+          reasonReference: null,
           createdBy: transactionApp,
           amount: {
             amount: 10,
@@ -2873,6 +3040,7 @@ export const transactions: Record<
           type: TransactionEventTypeEnum.CHARGE_REQUEST,
           message: null,
           externalUrl: null,
+          reasonReference: null,
           createdBy: staffMember,
           amount: {
             amount: 58.98,
@@ -2886,6 +3054,7 @@ export const transactions: Record<
           pspReference: "XCFDSDXCDF232332DFGS",
           createdAt: "2022-08-12T14:10:22.226875+00:00",
           type: TransactionEventTypeEnum.AUTHORIZATION_SUCCESS,
+          reasonReference: null,
           message: null,
           externalUrl: null,
           createdBy: transactionApp,
@@ -2915,6 +3084,7 @@ export const transactions: Record<
       pspReference: "ord_3d41ih",
       actions: [],
       externalUrl: null,
+      createdAt: "2022-08-12T14:10:22.226875+00:00",
       events: [
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
@@ -2923,6 +3093,7 @@ export const transactions: Record<
           type: TransactionEventTypeEnum.REFUND_REQUEST,
           message: null,
           externalUrl: null,
+          reasonReference: null,
           createdBy: staffMember,
           amount: {
             amount: 58.98,
@@ -2939,6 +3110,7 @@ export const transactions: Record<
           message: null,
           externalUrl: null,
           createdBy: transactionApp,
+          reasonReference: null,
           amount: {
             amount: 58.98,
             currency: "USD",
@@ -2953,6 +3125,7 @@ export const transactions: Record<
           type: TransactionEventTypeEnum.CHARGE_REQUEST,
           message: null,
           externalUrl: null,
+          reasonReference: null,
           createdBy: transactionApp,
           amount: {
             amount: 58.98,
@@ -2969,6 +3142,7 @@ export const transactions: Record<
           message: null,
           externalUrl: null,
           createdBy: transactionApp,
+          reasonReference: null,
           amount: {
             amount: 58.98,
             currency: "USD",
@@ -2995,10 +3169,12 @@ export const transactions: Record<
       pspReference: "ord_3d41ih",
       actions: [],
       externalUrl: null,
+      createdAt: "2022-08-12T14:10:22.226875+00:00",
       events: [
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "FGSDW3E5343DSFGSD",
+          reasonReference: null,
           createdAt: "2022-08-14T10:40:22.226875+00:00",
           type: TransactionEventTypeEnum.REFUND_SUCCESS,
           message: null,
@@ -3015,6 +3191,7 @@ export const transactions: Record<
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "FGSDW3E5343DSFGSD",
           createdAt: "2022-08-14T10:40:22.226875+00:00",
+          reasonReference: null,
           type: TransactionEventTypeEnum.REFUND_REQUEST,
           message: null,
           externalUrl: null,
@@ -3029,6 +3206,7 @@ export const transactions: Record<
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "XCFDROVCDF232332DFGS",
+          reasonReference: null,
           createdAt: "2022-08-12T14:40:22.226875+00:00",
           type: TransactionEventTypeEnum.CHARGE_SUCCESS,
           message: null,
@@ -3045,6 +3223,7 @@ export const transactions: Record<
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "XCFDROVCDF232332DFGS",
           createdAt: "2022-08-12T14:22:22.226875+00:00",
+          reasonReference: null,
           type: TransactionEventTypeEnum.CHARGE_REQUEST,
           message: null,
           externalUrl: null,
@@ -3060,6 +3239,7 @@ export const transactions: Record<
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "XCFDSDXCDF232332DFGS",
           createdAt: "2022-08-12T14:10:22.226875+00:00",
+          reasonReference: null,
           type: TransactionEventTypeEnum.AUTHORIZATION_SUCCESS,
           message: null,
           externalUrl: null,
@@ -3090,10 +3270,12 @@ export const transactions: Record<
       pspReference: "ord_3d41ih",
       actions: [],
       externalUrl: null,
+      createdAt: "2022-08-12T14:10:22.226875+00:00",
       events: [
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "FGSDW3E5343DSFGSD",
+          reasonReference: null,
           createdAt: "2022-08-14T10:40:22.226875+00:00",
           type: TransactionEventTypeEnum.REFUND_SUCCESS,
           message: null,
@@ -3109,6 +3291,7 @@ export const transactions: Record<
         {
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "FGSDW3E5343DSFGSD",
+          reasonReference: null,
           createdAt: "2022-08-14T10:40:22.226875+00:00",
           type: TransactionEventTypeEnum.REFUND_REQUEST,
           message: null,
@@ -3125,6 +3308,7 @@ export const transactions: Record<
           id: "VHJhbnNhY3Rpb25FdmVudDox",
           pspReference: "XCFDROVCDF232332DFGS",
           createdAt: "2022-08-12T14:40:22.226875+00:00",
+          reasonReference: null,
           type: TransactionEventTypeEnum.CHARGE_SUCCESS,
           message: null,
           externalUrl: null,
@@ -3143,6 +3327,7 @@ export const transactions: Record<
           type: TransactionEventTypeEnum.CHARGE_REQUEST,
           message: null,
           externalUrl: null,
+          reasonReference: null,
           createdBy: staffMember,
           amount: {
             amount: 58.98,
@@ -3158,6 +3343,7 @@ export const transactions: Record<
           type: TransactionEventTypeEnum.AUTHORIZATION_SUCCESS,
           message: null,
           externalUrl: null,
+          reasonReference: null,
           createdBy: transactionApp,
           amount: {
             amount: 58.98,
@@ -3324,15 +3510,31 @@ export const payments: Record<string, OrderPaymentFragment> = {
 export const grantedRefunds: OrderGrantedRefundFragment[] = [
   {
     id: "1234",
+    shippingCostsIncluded: true,
     amount: prepareMoney(),
     reason: "Products returned",
-    app: { id: "123", name: "Saleor Checkout", __typename: "App" },
+    app: { id: "123", name: "Saleor Checkout", __typename: "App", brand: null },
     user: null,
     createdAt: "2022-08-22T10:40:22.226875+00:00",
     __typename: "OrderGrantedRefund",
+    status: OrderGrantedRefundStatusEnum.SUCCESS,
+    transactionEvents: null,
+    reasonReference: null,
+    lines: [
+      {
+        __typename: "OrderGrantedRefundLine" as const,
+        id: "grantedRefund1",
+        orderLine: {
+          __typename: "OrderLine" as const,
+          id: "orderLine1",
+        },
+        quantity: 1,
+      },
+    ],
   },
   {
     id: "12344",
+    shippingCostsIncluded: false,
     amount: prepareMoney(),
     reason: "Products arrived damaged",
     app: null,
@@ -3346,5 +3548,19 @@ export const grantedRefunds: OrderGrantedRefundFragment[] = [
     },
     createdAt: "2022-08-22T10:40:22.226875+00:00",
     __typename: "OrderGrantedRefund",
+    status: OrderGrantedRefundStatusEnum.SUCCESS,
+    transactionEvents: null,
+    reasonReference: null,
+    lines: [
+      {
+        __typename: "OrderGrantedRefundLine" as const,
+        id: "grantedRefund2",
+        orderLine: {
+          __typename: "OrderLine" as const,
+          id: "orderLine1",
+        },
+        quantity: 1,
+      },
+    ],
   },
 ];

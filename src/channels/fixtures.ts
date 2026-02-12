@@ -1,23 +1,9 @@
-// @ts-strict-ignore
 import {
   AllocationStrategyEnum,
-  ChannelDetailsFragment,
-  ChannelErrorCode,
-  ChannelErrorFragment,
   MarkAsPaidStrategyEnum,
-  ProductFragment,
   TransactionFlowStrategyEnum,
 } from "@dashboard/graphql";
-import { Money } from "@saleor/sdk/dist/apollo/types";
-
-export const channelCreateErrors: ChannelErrorFragment[] = [
-  {
-    __typename: "ChannelError",
-    code: ChannelErrorCode.UNIQUE,
-    field: "slug",
-    message: "Channel with this Slug already exists.",
-  },
-];
+import { ChannelDetailsFragment } from "@dashboard/graphql/staging";
 
 export const channelsList: ChannelDetailsFragment[] = [
   {
@@ -53,8 +39,18 @@ export const channelsList: ChannelDetailsFragment[] = [
       markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
       deleteExpiredOrdersAfter: 60,
       allowUnpaidOrders: false,
-      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
       __typename: "OrderSettings",
+    },
+    paymentSettings: {
+      __typename: "PaymentSettings",
+      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
+    },
+    checkoutSettings: {
+      automaticallyCompleteFullyPaidCheckouts: true,
+      allowLegacyGiftCardUse: true,
+      automaticCompletionDelay: 30,
+      automaticCompletionCutOffDate: "2024-01-01T00:00:00Z",
+      __typename: "CheckoutSettings",
     },
   },
   {
@@ -88,10 +84,20 @@ export const channelsList: ChannelDetailsFragment[] = [
     ],
     orderSettings: {
       markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
-      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
       deleteExpiredOrdersAfter: 60,
       allowUnpaidOrders: false,
       __typename: "OrderSettings",
+    },
+    paymentSettings: {
+      __typename: "PaymentSettings",
+      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
+    },
+    checkoutSettings: {
+      automaticallyCompleteFullyPaidCheckouts: true,
+      automaticCompletionDelay: 30,
+      automaticCompletionCutOffDate: "2024-01-01T00:00:00Z",
+      allowLegacyGiftCardUse: true,
+      __typename: "CheckoutSettings",
     },
   },
   {
@@ -125,10 +131,20 @@ export const channelsList: ChannelDetailsFragment[] = [
     ],
     orderSettings: {
       markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
-      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
       deleteExpiredOrdersAfter: 60,
       allowUnpaidOrders: false,
       __typename: "OrderSettings",
+    },
+    paymentSettings: {
+      __typename: "PaymentSettings",
+      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
+    },
+    checkoutSettings: {
+      automaticallyCompleteFullyPaidCheckouts: true,
+      allowLegacyGiftCardUse: true,
+      automaticCompletionDelay: 30,
+      automaticCompletionCutOffDate: "2024-01-01T00:00:00Z",
+      __typename: "CheckoutSettings",
     },
   },
   {
@@ -162,10 +178,20 @@ export const channelsList: ChannelDetailsFragment[] = [
     ],
     orderSettings: {
       markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
-      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
       deleteExpiredOrdersAfter: 60,
       allowUnpaidOrders: false,
       __typename: "OrderSettings",
+    },
+    paymentSettings: {
+      __typename: "PaymentSettings",
+      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
+    },
+    checkoutSettings: {
+      automaticallyCompleteFullyPaidCheckouts: true,
+      automaticCompletionDelay: 30,
+      automaticCompletionCutOffDate: "2024-01-01T00:00:00Z",
+      allowLegacyGiftCardUse: true,
+      __typename: "CheckoutSettings",
     },
   },
   {
@@ -199,10 +225,20 @@ export const channelsList: ChannelDetailsFragment[] = [
     ],
     orderSettings: {
       markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
-      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
       deleteExpiredOrdersAfter: 60,
       allowUnpaidOrders: false,
       __typename: "OrderSettings",
+    },
+    paymentSettings: {
+      __typename: "PaymentSettings",
+      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
+    },
+    checkoutSettings: {
+      automaticallyCompleteFullyPaidCheckouts: true,
+      allowLegacyGiftCardUse: true,
+      automaticCompletionDelay: 30,
+      automaticCompletionCutOffDate: "2024-01-01T00:00:00Z",
+      __typename: "CheckoutSettings",
     },
   },
   {
@@ -236,10 +272,20 @@ export const channelsList: ChannelDetailsFragment[] = [
     ],
     orderSettings: {
       markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
-      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
       deleteExpiredOrdersAfter: 60,
       allowUnpaidOrders: false,
       __typename: "OrderSettings",
+    },
+    paymentSettings: {
+      __typename: "PaymentSettings",
+      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
+    },
+    checkoutSettings: {
+      automaticallyCompleteFullyPaidCheckouts: true,
+      automaticCompletionDelay: 30,
+      automaticCompletionCutOffDate: "2024-01-01T00:00:00Z",
+      allowLegacyGiftCardUse: true,
+      __typename: "CheckoutSettings",
     },
   },
   {
@@ -273,10 +319,20 @@ export const channelsList: ChannelDetailsFragment[] = [
     ],
     orderSettings: {
       markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
-      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
       deleteExpiredOrdersAfter: 60,
       allowUnpaidOrders: false,
       __typename: "OrderSettings",
+    },
+    paymentSettings: {
+      __typename: "PaymentSettings",
+      defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
+    },
+    checkoutSettings: {
+      automaticallyCompleteFullyPaidCheckouts: true,
+      automaticCompletionDelay: 30,
+      automaticCompletionCutOffDate: "2024-01-01T00:00:00Z",
+      allowLegacyGiftCardUse: true,
+      __typename: "CheckoutSettings",
     },
   },
 ];
@@ -312,136 +368,19 @@ export const channel: ChannelDetailsFragment = {
   ],
   orderSettings: {
     markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
-    defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
     deleteExpiredOrdersAfter: 60,
     allowUnpaidOrders: false,
     __typename: "OrderSettings",
   },
+  paymentSettings: {
+    __typename: "PaymentSettings",
+    defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.CHARGE,
+  },
+  checkoutSettings: {
+    automaticallyCompleteFullyPaidCheckouts: true,
+    automaticCompletionDelay: 30,
+    automaticCompletionCutOffDate: "2024-01-01T00:00:00Z",
+    allowLegacyGiftCardUse: true,
+    __typename: "CheckoutSettings",
+  },
 };
-
-type ProductChannelsWithPricing = ProductFragment["channelListings"][0] & {
-  pricing: {
-    priceRange: {
-      start: {
-        net: Money;
-      };
-      stop: {
-        net: Money;
-      };
-    };
-  };
-};
-
-export const productChannels: ProductChannelsWithPricing[] = [
-  {
-    __typename: "ProductChannelListing",
-    availableForPurchase: null,
-    channel: {
-      __typename: "Channel",
-      currencyCode: "USD",
-      id: "123",
-      name: "Channel1",
-    },
-    isAvailableForPurchase: false,
-    isPublished: true,
-    pricing: {
-      priceRange: {
-        start: {
-          net: {
-            amount: 1.2,
-            currency: "USD",
-          },
-        },
-        stop: {
-          net: {
-            amount: 3.5,
-            currency: "USD",
-          },
-        },
-      },
-    },
-    publicationDate: "2020-07-14",
-    visibleInListings: true,
-  },
-  {
-    __typename: "ProductChannelListing",
-    availableForPurchase: null,
-    channel: {
-      __typename: "Channel",
-      currencyCode: "USD",
-      id: "124",
-      name: "Channel2",
-    },
-    isAvailableForPurchase: false,
-    isPublished: false,
-    pricing: {
-      priceRange: {
-        start: {
-          net: {
-            amount: 2.2,
-            currency: "USD",
-          },
-        },
-        stop: {
-          net: {
-            amount: 7.1,
-            currency: "USD",
-          },
-        },
-      },
-    },
-    publicationDate: "2020-07-30",
-    visibleInListings: true,
-  },
-  {
-    __typename: "ProductChannelListing",
-    availableForPurchase: null,
-    channel: {
-      __typename: "Channel",
-      currencyCode: "USD",
-      id: "125",
-      name: "Channel3",
-    },
-    isAvailableForPurchase: false,
-    isPublished: false,
-    pricing: {
-      priceRange: {
-        start: {
-          net: {
-            amount: 30.1,
-            currency: "USD",
-          },
-        },
-        stop: {
-          net: {
-            amount: 44.9,
-            currency: "USD",
-          },
-        },
-      },
-    },
-    publicationDate: null,
-    visibleInListings: true,
-  },
-];
-
-export const productPriceChannels = [
-  {
-    costPrice: "5",
-    id: "123",
-    name: "Channel1",
-    sellingPrice: "10",
-  },
-  {
-    costPrice: "15",
-    id: "124",
-    name: "Channel2",
-    sellingPrice: "20",
-  },
-  {
-    costPrice: "15",
-    id: "125",
-    name: "Channel3",
-    sellingPrice: "100",
-  },
-];

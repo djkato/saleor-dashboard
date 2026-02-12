@@ -1,8 +1,8 @@
 import Money from "@dashboard/components/Money";
-import Skeleton from "@dashboard/components/Skeleton";
 import { IMoney } from "@dashboard/utils/intl";
+import { Skeleton } from "@saleor/macaw-ui-next";
 import clsx from "clsx";
-import React from "react";
+import * as React from "react";
 import { useIntl } from "react-intl";
 
 import { orderSummaryMessages } from "./messages";
@@ -10,7 +10,7 @@ import { useSummaryLineStyles } from "./styles";
 
 interface SummaryLineProps {
   text: React.ReactNode;
-  subText?: string;
+  subText?: React.ReactNode;
   negative?: boolean;
   bold?: boolean;
   vertical?: boolean;
@@ -19,7 +19,7 @@ interface SummaryLineProps {
   className?: string;
 }
 
-const SummaryLine: React.FC<SummaryLineProps> = ({
+const SummaryLine = ({
   text,
   subText,
   negative,
@@ -28,7 +28,7 @@ const SummaryLine: React.FC<SummaryLineProps> = ({
   money,
   hideEmpty = false,
   className,
-}) => {
+}: SummaryLineProps) => {
   const classes = useSummaryLineStyles();
   const intl = useIntl();
 
@@ -62,11 +62,7 @@ const SummaryLine: React.FC<SummaryLineProps> = ({
           ) : (
             <>
               {negative && (
-                <span
-                  aria-label={intl.formatMessage(orderSummaryMessages.negative)}
-                >
-                  –&nbsp;
-                </span>
+                <span aria-label={intl.formatMessage(orderSummaryMessages.negative)}>–&nbsp;</span>
               )}
               <Money money={money} />
             </>

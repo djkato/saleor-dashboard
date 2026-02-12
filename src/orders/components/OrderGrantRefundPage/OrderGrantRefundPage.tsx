@@ -1,18 +1,26 @@
-// @ts-strict-ignore
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
-import CardSpacer from "@dashboard/components/CardSpacer";
+import { DashboardCard } from "@dashboard/components/Card";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
-import Skeleton from "@dashboard/components/Skeleton";
-import { OrderDetailsGrantRefundFragment } from "@dashboard/graphql";
+import { formatMoneyAmount } from "@dashboard/components/Money";
+import PriceField from "@dashboard/components/PriceField";
+import { Savebar } from "@dashboard/components/Savebar";
+import {
+  OrderDetailsGrantedRefundFragment,
+  OrderDetailsGrantRefundFragment,
+  OrderLineGrantRefundFragment,
+} from "@dashboard/graphql";
+import useLocale from "@dashboard/hooks/useLocale";
+import useNavigator from "@dashboard/hooks/useNavigator";
 import { orderUrl } from "@dashboard/orders/urls";
-import { Card, CardContent, TextField, Typography } from "@material-ui/core";
-import { Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Input, Skeleton, Text } from "@saleor/macaw-ui-next";
+import { useEffect, useMemo } from "react";
+import * as React from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import { getOrderTitleMessage } from "../OrderCardTitle/utils";
-import { ProductsCard, RefundCard } from "./components";
+import { ProductsCard } from "./components/ProductCard";
+import { ShippingIncluded } from "./components/ShippingInluded";
 import { GrantRefundContext } from "./context";
 import { OrderGrantRefundFormData, useGrantRefundForm } from "./form";
 import { grantRefundPageMessages } from "./messages";
@@ -21,67 +29,99 @@ import {
   grantRefundDefaultState,
   grantRefundReducer,
 } from "./reducer";
-import { useStyles } from "./styles";
-import { calculateTotalPrice, getFulfilmentSubtitle } from "./utils";
+import {
+  calculateCanRefundShipping,
+  calculateTotalPrice,
+  getFulfilmentSubtitle,
+  getGrantedRefundData,
+  getRefundAmountValue,
+  prepareLineData,
+} from "./utils";
 
-export interface OrderGrantRefundPageProps {
-  order: OrderDetailsGrantRefundFragment;
+interface OrderGrantRefundPageProps {
+  order?: OrderDetailsGrantRefundFragment;
   loading: boolean;
   submitState: ConfirmButtonTransitionState;
   onSubmit: (data: OrderGrantRefundFormData) => void;
   isEdit?: boolean;
-  initialData?: OrderGrantRefundFormData;
+  initialData?: OrderDetailsGrantedRefundFragment;
 }
 
-const OrderGrantRefundPage: React.FC<OrderGrantRefundPageProps> = ({
+const OrderGrantRefundPage = ({
   order,
   loading,
   submitState,
   onSubmit,
   isEdit,
   initialData,
-}) => {
-  const classes = useStyles();
+}: OrderGrantRefundPageProps) => {
   const intl = useIntl();
+  const { locale } = useLocale();
+  const navigate = useNavigator();
+  const grantedRefund = useMemo(() => getGrantedRefundData(initialData), [initialData]);
+  const unfulfilledLines = (order?.lines ?? []).filter(line => line.quantityToFulfill > 0);
+  const [state, dispatch] = React.useReducer(grantRefundReducer, grantRefundDefaultState);
 
-  const unfulfilledLines = (order?.lines ?? []).filter(
-    line => line.quantityToFulfill > 0,
-  );
-
-  const [state, dispatch] = React.useReducer(
-    grantRefundReducer,
-    grantRefundDefaultState,
-  );
-
-  React.useEffect(() => {
+  useEffect(() => {
+    if (grantedRefund) {
+      dispatch({
+        type: "setRefundShipping",
+        refundShipping: grantedRefund.grantRefundForShipping,
+      });
+    }
+  }, [grantedRefund]);
+  useEffect(() => {
     if (order?.id) {
       dispatch({
         type: "initState",
-        state: getGrantRefundReducerInitialState(order),
+        state: getGrantRefundReducerInitialState(order, initialData),
       });
     }
-  }, [order]);
+  }, [order, initialData]);
 
-  const { set, change, data, submit, setIsDirty } = useGrantRefundForm({
+  const lines = prepareLineData(state.lines);
+  const canRefundShipping = calculateCanRefundShipping(grantedRefund, order?.grantedRefunds);
+  const { set, change, data, submit, setIsDirty, isFormDirty } = useGrantRefundForm({
     onSubmit,
-    initialData,
+    grantedRefund,
+    lines,
+    // Send grantRefundForShipping only when it's different than the one
+    grantRefundForShipping:
+      grantedRefund?.grantRefundForShipping === state.refundShipping
+        ? undefined
+        : state.refundShipping,
   });
-
-  const amount = parseFloat(data.amount);
-  const submitDisabled = Number.isNaN(amount) || amount <= 0;
-
-  const totalSelectedPrice = calculateTotalPrice(state, order);
-
-  const handleSubmit = (e: React.FormEvent<any>) => {
+  const totalSelectedPrice = order ? calculateTotalPrice(state, order) : 0;
+  const amountValue = getRefundAmountValue({
+    isEditedRefundAmount: grantedRefund !== undefined,
+    isAmountInputDirty: isFormDirty.amount,
+    refundAmount: Number(data.amount),
+    totalCalulatedPrice: totalSelectedPrice,
+  });
+  const currency = order?.total?.gross?.currency ?? "";
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.stopPropagation();
     e.preventDefault();
     submit();
   };
+  const getRefundAmountDisplayValue = () => {
+    if (isFormDirty) {
+      return amountValue.toString();
+    }
+
+    return formatMoneyAmount(
+      {
+        amount: amountValue,
+        currency,
+      },
+      locale,
+    );
+  };
 
   return (
-    <DetailPageLayout>
+    <DetailPageLayout gridTemplateColumns={1}>
       <TopNav
-        href={orderUrl(order?.id)}
+        href={order ? orderUrl(order?.id) : "#"}
         title={
           <FormattedMessage
             {...(isEdit
@@ -90,7 +130,7 @@ const OrderGrantRefundPage: React.FC<OrderGrantRefundPageProps> = ({
           />
         }
       ></TopNav>
-      <form onSubmit={handleSubmit} className={classes.form}>
+      <form onSubmit={handleSubmit} style={{ display: "contents" }}>
         <GrantRefundContext.Provider
           value={{
             dispatch: (...args) => {
@@ -103,81 +143,97 @@ const OrderGrantRefundPage: React.FC<OrderGrantRefundPageProps> = ({
           }}
         >
           <DetailPageLayout.Content>
-            <Card>
-              <CardContent>
-                <Text variant="bodyEmp" as="p">
+            <DashboardCard>
+              <DashboardCard.Content display="flex" flexDirection="column" gap={5}>
+                <Text size={4} fontWeight="medium" as="p" marginTop={5}>
                   <FormattedMessage {...grantRefundPageMessages.pageSubtitle} />
                 </Text>
-              </CardContent>
-            </Card>
-            <CardSpacer />
-            <div className={classes.cardsContainer}>
-              {loading && <Skeleton className={classes.cardLoading} />}
-              <ProductsCard
-                title={
-                  <FormattedMessage
-                    {...grantRefundPageMessages.unfulfilledProducts}
-                  />
-                }
-                lines={unfulfilledLines}
-              />
-              {order?.fulfillments?.map?.(fulfillment => (
-                <ProductsCard
-                  key={fulfillment.id}
-                  title={intl.formatMessage(
-                    getOrderTitleMessage(fulfillment.status),
-                  )}
-                  subtitle={
-                    <Typography
-                      variant="body1"
-                      className={classes.fulfilmentNumber}
-                    >
-                      {getFulfilmentSubtitle(order, fulfillment)}
-                    </Typography>
-                  }
-                  lines={fulfillment.lines.map(
-                    ({ orderLine, id, quantity }) => ({
-                      ...orderLine,
-                      id,
-                      quantity,
-                    }),
-                  )}
-                />
-              ))}
 
-              <Card>
-                <CardContent>
-                  <TextField
-                    label={intl.formatMessage(
-                      grantRefundPageMessages.reasonForRefund,
-                    )}
-                    disabled={loading}
-                    value={data.reason}
-                    fullWidth
-                    name={"reason" as keyof OrderGrantRefundFormData}
+                {loading ? (
+                  <Skeleton />
+                ) : (
+                  <>
+                    <ProductsCard
+                      title={<FormattedMessage {...grantRefundPageMessages.unfulfilledProducts} />}
+                      lines={unfulfilledLines}
+                    />
+
+                    {order?.fulfillments?.map?.(fulfillment => (
+                      <ProductsCard
+                        key={fulfillment.id}
+                        title={intl.formatMessage(getOrderTitleMessage(fulfillment.status))}
+                        subtitle={
+                          <Text display="inline-block" marginLeft={1}>
+                            {getFulfilmentSubtitle(order, fulfillment)}
+                          </Text>
+                        }
+                        lines={
+                          fulfillment.lines?.map(({ orderLine, id, quantity }) => {
+                            return {
+                              ...orderLine,
+                              id,
+                              quantity,
+                              // satisfy TypeScript but it should be fix properly
+                            } as OrderLineGrantRefundFragment;
+                          }) ?? []
+                        }
+                      />
+                    ))}
+                  </>
+                )}
+
+                <ShippingIncluded
+                  currency={currency}
+                  amount={order?.shippingPrice?.gross}
+                  canRefundShipping={canRefundShipping}
+                />
+
+                <Box display="flex" gap={3}>
+                  <Box __flexGrow={2} flexBasis="0">
+                    <Input
+                      label={intl.formatMessage(grantRefundPageMessages.reasonForRefund)}
+                      disabled={loading}
+                      value={data.reason}
+                      name={"reason" as keyof OrderGrantRefundFormData}
+                      onChange={change}
+                      type="text"
+                      data-test-id="refundReasonInput"
+                    />
+                  </Box>
+                  <PriceField
+                    flexGrow="1"
+                    flexBasis="0"
+                    label={intl.formatMessage(grantRefundPageMessages.refundAmountLabel)}
                     onChange={change}
-                    type="text"
-                    InputProps={{
-                      inputProps: {
-                        "data-test-id": "refundReasonInput",
-                      },
-                    }}
+                    disabled={loading}
+                    name={"amount" as keyof OrderGrantRefundFormData}
+                    currencySymbol={currency}
+                    value={getRefundAmountDisplayValue()}
+                    data-test-id="amountInput"
                   />
-                </CardContent>
-              </Card>
-            </div>
+                </Box>
+              </DashboardCard.Content>
+            </DashboardCard>
           </DetailPageLayout.Content>
-          <DetailPageLayout.RightSidebar>
-            <RefundCard
-              order={order}
-              loading={loading}
-              submitState={submitState}
-              isEdit={isEdit}
-              submitDisabled={submitDisabled}
-            />
-          </DetailPageLayout.RightSidebar>
         </GrantRefundContext.Provider>
       </form>
+      <Savebar>
+        <Savebar.Spacer />
+        <Savebar.CancelButton
+          onClick={() => {
+            if (!order) {
+              return;
+            }
+
+            navigate(orderUrl(order?.id));
+          }}
+        />
+        <Savebar.ConfirmButton transitionState={submitState} onClick={submit} disabled={loading}>
+          {isEdit
+            ? intl.formatMessage(grantRefundPageMessages.editRefundBtn)
+            : intl.formatMessage(grantRefundPageMessages.grantRefundBtn)}
+        </Savebar.ConfirmButton>
+      </Savebar>
     </DetailPageLayout>
   );
 };

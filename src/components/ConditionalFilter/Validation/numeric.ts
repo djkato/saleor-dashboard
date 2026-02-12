@@ -11,7 +11,7 @@ const isTooLong = (value: string, row: number) => {
   return false;
 };
 
-export const numeric = (element: FilterElement, row: number) => {
+export const validateFilterElementToBeNumeric = (element: FilterElement, row: number) => {
   const { value } = element.condition.selected;
 
   if (Array.isArray(value) && value.length === 2) {
@@ -20,6 +20,7 @@ export const numeric = (element: FilterElement, row: number) => {
     const errorsGte = isTooLong(sLte, row);
 
     if (errorsLte) return errorsGte;
+
     if (errorsGte) return errorsGte;
 
     const lte = parseFloat(sLte);

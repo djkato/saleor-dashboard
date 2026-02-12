@@ -13,50 +13,38 @@ import {
 } from "@dashboard/graphql";
 import useChannels from "@dashboard/hooks/useChannels";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import { commonMessages } from "@dashboard/intl";
 import { getMutationErrors } from "@dashboard/misc";
 import createDialogActionHandlers from "@dashboard/utils/handlers/dialogActionHandlers";
 import createMetadataCreateHandler from "@dashboard/utils/handlers/metadataCreateHandler";
 import { getParsedDataForJsonStringField } from "@dashboard/utils/richText/misc";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import CollectionCreatePage from "../components/CollectionCreatePage/CollectionCreatePage";
 import { CollectionCreateData } from "../components/CollectionCreatePage/form";
-import {
-  collectionAddUrl,
-  CollectionCreateUrlQueryParams,
-  collectionUrl,
-} from "../urls";
+import { collectionAddUrl, CollectionCreateUrlQueryParams, collectionUrl } from "../urls";
 import { COLLECTION_CREATE_FORM_ID } from "./consts";
 
 interface CollectionCreateProps {
   params: CollectionCreateUrlQueryParams;
 }
 
-export const CollectionCreate: React.FC<CollectionCreateProps> = ({
-  params,
-}) => {
+const CollectionCreate = ({ params }: CollectionCreateProps) => {
   const navigate = useNavigator();
   const notify = useNotifier();
   const intl = useIntl();
   const [updateMetadata] = useUpdateMetadataMutation({});
   const [updatePrivateMetadata] = useUpdatePrivateMetadataMutation({});
-
   const [openModal, closeModal] = createDialogActionHandlers<
     ChannelsAction,
     CollectionCreateUrlQueryParams
   >(navigate, params => collectionAddUrl(params), params);
-
-  const [updateChannels, updateChannelsOpts] =
-    useCollectionChannelListingUpdateMutation({});
+  const [updateChannels, updateChannelsOpts] = useCollectionChannelListingUpdateMutation({});
   const { availableChannels } = useAppChannel(false);
-
-  const allChannels = createCollectionChannels(availableChannels)?.sort(
-    (channel, nextChannel) => channel.name.localeCompare(nextChannel.name),
+  const allChannels = createCollectionChannels(availableChannels)?.sort((channel, nextChannel) =>
+    channel.name.localeCompare(nextChannel.name),
   );
-
   const {
     channelListElements,
     channelsToggle,
@@ -74,30 +62,7 @@ export const CollectionCreate: React.FC<CollectionCreateProps> = ({
     { closeModal, openModal },
     { formId: COLLECTION_CREATE_FORM_ID },
   );
-
-  const [createCollection, createCollectionOpts] = useCreateCollectionMutation({
-    onCompleted: data => {
-      if (data.collectionCreate.errors.length === 0) {
-        notify({
-          status: "success",
-          text: intl.formatMessage(commonMessages.savedChanges),
-        });
-        navigate(collectionUrl(data.collectionCreate.collection.id));
-      } else {
-        const backgroundImageError = data.collectionCreate.errors.find(
-          error =>
-            error.field === ("backgroundImage" as keyof CollectionCreateInput),
-        );
-        if (backgroundImageError) {
-          notify({
-            status: "error",
-            text: intl.formatMessage(commonMessages.somethingWentWrong),
-          });
-        }
-      }
-    },
-  });
-
+  const [createCollection, createCollectionOpts] = useCreateCollectionMutation({});
   const handleCreate = async (formData: CollectionCreateData) => {
     const result = await createCollection({
       variables: {
@@ -113,17 +78,17 @@ export const CollectionCreate: React.FC<CollectionCreateProps> = ({
         },
       },
     });
-
     const id = result.data?.collectionCreate.collection?.id || null;
+
     if (id) {
-      updateChannels({
+      await updateChannels({
         variables: {
           id,
           input: {
             addChannels: formData.channelListings.map(channel => ({
               channelId: channel.id,
               isPublished: channel.isPublished,
-              publicationDate: channel.publicationDate,
+              publishedAt: channel.publishedAt,
             })),
             removeChannels: [],
           },
@@ -131,9 +96,27 @@ export const CollectionCreate: React.FC<CollectionCreateProps> = ({
       });
     }
 
+    if (result.data.collectionCreate.errors.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({ id: "6LqbaB", defaultMessage: "Collection created" }),
+      });
+      navigate(collectionUrl(id));
+    } else {
+      const backgroundImageError = result.data.collectionCreate.errors.find(
+        error => error.field === ("backgroundImage" as keyof CollectionCreateInput),
+      );
+
+      if (backgroundImageError) {
+        notify({
+          status: "error",
+          text: intl.formatMessage(commonMessages.somethingWentWrong),
+        });
+      }
+    }
+
     return { id, errors: getMutationErrors(result) };
   };
-
   const handleSubmit = createMetadataCreateHandler(
     handleCreate,
     updateMetadata,
@@ -169,9 +152,7 @@ export const CollectionCreate: React.FC<CollectionCreateProps> = ({
       )}
       <CollectionCreatePage
         errors={createCollectionOpts.data?.collectionCreate.errors || []}
-        channelsErrors={
-          updateChannelsOpts?.data?.collectionChannelListingUpdate.errors || []
-        }
+        channelsErrors={updateChannelsOpts?.data?.collectionChannelListingUpdate.errors || []}
         currentChannels={currentChannels}
         channelsCount={availableChannels.length}
         openChannelsModal={handleChannelsModalOpen}
@@ -183,4 +164,5 @@ export const CollectionCreate: React.FC<CollectionCreateProps> = ({
     </>
   );
 };
+
 export default CollectionCreate;

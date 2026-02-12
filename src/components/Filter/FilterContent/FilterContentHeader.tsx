@@ -1,9 +1,7 @@
 import { Button } from "@dashboard/components/Button";
 import { buttonMessages } from "@dashboard/intl";
-import { Typography } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
-import { vars } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Text, vars } from "@saleor/macaw-ui-next";
 import { FormattedMessage } from "react-intl";
 
 const useStyles = makeStyles(
@@ -15,8 +13,8 @@ const useStyles = makeStyles(
       position: "sticky",
       top: 0,
       padding: theme.spacing(1, 3),
-      backgroundColor: vars.colors.background.surfaceNeutralPlain,
-      borderBottom: `1px solid ${vars.colors.border.neutralPlain}`,
+      backgroundColor: vars.colors.background.default1,
+      borderBottom: `1px solid ${vars.colors.border.default1}`,
       zIndex: 1,
     },
     clear: {
@@ -33,16 +31,14 @@ interface FilterContentHeaderProps {
   onClear: () => void;
 }
 
-const FilterContentHeader: React.FC<FilterContentHeaderProps> = ({
-  onClear,
-}) => {
+export const FilterContentHeader = ({ onClear }: FilterContentHeaderProps) => {
   const classes = useStyles({});
 
   return (
     <div className={classes.container}>
-      <Typography className={classes.label}>
+      <Text className={classes.label}>
         <FormattedMessage id="zSOvI0" defaultMessage="Filters" />
-      </Typography>
+      </Text>
       <div>
         <Button
           data-test-id="clear"
@@ -59,5 +55,3 @@ const FilterContentHeader: React.FC<FilterContentHeaderProps> = ({
     </div>
   );
 };
-
-export default FilterContentHeader;

@@ -1,24 +1,28 @@
 // @ts-strict-ignore
 import { ChannelData } from "@dashboard/channels/utils";
 import Label from "@dashboard/orders/components/OrderHistory/Label";
-import { Accordion, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Accordion, Text } from "@saleor/macaw-ui-next";
+import * as React from "react";
 
 import { Messages } from "../types";
 
-export interface ChannelContentWrapperProps {
+interface ChannelContentWrapperProps {
   data: ChannelData;
   children: React.ReactNode;
   messages: Messages;
 }
 
-export const ChannelAvailabilityItemWrapper: React.FC<
-  ChannelContentWrapperProps
-> = ({ data: { name }, messages, children }) => (
+export const ChannelAvailabilityItemWrapper = ({
+  data: { name },
+  messages,
+  children,
+}: ChannelContentWrapperProps) => (
   <Accordion data-test-id="channel-availability-item">
     <Accordion.Item value="channel-availability-item" gap={9}>
       <Accordion.Trigger>
-        <Text variant={"bodyEmp"}>{name}</Text>
+        <Text size={4} fontWeight="medium">
+          {name}
+        </Text>
         <Label text={messages.availableDateText} />
         <Accordion.TriggerButton dataTestId="expand-icon" />
       </Accordion.Trigger>

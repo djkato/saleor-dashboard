@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import {
   add,
   addAtIndex,
@@ -12,17 +11,15 @@ import {
 } from "./lists";
 
 const initialArray = ["lorem", "ipsum", "dolor"];
-const compare = (a, b) => a === b;
+const compare = (a: unknown, b: unknown) => a === b;
 
 describe("Properly calculates output arrays", () => {
   it("Adds", () => {
     expect(add("sit", initialArray)).toMatchSnapshot();
   });
-
   it("Adds at index", () => {
     expect(addAtIndex("sit", initialArray, 2)).toMatchSnapshot();
   });
-
   it("Updates", () => {
     expect(
       update(
@@ -38,29 +35,23 @@ describe("Properly calculates output arrays", () => {
       ),
     ).toMatchSnapshot();
   });
-
   it("Updates at index", () => {
     expect(updateAtIndex("amet", initialArray, 1)).toMatchSnapshot();
   });
-
   it("Removes", () => {
     expect(remove("ipsum", initialArray, compare)).toMatchSnapshot();
   });
-
   it("Removes at index", () => {
     expect(removeAtIndex(initialArray, 1)).toMatchSnapshot();
   });
-
   it("Matches", () => {
     expect(isSelected("lorem", initialArray, compare)).toBe(true);
     expect(isSelected("sit", initialArray, compare)).toBe(false);
   });
-
   it("Toggles", () => {
     expect(toggle("lorem", initialArray, compare)).toMatchSnapshot();
     expect(toggle("sit", initialArray, compare)).toMatchSnapshot();
   });
-
   it("Moves", () => {
     expect(move("lorem", initialArray, compare, 1)).toMatchSnapshot();
   });

@@ -11,15 +11,13 @@ import useForm, {
 } from "@dashboard/hooks/useForm";
 import useHandleFormSubmit from "@dashboard/hooks/useHandleFormSubmit";
 import useMetadataChangeTrigger from "@dashboard/utils/metadata/useMetadataChangeTrigger";
-import {
-  RichTextContext,
-  RichTextContextValues,
-} from "@dashboard/utils/richText/context";
+import { RichTextContext, RichTextContextValues } from "@dashboard/utils/richText/context";
 import useRichText from "@dashboard/utils/richText/useRichText";
 import { OutputData } from "@editorjs/editorjs";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
+import * as React from "react";
 
-export interface CollectionCreateFormData extends MetadataFormData {
+interface CollectionCreateFormData extends MetadataFormData {
   backgroundImage: {
     url: string;
     value: string;
@@ -37,17 +35,14 @@ export interface CollectionCreateData extends CollectionCreateFormData {
 
 interface CollectionCreateHandlers {
   changeMetadata: FormChange;
-  changeChannels: (
-    id: string,
-    data: Omit<ChannelCollectionData, "name" | "id">,
-  ) => void;
+  changeChannels: (id: string, data: Omit<ChannelCollectionData, "name" | "id">) => void;
 }
-export type UseCollectionCreateFormResult = CommonUseFormResultWithHandlers<
+type UseCollectionCreateFormResult = CommonUseFormResultWithHandlers<
   CollectionCreateData,
   CollectionCreateHandlers
 >;
 
-export interface CollectionCreateFormProps {
+interface CollectionCreateFormProps {
   currentChannels: ChannelCollectionData[];
   setChannels: (data: ChannelCollectionData[]) => void;
   children: (props: UseCollectionCreateFormResult) => React.ReactNode;
@@ -55,9 +50,7 @@ export interface CollectionCreateFormProps {
   disabled: boolean;
 }
 
-const getInitialData = (
-  currentChannels: ChannelCollectionData[],
-): CollectionCreateFormData => ({
+const getInitialData = (currentChannels: ChannelCollectionData[]): CollectionCreateFormData => ({
   backgroundImage: {
     url: null,
     value: null,
@@ -88,48 +81,39 @@ function useCollectionCreateForm(
     confirmLeave: true,
     formId: COLLECTION_CREATE_FORM_ID,
   });
-
   const handleFormSubmit = useHandleFormSubmit({
     formId,
     onSubmit,
   });
-
   const { setExitDialogSubmitRef } = useExitFormDialog({
     formId,
   });
-
   const richText = useRichText({
     initial: null,
     triggerChange,
   });
-
-  const { makeChangeHandler: makeMetadataChangeHandler } =
-    useMetadataChangeTrigger();
-
+  const { makeChangeHandler: makeMetadataChangeHandler } = useMetadataChangeTrigger();
   const changeMetadata = makeMetadataChangeHandler(handleChange);
-
   const data: CollectionCreateData = {
     ...formData,
     description: null,
   };
-
   // Need to make it function to always have description.current up to date
   const getData = async (): Promise<CollectionCreateData> => ({
     ...formData,
     description: await richText.getValue(),
   });
-
   const handleChannelChange = createChannelsChangeHandler(
     currentChannels,
     setChannels,
     triggerChange,
   );
-
   const submit = async () => handleFormSubmit(await getData());
 
   useEffect(() => setExitDialogSubmitRef(submit), [submit]);
 
   const isSaveDisabled = disabled;
+
   setIsSubmitDisabled(isSaveDisabled);
 
   return {
@@ -145,13 +129,13 @@ function useCollectionCreateForm(
   };
 }
 
-const CollectionCreateForm: React.FC<CollectionCreateFormProps> = ({
+const CollectionCreateForm = ({
   currentChannels,
   setChannels,
   children,
   onSubmit,
   disabled,
-}) => {
+}: CollectionCreateFormProps) => {
   const { richText, ...props } = useCollectionCreateForm(
     currentChannels,
     setChannels,
@@ -161,9 +145,7 @@ const CollectionCreateForm: React.FC<CollectionCreateFormProps> = ({
 
   return (
     <form onSubmit={props.submit}>
-      <RichTextContext.Provider value={richText}>
-        {children(props)}
-      </RichTextContext.Provider>
+      <RichTextContext.Provider value={richText}>{children(props)}</RichTextContext.Provider>
     </form>
   );
 };

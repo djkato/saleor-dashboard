@@ -1,11 +1,9 @@
-import { filter } from "fuzzaldrin";
-import React from "react";
+import { fuzzySearch } from "@dashboard/misc";
+import { useState } from "react";
 
-export const useChannelsSearch = function <T extends { name: string }>(
-  channels: T[],
-) {
-  const [query, onQueryChange] = React.useState("");
-  const filteredChannels = filter<T, "name">(channels, query, { key: "name" });
+export const useChannelsSearch = function <T extends { name: string }>(channels: T[]) {
+  const [query, onQueryChange] = useState("");
+  const filteredChannels = fuzzySearch(channels, query, ["name"]);
 
   return { query, onQueryChange, filteredChannels };
 };

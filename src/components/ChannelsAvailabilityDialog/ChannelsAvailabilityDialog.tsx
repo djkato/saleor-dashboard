@@ -2,14 +2,13 @@
 import { Channel } from "@dashboard/channels/utils";
 import ActionDialog from "@dashboard/components/ActionDialog";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
-import React from "react";
 
 import ChannelsAvailabilityDialogChannelsList from "../ChannelsAvailabilityDialogChannelsList";
 import ChannelsAvailabilityDialogWrapper from "../ChannelsAvailabilityDialogWrapper";
 import { NoChannels } from "./NoChannels";
 import { useChannelsSearch } from "./utils";
 
-export interface ChannelsAvailabilityDialogProps {
+interface ChannelsAvailabilityDialogProps {
   isSelected: (option: Channel) => boolean;
   channels: Channel[];
   confirmButtonState: ConfirmButtonTransitionState;
@@ -24,9 +23,7 @@ export interface ChannelsAvailabilityDialogProps {
   toggleAll?: (items: Channel[], selected: number) => void;
 }
 
-export const ChannelsAvailabilityDialog: React.FC<
-  ChannelsAvailabilityDialogProps
-> = ({
+const ChannelsAvailabilityDialog = ({
   isSelected,
   channels,
   confirmButtonState,
@@ -39,13 +36,10 @@ export const ChannelsAvailabilityDialog: React.FC<
   selected,
   title,
   toggleAll,
-}) => {
-  const { query, onQueryChange, filteredChannels } =
-    useChannelsSearch(channels);
+}: ChannelsAvailabilityDialogProps) => {
+  const { query, onQueryChange, filteredChannels } = useChannelsSearch(channels);
   const hasChannels = channels.length > 0;
-
   const handleToggleAll = () => toggleAll(channels, selected);
-
   const hasAllSelected = selected === channels.length;
 
   return (

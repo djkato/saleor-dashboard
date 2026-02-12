@@ -1,11 +1,11 @@
-import CardTitle from "@dashboard/components/CardTitle";
+import { DashboardCard } from "@dashboard/components/Card";
 import { ControlledCheckbox } from "@dashboard/components/ControlledCheckbox";
 import { Grid } from "@dashboard/components/Grid";
 import { DiscountErrorFragment } from "@dashboard/graphql";
 import { getFormErrors } from "@dashboard/utils/errors";
 import getDiscountErrorMessage from "@dashboard/utils/errors/discounts";
-import { Card, CardContent, TextField, Typography } from "@material-ui/core";
-import React from "react";
+import { TextField } from "@material-ui/core";
+import { Text } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
 import { VoucherDetailsPageFormData } from "../VoucherDetailsPage";
@@ -33,15 +33,15 @@ const VoucherLimits = ({
 }: VoucherLimitsProps) => {
   const intl = useIntl();
   const classes = useStyles();
-
   const formErrors = getFormErrors(["usageLimit"], errors);
-
   const usesLeft = data.usageLimit - data.used;
 
   return (
-    <Card>
-      <CardTitle title={intl.formatMessage(messages.usageLimitsTitle)} />
-      <CardContent className={classes.cardContent}>
+    <DashboardCard data-test-id="usage-limit-section">
+      <DashboardCard.Header>
+        <DashboardCard.Title>{intl.formatMessage(messages.usageLimitsTitle)}</DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content className={classes.cardContent}>
         <ControlledCheckbox
           testId="has-usage-limit"
           checked={data.hasUsageLimit}
@@ -75,10 +75,7 @@ const VoucherLimits = ({
                 data-test-id="usage-limit"
                 disabled={disabled}
                 error={!!formErrors.usageLimit || data.usageLimit <= 0}
-                helperText={getDiscountErrorMessage(
-                  formErrors.usageLimit,
-                  intl,
-                )}
+                helperText={getDiscountErrorMessage(formErrors.usageLimit, intl)}
                 label={intl.formatMessage(messages.usageLimit)}
                 name={"usageLimit" as keyof VoucherDetailsPageFormData}
                 value={data.usageLimit}
@@ -89,10 +86,10 @@ const VoucherLimits = ({
                 }}
               />
               <div className={classes.usesLeftLabelWrapper}>
-                <Typography variant="caption">
+                <Text size={2} fontWeight="light">
                   {intl.formatMessage(messages.usesLeftCaption)}
-                </Typography>
-                <Typography>{usesLeft >= 0 ? usesLeft : 0}</Typography>
+                </Text>
+                <Text>{usesLeft >= 0 ? usesLeft : 0}</Text>
               </div>
             </Grid>
           ))}
@@ -110,8 +107,17 @@ const VoucherLimits = ({
           name={"onlyForStaff" as keyof VoucherDetailsPageFormData}
           onChange={onChange}
         />
-      </CardContent>
-    </Card>
+
+        <ControlledCheckbox
+          testId="single-use"
+          checked={data.singleUse}
+          label={intl.formatMessage(messages.singleUse)}
+          name={"singleUse" satisfies keyof VoucherDetailsPageFormData}
+          onChange={onChange}
+        />
+      </DashboardCard.Content>
+    </DashboardCard>
   );
 };
+
 export default VoucherLimits;

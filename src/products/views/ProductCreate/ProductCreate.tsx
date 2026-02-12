@@ -1,17 +1,13 @@
 // @ts-strict-ignore
-import {
-  ChannelData,
-  createSortedChannelsData,
-} from "@dashboard/channels/utils";
+import { ChannelData, createSortedChannelsData } from "@dashboard/channels/utils";
 import useAppChannel from "@dashboard/components/AppLayout/AppChannelContext";
 import { AttributeInput } from "@dashboard/components/Attributes";
 import ChannelsAvailabilityDialog from "@dashboard/components/ChannelsAvailabilityDialog";
 import { WindowTitle } from "@dashboard/components/WindowTitle";
+import { DEFAULT_INITIAL_SEARCH_DATA, VALUES_PAGINATE_BY } from "@dashboard/config";
 import {
-  DEFAULT_INITIAL_SEARCH_DATA,
-  VALUES_PAGINATE_BY,
-} from "@dashboard/config";
-import {
+  AttributeEntityTypeEnum,
+  PageWhereInput,
   ProductChannelListingErrorFragment,
   ProductErrorWithAttributesFragment,
   useFileUploadMutation,
@@ -23,11 +19,11 @@ import {
   useUpdateMetadataMutation,
   useUpdatePrivateMetadataMutation,
   useVariantCreateMutation,
-  useWarehouseListQuery,
 } from "@dashboard/graphql";
+import { getSearchFetchMoreProps } from "@dashboard/hooks/makeTopLevelSearch/utils";
 import useChannels from "@dashboard/hooks/useChannels";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import useShop from "@dashboard/hooks/useShop";
 import { getMutationErrors } from "@dashboard/misc";
 import ProductCreatePage, {
@@ -41,9 +37,12 @@ import {
 } from "@dashboard/products/urls";
 import useCategorySearch from "@dashboard/searches/useCategorySearch";
 import useCollectionSearch from "@dashboard/searches/useCollectionSearch";
-import usePageSearch from "@dashboard/searches/usePageSearch";
-import useProductSearch from "@dashboard/searches/useProductSearch";
 import useProductTypeSearch from "@dashboard/searches/useProductTypeSearch";
+import {
+  useReferencePageSearch,
+  useReferenceProductSearch,
+} from "@dashboard/searches/useReferenceSearch";
+import useWarehouseSearch from "@dashboard/searches/useWarehouseSearch";
 import { useTaxClassFetchMore } from "@dashboard/taxes/utils/useTaxClassFetchMore";
 import { getProductErrorMessage } from "@dashboard/utils/errors";
 import useAttributeValueSearchHandler from "@dashboard/utils/handlers/attributeValueSearchHandler";
@@ -51,7 +50,8 @@ import createDialogActionHandlers from "@dashboard/utils/handlers/dialogActionHa
 import createMetadataCreateHandler from "@dashboard/utils/handlers/metadataCreateHandler";
 import { mapEdgesToItems } from "@dashboard/utils/maps";
 import { warehouseAddPath } from "@dashboard/warehouses/urls";
-import React from "react";
+import { useOnboarding } from "@dashboard/welcomePage/WelcomePageOnboarding/onboardingContext";
+import { useCallback, useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 
 import { PRODUCT_CREATE_FORM_ID } from "./consts";
@@ -61,15 +61,14 @@ interface ProductCreateProps {
   params: ProductCreateUrlQueryParams;
 }
 
-export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
+const ProductCreateView = ({ params }: ProductCreateProps) => {
   const navigate = useNavigator();
   const notify = useNotifier();
   const shop = useShop();
+  const { markOnboardingStepAsCompleted } = useOnboarding();
   const intl = useIntl();
-  const [productCreateComplete, setProductCreateComplete] =
-    React.useState(false);
+  const [productCreateComplete, setProductCreateComplete] = useState(false);
   const selectedProductTypeId = params["product-type-id"];
-
   const handleSelectProductType = (productTypeId: string) =>
     navigate(
       productAddUrl({
@@ -77,23 +76,21 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
         "product-type-id": productTypeId,
       }),
     );
-
   const [openModal, closeModal] = createDialogActionHandlers<
     ProductCreateUrlDialog,
     ProductCreateUrlQueryParams
   >(navigate, params => productAddUrl(params), params);
-
   const {
     loadMore: loadMoreCategories,
-    search: searchCategory,
-    result: searchCategoryOpts,
+    search: searchCategories,
+    result: searchCategoriesOpts,
   } = useCategorySearch({
     variables: DEFAULT_INITIAL_SEARCH_DATA,
   });
   const {
     loadMore: loadMoreCollections,
-    search: searchCollection,
-    result: searchCollectionOpts,
+    search: searchCollections,
+    result: searchCollectionsOpts,
   } = useCollectionSearch({
     variables: DEFAULT_INITIAL_SEARCH_DATA,
   });
@@ -102,20 +99,6 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
     search: searchProductTypes,
     result: searchProductTypesOpts,
   } = useProductTypeSearch({
-    variables: DEFAULT_INITIAL_SEARCH_DATA,
-  });
-  const {
-    loadMore: loadMorePages,
-    search: searchPages,
-    result: searchPagesOpts,
-  } = usePageSearch({
-    variables: DEFAULT_INITIAL_SEARCH_DATA,
-  });
-  const {
-    loadMore: loadMoreProducts,
-    search: searchProducts,
-    result: searchProductsOpts,
-  } = useProductSearch({
     variables: DEFAULT_INITIAL_SEARCH_DATA,
   });
   const {
@@ -134,14 +117,9 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
     },
     skip: !selectedProductTypeId,
   });
-
-  const productTypes =
-    mapEdgesToItems(searchProductTypesOpts?.data?.search) || [];
-
+  const productTypes = mapEdgesToItems(searchProductTypesOpts?.data?.search) || [];
   const { availableChannels } = useAppChannel(false);
-  const allChannels: ChannelData[] =
-    createSortedChannelsData(availableChannels);
-
+  const allChannels: ChannelData[] = createSortedChannelsData(availableChannels);
   const {
     channelListElements,
     channelsToggle,
@@ -165,14 +143,17 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
     },
   );
 
-  const warehouses = useWarehouseListQuery({
-    displayLoader: true,
+  const {
+    loadMore: fetchMoreWarehouses,
+    search: searchWarehouses,
+    result: searchWarehousesResult,
+  } = useWarehouseSearch({
     variables: {
       first: 50,
-      filter: {
-        channels: currentChannels.map(channel => channel.id),
-      },
+      channnelsId: [],
+      query: "",
     },
+    skip: !currentChannels.length,
   });
 
   const handleSuccess = (productId: string) => {
@@ -185,31 +166,26 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
     });
     navigate(productUrl(productId));
   };
-
   const [uploadFile, uploadFileOpts] = useFileUploadMutation({});
-
-  const [updateChannels, updateChannelsOpts] =
-    useProductChannelListingUpdateMutation({});
+  const [updateChannels, updateChannelsOpts] = useProductChannelListingUpdateMutation({});
   const [updateVariantChannels, updateVariantChannelsOpts] =
     useProductVariantChannelListingUpdateMutation({});
-
   const [productCreate, productCreateOpts] = useProductCreateMutation({});
   const [deleteProduct] = useProductDeleteMutation({});
-  const [productVariantCreate, productVariantCreateOpts] =
-    useVariantCreateMutation({
-      onCompleted: data => {
-        const errors = data.productVariantCreate.errors;
-        if (errors.length) {
-          errors.map(error =>
-            notify({
-              status: "error",
-              text: getProductErrorMessage(error, intl),
-            }),
-          );
-        }
-      },
-    });
+  const [productVariantCreate, productVariantCreateOpts] = useVariantCreateMutation({
+    onCompleted: data => {
+      const errors = data.productVariantCreate.errors;
 
+      if (errors.length) {
+        errors.map(error =>
+          notify({
+            status: "error",
+            text: getProductErrorMessage(error, intl),
+          }),
+        );
+      }
+    },
+  });
   const handleSubmit = async (data: ProductCreateData) => {
     const errors = await createMetadataCreateHandler(
       createHandler(
@@ -226,12 +202,12 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
     )(data);
 
     if (!errors?.length) {
+      markOnboardingStepAsCompleted("create-product");
       setProductCreateComplete(true);
     }
 
     return errors;
   };
-
   const handleAssignAttributeReferenceClick = (attribute: AttributeInput) =>
     navigate(
       productAddUrl({
@@ -241,7 +217,7 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
       }),
     );
 
-  React.useEffect(() => {
+  useEffect(() => {
     const productId = productCreateOpts.data?.productCreate?.product?.id;
 
     if (productCreateComplete && productId) {
@@ -249,46 +225,61 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
     }
   }, [productCreateComplete]);
 
+  const refAttr =
+    params.action === "assign-attribute-value" && params.id
+      ? selectedProductType?.productType.productAttributes?.find(a => a.id === params.id)
+      : undefined;
+  const {
+    loadMore: loadMoreProducts,
+    search: searchProducts,
+    result: searchProductsOpts,
+  } = useReferenceProductSearch(refAttr);
+
+  const {
+    loadMore: loadMorePages,
+    search: searchPages,
+    result: searchPagesOpts,
+  } = useReferencePageSearch(refAttr);
+
+  const handlePageFilterChange = useCallback(
+    (where: PageWhereInput, query: string) => {
+      searchPagesOpts.refetch({
+        ...DEFAULT_INITIAL_SEARCH_DATA,
+        where,
+        query,
+      });
+    },
+    [searchPagesOpts.refetch],
+  );
+
   const fetchMoreProductTypes = {
     hasMore: searchProductTypesOpts.data?.search?.pageInfo?.hasNextPage,
     loading: searchProductTypesOpts.loading,
     onFetchMore: loadMoreProductTypes,
   };
   const fetchMoreCollections = {
-    hasMore: searchCollectionOpts.data?.search?.pageInfo?.hasNextPage,
-    loading: searchCollectionOpts.loading,
+    hasMore: searchCollectionsOpts.data?.search?.pageInfo?.hasNextPage,
+    loading: searchCollectionsOpts.loading,
     onFetchMore: loadMoreCollections,
   };
   const fetchMoreCategories = {
-    hasMore: searchCategoryOpts.data?.search?.pageInfo?.hasNextPage,
-    loading: searchCategoryOpts.loading,
+    hasMore: searchCategoriesOpts.data?.search?.pageInfo?.hasNextPage,
+    loading: searchCategoriesOpts.loading,
     onFetchMore: loadMoreCategories,
   };
-  const fetchMoreReferencePages = {
-    hasMore: searchPagesOpts.data?.search?.pageInfo?.hasNextPage,
-    loading: searchPagesOpts.loading,
-    onFetchMore: loadMorePages,
-  };
-  const fetchMoreReferenceProducts = {
-    hasMore: searchProductsOpts.data?.search?.pageInfo?.hasNextPage,
-    loading: searchProductsOpts.loading,
-    onFetchMore: loadMoreProducts,
-  };
+  const fetchMoreReferencePages = getSearchFetchMoreProps(searchPagesOpts, loadMorePages);
+  const fetchMoreReferenceProducts = getSearchFetchMoreProps(searchProductsOpts, loadMoreProducts);
   const fetchMoreAttributeValues = {
-    hasMore:
-      !!searchAttributeValuesOpts.data?.attribute?.choices?.pageInfo
-        ?.hasNextPage,
+    hasMore: !!searchAttributeValuesOpts.data?.attribute?.choices?.pageInfo?.hasNextPage,
     loading: !!searchAttributeValuesOpts.loading,
     onFetchMore: loadMoreAttributeValues,
   };
-
   const loading =
     uploadFileOpts.loading ||
     productCreateOpts.loading ||
     productVariantCreateOpts.loading ||
     updateChannelsOpts.loading ||
     updateVariantChannelsOpts.loading;
-
   const channelsErrors = [
     ...getMutationErrors(updateVariantChannelsOpts),
     ...getMutationErrors(updateChannelsOpts),
@@ -327,17 +318,14 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
       <ProductCreatePage
         allChannelsCount={allChannels?.length}
         currentChannels={currentChannels}
-        categories={mapEdgesToItems(searchCategoryOpts?.data?.search) || []}
-        collections={mapEdgesToItems(searchCollectionOpts?.data?.search) || []}
-        attributeValues={
-          mapEdgesToItems(searchAttributeValuesOpts?.data?.attribute.choices) ||
-          []
-        }
+        categories={mapEdgesToItems(searchCategoriesOpts?.data?.search) || []}
+        collections={mapEdgesToItems(searchCollectionsOpts?.data?.search) || []}
+        attributeValues={mapEdgesToItems(searchAttributeValuesOpts?.data?.attribute?.choices) ?? []}
         loading={loading}
         channelsErrors={channelsErrors}
         errors={errors}
-        fetchCategories={searchCategory}
-        fetchCollections={searchCollection}
+        fetchCategories={searchCategories}
+        fetchCollections={searchCollections}
         fetchProductTypes={searchProductTypes}
         fetchAttributeValues={searchAttributeValues}
         header={intl.formatMessage({
@@ -352,31 +340,39 @@ export const ProductCreateView: React.FC<ProductCreateProps> = ({ params }) => {
         fetchMoreCategories={fetchMoreCategories}
         fetchMoreCollections={fetchMoreCollections}
         fetchMoreProductTypes={fetchMoreProductTypes}
-        warehouses={mapEdgesToItems(warehouses?.data?.warehouses) || []}
         taxClasses={taxClasses ?? []}
         fetchMoreTaxClasses={fetchMoreTaxClasses}
         weightUnit={shop?.defaultWeightUnit}
         openChannelsModal={handleChannelsModalOpen}
         onChannelsChange={setCurrentChannels}
-        assignReferencesAttributeId={
-          params.action === "assign-attribute-value" && params.id
-        }
+        assignReferencesAttributeId={params.action === "assign-attribute-value" && params.id}
         onAssignReferencesClick={handleAssignAttributeReferenceClick}
         referencePages={mapEdgesToItems(searchPagesOpts?.data?.search) || []}
-        referenceProducts={
-          mapEdgesToItems(searchProductsOpts?.data?.search) || []
-        }
+        referenceProducts={mapEdgesToItems(searchProductsOpts?.data?.search) || []}
+        referenceCategories={mapEdgesToItems(searchCategoriesOpts?.data?.search) || []}
+        referenceCollections={mapEdgesToItems(searchCollectionsOpts?.data?.search) || []}
         fetchReferencePages={searchPages}
         fetchMoreReferencePages={fetchMoreReferencePages}
         fetchReferenceProducts={searchProducts}
         fetchMoreReferenceProducts={fetchMoreReferenceProducts}
+        fetchReferenceCategories={searchCategories}
+        fetchMoreReferenceCategories={fetchMoreCollections}
+        fetchReferenceCollections={searchCollections}
+        fetchMoreReferenceCollections={fetchMoreCollections}
         fetchMoreAttributeValues={fetchMoreAttributeValues}
         onCloseDialog={currentParams => navigate(productAddUrl(currentParams))}
         selectedProductType={selectedProductType?.productType}
         onSelectProductType={handleSelectProductType}
         onAttributeSelectBlur={searchAttributeReset}
+        fetchMoreWarehouses={fetchMoreWarehouses}
+        searchWarehousesResult={searchWarehousesResult}
+        searchWarehouses={searchWarehouses}
+        onFilterChange={{
+          [AttributeEntityTypeEnum.PAGE]: handlePageFilterChange,
+        }}
       />
     </>
   );
 };
+
 export default ProductCreateView;

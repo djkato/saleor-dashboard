@@ -1,13 +1,11 @@
-import { FilterElement, IFilter } from "@dashboard/components/Filter";
+import { FilterElement, IFilter } from "@dashboard/components/Filter/types";
 
 export const getSelectedFilterAmount = <TFilterKeys extends string = string>(
   menu: IFilter<TFilterKeys>,
   data: Array<FilterElement<TFilterKeys>>,
 ) =>
   menu.reduce((acc, filterElement) => {
-    const dataFilterElement = data.find(
-      ({ name }) => name === filterElement.name,
-    );
+    const dataFilterElement = data.find(({ name }) => name === filterElement.name);
 
     if (!dataFilterElement) {
       return acc;

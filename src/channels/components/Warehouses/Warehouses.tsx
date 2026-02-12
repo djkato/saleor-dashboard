@@ -1,17 +1,15 @@
-// @ts-strict-ignore
 import { ChannelWarehouses } from "@dashboard/channels/pages/ChannelDetailsPage/types";
-import CardTitle from "@dashboard/components/CardTitle";
+import { DashboardCard } from "@dashboard/components/Card";
 import { SearchWarehousesQuery } from "@dashboard/graphql";
 import { sectionNames } from "@dashboard/intl";
 import { FetchMoreProps, RelayToFlat, ReorderAction } from "@dashboard/types";
-import { Card, CardContent, Typography } from "@material-ui/core";
-import React from "react";
+import { Text } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
-import AssignmentList from "../AssignmentList";
+import { AssignmentList } from "../AssignmentList/AssignmentList";
 import { messages } from "./messages";
 
-export interface WarehousesProps {
+interface WarehousesProps {
   addWarehouse: (id: string) => void;
   removeWarehouse: (id: string) => void;
   searchWarehouses: (searchPhrase: string) => void;
@@ -23,31 +21,31 @@ export interface WarehousesProps {
   warehousesChoices: RelayToFlat<SearchWarehousesQuery["search"]>;
 }
 
-const Warehouses: React.FC<WarehousesProps> = props => {
-  const {
-    addWarehouse,
-    removeWarehouse,
-    searchWarehouses,
-    reorderWarehouses,
-    loading,
-    totalCount,
-    fetchMoreWarehouses,
-    warehouses,
-    warehousesChoices,
-  } = props;
-
+const Warehouses = ({
+  addWarehouse,
+  removeWarehouse,
+  searchWarehouses,
+  reorderWarehouses,
+  loading,
+  totalCount,
+  fetchMoreWarehouses,
+  warehouses,
+  warehousesChoices,
+}: WarehousesProps) => {
   const intl = useIntl();
 
   return (
-    <Card>
-      <CardTitle title={intl.formatMessage(sectionNames.warehouses)} />
-      <CardContent>
-        <Typography>{intl.formatMessage(messages.subtitle)}</Typography>
-      </CardContent>
+    <DashboardCard data-test-id="warehouses-section">
+      <DashboardCard.Header>
+        <DashboardCard.Title>{intl.formatMessage(sectionNames.warehouses)}</DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
+        <Text>{intl.formatMessage(messages.subtitle)}</Text>
+      </DashboardCard.Content>
       <AssignmentList
         loading={loading}
         items={warehouses}
-        itemsChoices={warehousesChoices}
+        itemsChoices={warehousesChoices!}
         addItem={addWarehouse}
         removeItem={removeWarehouse}
         searchItems={searchWarehouses}
@@ -58,7 +56,8 @@ const Warehouses: React.FC<WarehousesProps> = props => {
         inputName="warehouse"
         itemsName={intl.formatMessage(sectionNames.warehouses)}
       />
-    </Card>
+    </DashboardCard>
   );
 };
+
 export default Warehouses;

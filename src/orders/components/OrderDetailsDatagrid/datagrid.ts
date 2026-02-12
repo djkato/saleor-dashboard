@@ -1,5 +1,7 @@
 // @ts-strict-ignore
 import {
+  booleanCell,
+  buttonCell,
   loadingCell,
   moneyCell,
   readonlyTextCell,
@@ -8,7 +10,8 @@ import {
 import { GetCellContentOpts } from "@dashboard/components/Datagrid/Datagrid";
 import { AvailableColumn } from "@dashboard/components/Datagrid/types";
 import { OrderLineFragment } from "@dashboard/graphql";
-import { getDatagridRowDataIndex } from "@dashboard/misc";
+import { commonMessages } from "@dashboard/intl";
+import { getDatagridRowDataIndex, isFirstColumn } from "@dashboard/misc";
 import { GridCell, Item } from "@glideapps/glide-data-grid";
 import { IntlShape } from "react-intl";
 
@@ -16,7 +19,9 @@ import { columnsMessages } from "./messages";
 
 export const orderDetailsStaticColumnsAdapter = (
   intl: IntlShape,
+  emptyColumn: AvailableColumn,
 ): AvailableColumn[] => [
+  emptyColumn,
   {
     id: "product",
     title: intl.formatMessage(columnsMessages.product),
@@ -47,27 +52,36 @@ export const orderDetailsStaticColumnsAdapter = (
     title: intl.formatMessage(columnsMessages.total),
     width: 150,
   },
+  {
+    id: "isGift",
+    title: intl.formatMessage(columnsMessages.isGift),
+    width: 150,
+  },
 ];
 
 interface GetCellContentProps {
   columns: AvailableColumn[];
   data: OrderLineFragment[];
   loading: boolean;
+  intl: IntlShape;
+  onOrderLineShowMetadata: (id: string) => void;
 }
 
 export const createGetCellContent =
-  ({ columns, data, loading }: GetCellContentProps) =>
+  ({ columns, data, loading, onOrderLineShowMetadata, intl }: GetCellContentProps) =>
   ([column, row]: Item, { added, removed }: GetCellContentOpts): GridCell => {
     if (loading) {
       return loadingCell();
     }
 
     const columnId = columns[column]?.id;
-    const rowData = added.includes(row)
-      ? undefined
-      : data[getDatagridRowDataIndex(row, removed)];
+    const rowData = added.includes(row) ? undefined : data[getDatagridRowDataIndex(row, removed)];
 
     if (!rowData || !columnId) {
+      return readonlyTextCell("", false);
+    }
+
+    if (isFirstColumn(column)) {
       return readonlyTextCell("", false);
     }
 
@@ -97,6 +111,15 @@ export const createGetCellContent =
           rowData.totalPrice.gross.currency,
           readonyOptions,
         );
+      case "isGift":
+        return booleanCell(rowData?.isGift, {
+          readonly: true,
+          allowOverlay: false,
+        });
+      case "metadata":
+        return buttonCell(intl.formatMessage(commonMessages.viewMetadata), () => {
+          onOrderLineShowMetadata(rowData.id);
+        });
 
       default:
         return readonlyTextCell("", false);

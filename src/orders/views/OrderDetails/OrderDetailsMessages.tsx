@@ -1,12 +1,11 @@
 // @ts-strict-ignore
-import { handleNestedMutationErrors } from "@dashboard/auth";
+import { handleNestedMutationErrors } from "@dashboard/auth/utils";
 import { formatMoney } from "@dashboard/components/Money";
 import messages from "@dashboard/containers/BackgroundTasks/messages";
 import {
   CreateManualTransactionCaptureMutation,
   InvoiceEmailSendMutation,
   InvoiceRequestMutation,
-  OrderAddNoteMutation,
   OrderCancelMutation,
   OrderCaptureMutation,
   OrderDraftCancelMutation,
@@ -20,14 +19,17 @@ import {
   OrderLinesAddMutation,
   OrderLineUpdateMutation,
   OrderMarkAsPaidMutation,
+  OrderNoteAddMutation,
+  OrderNoteUpdateMutation,
   OrderShippingMethodUpdateMutation,
   OrderTransactionRequestActionMutation,
   OrderUpdateMutation,
   OrderVoidMutation,
+  TransactionActionEnum,
 } from "@dashboard/graphql";
 import useLocale from "@dashboard/hooks/useLocale";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import getOrderErrorMessage from "@dashboard/utils/errors/order";
 import {
   getOrderTransactionErrorMessage,
@@ -36,7 +38,7 @@ import {
   transactionRequestMessages as transactionMessages,
 } from "@dashboard/utils/errors/transaction";
 import createDialogActionHandlers from "@dashboard/utils/handlers/dialogActionHandlers";
-import React from "react";
+import * as React from "react";
 import { useIntl } from "react-intl";
 
 import { orderUrl, OrderUrlQueryParams } from "../../urls";
@@ -46,65 +48,49 @@ interface OrderDetailsMessages {
     handleDraftCancel: (data: OrderDraftCancelMutation) => void;
     handleDraftFinalize: (data: OrderDraftFinalizeMutation) => void;
     handleDraftUpdate: (data: OrderDraftUpdateMutation) => void;
-    handleNoteAdd: (data: OrderAddNoteMutation) => void;
+    handleNoteAdd: (data: OrderNoteAddMutation) => void;
+    handleNoteUpdate: (data: OrderNoteUpdateMutation) => void;
     handleOrderCancel: (data: OrderCancelMutation) => void;
-    handleOrderFulfillmentApprove: (
-      data: OrderFulfillmentApproveMutation,
-    ) => void;
-    handleOrderFulfillmentCancel: (
-      data: OrderFulfillmentCancelMutation,
-    ) => void;
-    handleOrderFulfillmentUpdate: (
-      data: OrderFulfillmentUpdateTrackingMutation,
-    ) => void;
+    handleOrderFulfillmentApprove: (data: OrderFulfillmentApproveMutation) => void;
+    handleOrderFulfillmentCancel: (data: OrderFulfillmentCancelMutation) => void;
+    handleOrderFulfillmentUpdate: (data: OrderFulfillmentUpdateTrackingMutation) => void;
     handleOrderLinesAdd: (data: OrderLinesAddMutation) => void;
     handleOrderLineDelete: (data: OrderLineDeleteMutation) => void;
     handleOrderLineUpdate: (data: OrderLineUpdateMutation) => void;
     handleOrderMarkAsPaid: (data: OrderMarkAsPaidMutation) => void;
     handleOrderVoid: (data: OrderVoidMutation) => void;
     handlePaymentCapture: (data: OrderCaptureMutation) => void;
-    handleShippingMethodUpdate: (
-      data: OrderShippingMethodUpdateMutation,
-    ) => void;
+    handleShippingMethodUpdate: (data: OrderShippingMethodUpdateMutation) => void;
     handleUpdate: (data: OrderUpdateMutation) => void;
     handleInvoiceGeneratePending: (data: InvoiceRequestMutation) => void;
     handleInvoiceGenerateFinished: (data: InvoiceRequestMutation) => void;
     handleInvoiceSend: (data: InvoiceEmailSendMutation) => void;
-    handleTransactionAction: (
-      data: OrderTransactionRequestActionMutation,
-    ) => void;
-    handleAddManualTransaction: (
-      data: CreateManualTransactionCaptureMutation,
-    ) => void;
+    handleTransactionAction: (data: OrderTransactionRequestActionMutation) => void;
+    handleAddManualTransaction: (data: CreateManualTransactionCaptureMutation) => void;
   }) => React.ReactElement;
   id: string;
   params: OrderUrlQueryParams;
 }
 
-export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
-  children,
-  id,
-  params,
-}) => {
+export const OrderDetailsMessages = ({ children, id, params }: OrderDetailsMessages) => {
   const navigate = useNavigator();
   const notify = useNotifier();
   const intl = useIntl();
   const { locale } = useLocale();
-
   const [, closeModal] = createDialogActionHandlers(
     navigate,
     params => orderUrl(id, params),
     params,
   );
-
   const handlePaymentCapture = (data: OrderCaptureMutation) => {
     const errs = data.orderCapture?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "9RCuN3",
-          defaultMessage: "Payment successfully captured",
+          id: "t1Bd7E",
+          defaultMessage: "Payment captured",
         }),
       });
       closeModal();
@@ -112,6 +98,7 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleOrderMarkAsPaid = (data: OrderMarkAsPaidMutation) => {
     const errs = data.orderMarkAsPaid?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
@@ -125,12 +112,13 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleOrderCancel = (data: OrderCancelMutation) => {
     const errs = data.orderCancel?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "W/Es0H",
-          defaultMessage: "Order successfully cancelled",
+          id: "0ix6PR",
+          defaultMessage: "Order cancelled",
         }),
       });
       closeModal();
@@ -138,12 +126,13 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleDraftCancel = (data: OrderDraftCancelMutation) => {
     const errs = data.draftOrderDelete?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "W/Es0H",
-          defaultMessage: "Order successfully cancelled",
+          id: "0ix6PR",
+          defaultMessage: "Order cancelled",
         }),
       });
       closeModal();
@@ -151,37 +140,53 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleOrderVoid = (data: OrderVoidMutation) => {
     const errs = data.orderVoid?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "L87bp7",
-          defaultMessage: "Order payment successfully voided",
+          id: "S6zKcD",
+          defaultMessage: "Payment voided",
         }),
       });
       closeModal();
     }
   };
-  const handleNoteAdd = (data: OrderAddNoteMutation) => {
-    const errs = data.orderAddNote?.errors;
+  const handleNoteAdd = (data: OrderNoteAddMutation) => {
+    const errs = data.orderNoteAdd?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "KmPicj",
-          defaultMessage: "Note successfully added",
+          id: "hwYzY9",
+          defaultMessage: "Note added",
+        }),
+      });
+    }
+  };
+  const handleNoteUpdate = (data: OrderNoteUpdateMutation) => {
+    const errs = data.orderNoteUpdate?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "gfRbEV",
+          defaultMessage: "Note updated",
         }),
       });
     }
   };
   const handleUpdate = (data: OrderUpdateMutation) => {
     const errs = data.orderUpdate?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "j2fPVo",
-          defaultMessage: "Order successfully updated",
+          id: "hASogc",
+          defaultMessage: "Order updated",
         }),
       });
       closeModal();
@@ -189,27 +194,27 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleDraftUpdate = (data: OrderDraftUpdateMutation) => {
     const errs = data.draftOrderUpdate?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "j2fPVo",
-          defaultMessage: "Order successfully updated",
+          id: "hASogc",
+          defaultMessage: "Order updated",
         }),
       });
       closeModal();
     }
   };
-  const handleShippingMethodUpdate = (
-    data: OrderShippingMethodUpdateMutation,
-  ) => {
+  const handleShippingMethodUpdate = (data: OrderShippingMethodUpdateMutation) => {
     const errs = data.orderUpdateShipping?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "7U8GRy",
-          defaultMessage: "Shipping method successfully updated",
+          id: "e61nVn",
+          defaultMessage: "Shipping updated",
         }),
       });
       closeModal();
@@ -217,6 +222,7 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleOrderLineDelete = (data: OrderLineDeleteMutation) => {
     const errs = data.orderLineDelete?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
@@ -229,6 +235,7 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleOrderLinesAdd = (data: OrderLinesAddMutation) => {
     const errs = data.orderLinesCreate?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
@@ -242,6 +249,7 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleOrderLineUpdate = (data: OrderLineUpdateMutation) => {
     const errs = data.orderLineUpdate?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
@@ -259,16 +267,15 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
       );
     }
   };
-  const handleOrderFulfillmentApprove = (
-    data: OrderFulfillmentApproveMutation,
-  ) => {
+  const handleOrderFulfillmentApprove = (data: OrderFulfillmentApproveMutation) => {
     const errs = data.orderFulfillmentApprove?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "+sX7yS",
-          defaultMessage: "Fulfillment successfully approved",
+          id: "spjKeI",
+          defaultMessage: "Fulfillment approved",
         }),
       });
       closeModal();
@@ -278,31 +285,29 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
       }
     }
   };
-  const handleOrderFulfillmentCancel = (
-    data: OrderFulfillmentCancelMutation,
-  ) => {
+  const handleOrderFulfillmentCancel = (data: OrderFulfillmentCancelMutation) => {
     const errs = data.orderFulfillmentCancel?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "uMpv1v",
-          defaultMessage: "Fulfillment successfully cancelled",
+          id: "cNXv4f",
+          defaultMessage: "Fulfillment cancelled",
         }),
       });
       closeModal();
     }
   };
-  const handleOrderFulfillmentUpdate = (
-    data: OrderFulfillmentUpdateTrackingMutation,
-  ) => {
+  const handleOrderFulfillmentUpdate = (data: OrderFulfillmentUpdateTrackingMutation) => {
     const errs = data.orderFulfillmentUpdateTracking?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "CZmloB",
-          defaultMessage: "Fulfillment successfully updated",
+          id: "w3gxER",
+          defaultMessage: "Tracking updated",
         }),
       });
       closeModal();
@@ -310,18 +315,20 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleDraftFinalize = (data: OrderDraftFinalizeMutation) => {
     const errs = data.draftOrderComplete?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
         text: intl.formatMessage({
-          id: "c4gbXr",
-          defaultMessage: "Draft order successfully finalized",
+          id: "Hwp65F",
+          defaultMessage: "Draft finalized",
         }),
       });
     }
   };
   const handleInvoiceGeneratePending = (data: InvoiceRequestMutation) => {
     const errs = data.invoiceRequest?.errors;
+
     if (errs.length === 0) {
       notify({
         text: intl.formatMessage({
@@ -339,6 +346,7 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleInvoiceGenerateFinished = (data: InvoiceRequestMutation) => {
     const errs = data.invoiceRequest?.errors;
+
     if (errs.length === 0) {
       notify({
         status: "success",
@@ -350,6 +358,7 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
   };
   const handleInvoiceSend = (data: InvoiceEmailSendMutation) => {
     const errs = data.invoiceSendNotification?.errors;
+
     if (errs.length === 0) {
       notify({
         text: intl.formatMessage({
@@ -360,9 +369,7 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
       closeModal();
     }
   };
-  const handleTransactionAction = (
-    data: OrderTransactionRequestActionMutation,
-  ) => {
+  const handleTransactionAction = (data: OrderTransactionRequestActionMutation) => {
     const {
       transactionRequestAction: { errors },
     } = data;
@@ -374,16 +381,22 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
         text: getOrderTransactionErrorMessage(errors[0], intl),
       });
     } else {
+      const actionType = "type" in params ? params.type : undefined;
+      const successMessage =
+        {
+          [TransactionActionEnum.REFUND]: transactionMessages.refundSuccess,
+          [TransactionActionEnum.CHARGE]: transactionMessages.chargeSuccess,
+          [TransactionActionEnum.CANCEL]: transactionMessages.cancelSuccess,
+        }[actionType as TransactionActionEnum] ?? transactionMessages.refundSuccess;
+
       notify({
         status: "success",
-        text: intl.formatMessage(transactionMessages.success),
+        text: intl.formatMessage(successMessage),
       });
       closeModal();
     }
   };
-  const handleAddManualTransaction = (
-    data: CreateManualTransactionCaptureMutation,
-  ) => {
+  const handleAddManualTransaction = (data: CreateManualTransactionCaptureMutation) => {
     const {
       transactionCreate: { errors, transaction },
     } = data;
@@ -413,6 +426,7 @@ export const OrderDetailsMessages: React.FC<OrderDetailsMessages> = ({
     handleInvoiceGeneratePending,
     handleInvoiceSend,
     handleNoteAdd,
+    handleNoteUpdate,
     handleOrderCancel,
     handleOrderFulfillmentApprove,
     handleOrderFulfillmentCancel,

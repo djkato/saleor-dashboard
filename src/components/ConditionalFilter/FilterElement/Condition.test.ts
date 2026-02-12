@@ -1,4 +1,4 @@
-import { InitialStateResponse } from "../API/InitialStateResponse";
+import { InitialProductStateResponse } from "../API/initialState/product/InitialProductStateResponse";
 import { STATIC_CONDITIONS } from "../constants";
 import { UrlToken } from "../ValueProvider/UrlToken";
 import { Condition } from "./Condition";
@@ -12,7 +12,6 @@ describe("ConditionalFilter / FilterElement / Condition", () => {
     expect(condition.isEmpty()).toBeTruthy();
     expect(condition.options).toEqual([]);
   });
-
   it("creates empty for given slug", () => {
     // Arrange
     const condition = Condition.emptyFromSlug("category");
@@ -21,12 +20,11 @@ describe("ConditionalFilter / FilterElement / Condition", () => {
     expect(condition.isEmpty()).toBeTruthy();
     expect(condition.options).toEqual(STATIC_CONDITIONS.category);
   });
-
   // Arrange
   it.each([
     {
       token: new UrlToken("category", ["cat1"], "s", "is"),
-      response: new InitialStateResponse([
+      response: new InitialProductStateResponse([
         {
           label: "Cat1",
           value: "cat-1-id",
@@ -49,7 +47,7 @@ describe("ConditionalFilter / FilterElement / Condition", () => {
     },
     {
       token: new UrlToken("some-attr1", ["some-attr-1z"], "m", "in"),
-      response: new InitialStateResponse([], {
+      response: new InitialProductStateResponse([], {
         "some-attr1": {
           choices: [
             {

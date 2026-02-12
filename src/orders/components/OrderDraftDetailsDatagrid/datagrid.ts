@@ -1,5 +1,6 @@
 // @ts-strict-ignore
 import {
+  booleanCell,
   moneyCell,
   moneyDiscountedCell,
   numberCell,
@@ -11,15 +12,11 @@ import { GetCellContentOpts } from "@dashboard/components/Datagrid/Datagrid";
 import { AvailableColumn } from "@dashboard/components/Datagrid/types";
 import { OrderDetailsFragment, OrderErrorFragment } from "@dashboard/graphql";
 import useLocale from "@dashboard/hooks/useLocale";
-import {
-  getDatagridRowDataIndex,
-  getStatusColor,
-  isFirstColumn,
-} from "@dashboard/misc";
+import { getDatagridRowDataIndex, getStatusColor, isFirstColumn } from "@dashboard/misc";
 import { useOrderLineDiscountContext } from "@dashboard/products/components/OrderDiscountProviders/OrderLineDiscountProvider";
 import getOrderErrorMessage from "@dashboard/utils/errors/order";
 import { GridCell, Item } from "@glideapps/glide-data-grid";
-import { DefaultTheme, useTheme } from "@saleor/macaw-ui/next";
+import { DefaultTheme, useTheme } from "@saleor/macaw-ui-next";
 import { IntlShape, useIntl } from "react-intl";
 
 import { lineAlertMessages } from "../OrderDraftDetailsProducts/messages";
@@ -61,6 +58,11 @@ export const orderDraftDetailsStaticColumnsAdapter = (
     width: 150,
   },
   {
+    id: "isGift",
+    title: intl.formatMessage(columnsMessages.isGift),
+    width: 150,
+  },
+  {
     id: "status",
     title: intl.formatMessage(columnsMessages.status),
     width: 250,
@@ -73,11 +75,7 @@ interface GetCellContentProps {
   errors: OrderErrorFragment[];
 }
 
-export const useGetCellContent = ({
-  columns,
-  lines,
-  errors,
-}: GetCellContentProps) => {
+export const useGetCellContent = ({ columns, lines, errors }: GetCellContentProps) => {
   const intl = useIntl();
   const { theme } = useTheme();
   const { locale } = useLocale();
@@ -93,28 +91,20 @@ export const useGetCellContent = ({
 
     const columnId = columns[column]?.id;
     const change = changes.current[getChangeIndex(columnId, row)]?.data;
-    const rowData = added.includes(row)
-      ? undefined
-      : lines[getDatagridRowDataIndex(row, removed)];
+    const rowData = added.includes(row) ? undefined : lines[getDatagridRowDataIndex(row, removed)];
 
     if (!rowData || !columnId) {
       return readonlyTextCell("", false);
     }
 
-    const { unitUndiscountedPrice, unitDiscountedPrice } = getValues(
-      rowData.id,
-    );
+    const { unitUndiscountedPrice, unitDiscountedPrice } = getValues(rowData.id);
 
     switch (columnId) {
       case "product":
-        return thumbnailCell(
-          rowData?.productName ?? "",
-          rowData.thumbnail?.url ?? "",
-          {
-            readonly: true,
-            allowOverlay: false,
-          },
-        );
+        return thumbnailCell(rowData?.productName ?? "", rowData.thumbnail?.url ?? "", {
+          readonly: true,
+          allowOverlay: false,
+        });
       case "quantity":
         return numberCell(change?.value || rowData.quantity);
       case "price":
@@ -148,14 +138,15 @@ export const useGetCellContent = ({
       case "variantName":
         return readonlyTextCell(rowData?.variant?.name ?? "", false);
       case "total":
-        return moneyCell(
-          rowData.totalPrice.gross.amount,
-          rowData.totalPrice.gross.currency,
-          {
-            readonly: true,
-            allowOverlay: false,
-          },
-        );
+        return moneyCell(rowData.totalPrice.gross.amount, rowData.totalPrice.gross.currency, {
+          readonly: true,
+          allowOverlay: false,
+        });
+      case "isGift":
+        return booleanCell(rowData?.isGift, {
+          allowOverlay: false,
+          readonly: true,
+        });
 
       default:
         return readonlyTextCell("", false);
@@ -165,7 +156,7 @@ export const useGetCellContent = ({
 
 function toTagValue(currentTheme: DefaultTheme) {
   return ({ status, type }: OrderStatus) => ({
-    color: getStatusColor(type, currentTheme),
+    color: getStatusColor({ status: type, currentTheme }).base,
     tag: status,
   });
 }

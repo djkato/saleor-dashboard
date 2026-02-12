@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import { ApolloQueryResult } from "@apollo/client";
-import { IMessageContext } from "@dashboard/components/messages";
+import { INotificationCallback } from "@dashboard/components/notifications";
 import {
   CheckExportFileStatusQuery,
   CheckOrderInvoicesStatusQuery,
@@ -10,12 +10,7 @@ import { commonMessages } from "@dashboard/intl";
 import { IntlShape } from "react-intl";
 
 import messages from "./messages";
-import {
-  InvoiceGenerateParams,
-  QueuedTask,
-  TaskData,
-  TaskStatus,
-} from "./types";
+import { InvoiceGenerateParams, QueuedTask, TaskData, TaskStatus } from "./types";
 
 function getTaskStatus(jobStatus: JobStatusEnum): TaskStatus {
   switch (jobStatus) {
@@ -30,8 +25,10 @@ function getTaskStatus(jobStatus: JobStatusEnum): TaskStatus {
 
 export async function handleTask(task: QueuedTask): Promise<TaskStatus> {
   let status = TaskStatus.PENDING;
+
   try {
     status = await task.handle();
+
     if (status !== TaskStatus.PENDING) {
       task.onCompleted({
         status,
@@ -48,7 +45,7 @@ export async function handleTask(task: QueuedTask): Promise<TaskStatus> {
   return status;
 }
 
-export function handleError(error: Error) {
+function handleError(error: Error) {
   throw error;
 }
 
@@ -79,12 +76,13 @@ export function queueInvoiceGenerate(
   generateInvoice: InvoiceGenerateParams,
   tasks: React.MutableRefObject<QueuedTask[]>,
   fetch: () => Promise<ApolloQueryResult<CheckOrderInvoicesStatusQuery>>,
-  notify: IMessageContext,
+  notify: INotificationCallback,
   intl: IntlShape,
 ) {
   if (!generateInvoice) {
     throw new Error("generateInvoice is required when creating custom task");
   }
+
   tasks.current = [
     ...tasks.current,
     {
@@ -119,7 +117,7 @@ export function queueExport(
   id: number,
   tasks: React.MutableRefObject<QueuedTask[]>,
   fetch: () => Promise<ApolloQueryResult<CheckExportFileStatusQuery>>,
-  notify: IMessageContext,
+  notify: INotificationCallback,
   intl: IntlShape,
 ) {
   tasks.current = [

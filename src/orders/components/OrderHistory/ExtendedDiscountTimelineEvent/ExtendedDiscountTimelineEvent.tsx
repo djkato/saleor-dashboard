@@ -1,15 +1,16 @@
 // @ts-strict-ignore
 import CardSpacer from "@dashboard/components/CardSpacer";
 import HorizontalSpacer from "@dashboard/components/HorizontalSpacer";
-import { TimelineEvent } from "@dashboard/components/Timeline";
+import { TimelineEvent } from "@dashboard/components/Timeline/TimelineEvent";
 import { TitleElement } from "@dashboard/components/Timeline/TimelineEventHeader";
+import { toActor } from "@dashboard/components/Timeline/utils";
 import { OrderEventFragment, OrderEventsEnum } from "@dashboard/graphql";
-import { Typography } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import { Text } from "@saleor/macaw-ui-next";
 import { defineMessages, useIntl } from "react-intl";
 
 import Label from "../Label";
+import { OrderHistoryDate } from "../OrderHistoryDate";
 import MoneySection, { MoneySectionType } from "./MoneySection";
 
 const useStyles = makeStyles(
@@ -25,7 +26,7 @@ const useStyles = makeStyles(
   { name: "ExtendedDiscountTimelineEvent" },
 );
 
-export const messages = defineMessages({
+const messages = defineMessages({
   reasonLabel: {
     id: "kVOslW",
     defaultMessage: "Reason for discount",
@@ -36,22 +37,19 @@ export const messages = defineMessages({
 interface ExtendedTimelineEventProps {
   event: OrderEventFragment;
   titleElements: TitleElement[];
+  isLastInGroup?: boolean;
 }
 
-const ExtendedDiscountTimelineEvent: React.FC<ExtendedTimelineEventProps> = ({
+const ExtendedDiscountTimelineEvent = ({
   event,
   titleElements,
-}) => {
+  isLastInGroup,
+}: ExtendedTimelineEventProps) => {
   const classes = useStyles({});
   const intl = useIntl();
-
   const { lines, date, type } = event;
-
   const parsedDiscount =
-    type === OrderEventsEnum.ORDER_LINE_DISCOUNT_UPDATED
-      ? lines[0].discount
-      : event.discount;
-
+    type === OrderEventsEnum.ORDER_LINE_DISCOUNT_UPDATED ? lines[0].discount : event.discount;
   const {
     valueType: calculationMode,
     value,
@@ -61,11 +59,17 @@ const ExtendedDiscountTimelineEvent: React.FC<ExtendedTimelineEventProps> = ({
     oldValue,
     oldAmount: oldMoneyData,
   } = parsedDiscount;
-
   const shouldDisplayOldNewSections = !!oldValue;
 
   return (
-    <TimelineEvent date={date} titleElements={titleElements}>
+    <TimelineEvent
+      date={<OrderHistoryDate date={date} />}
+      titleElements={titleElements}
+      eventData={event}
+      actor={toActor(event.user, event.app)}
+      eventType={type}
+      isLastInGroup={isLastInGroup}
+    >
       {shouldDisplayOldNewSections && (
         <div className={classes.horizontalContainer}>
           <MoneySection
@@ -97,7 +101,7 @@ const ExtendedDiscountTimelineEvent: React.FC<ExtendedTimelineEventProps> = ({
       {!!reason && (
         <>
           <Label text={intl.formatMessage(messages.reasonLabel)} />
-          <Typography>{reason}</Typography>
+          <Text>{reason}</Text>
         </>
       )}
     </TimelineEvent>

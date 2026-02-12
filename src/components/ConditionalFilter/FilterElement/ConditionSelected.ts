@@ -14,7 +14,7 @@ export class ConditionSelected {
     return (
       this.value === "" ||
       (isItemOptionArray(this.value) && this.value.length === 0) ||
-      (isTuple(this.value) && this.value.includes(""))
+      (isTuple(this.value) && this.value.every(el => el === ""))
     );
   }
 
@@ -31,10 +31,7 @@ export class ConditionSelected {
     );
   }
 
-  public static fromConditionItemAndValue(
-    conditionItem: ConditionItem,
-    value: ConditionValue,
-  ) {
+  public static fromConditionItemAndValue(conditionItem: ConditionItem, value: ConditionValue) {
     return new ConditionSelected(value, conditionItem, [], false);
   }
 

@@ -1,6 +1,5 @@
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
 
 import { FilterElement } from "../types";
 import { FilterDispatchFunction } from "../useFilter";
@@ -17,25 +16,22 @@ const useStyles = makeStyles(
   { name: "FilterContentBodyNameField" },
 );
 
-export interface FilterContentBodyNameFieldProps<K extends string = string> {
+interface FilterContentBodyNameFieldProps<K extends string = string> {
   filter: FilterElement<K>;
   onFilterPropertyChange: FilterDispatchFunction<K>;
 }
 
-const FilterContentBodyNameField: React.FC<FilterContentBodyNameFieldProps> = ({
+export const FilterContentBodyNameField = ({
   filter,
   onFilterPropertyChange,
-}) => {
+}: FilterContentBodyNameFieldProps) => {
   const classes = useStyles({});
 
   return (
     <div className={classes.container}>
       <FormControlLabel
         control={
-          <Checkbox
-            data-test-id={"filter-group-active-" + filter.name}
-            checked={filter.active}
-          />
+          <Checkbox data-test-id={"filter-group-active-" + filter.name} checked={filter.active} />
         }
         label={filter.label}
         onClick={event => event.stopPropagation()}
@@ -54,5 +50,3 @@ const FilterContentBodyNameField: React.FC<FilterContentBodyNameFieldProps> = ({
     </div>
   );
 };
-
-export default FilterContentBodyNameField;

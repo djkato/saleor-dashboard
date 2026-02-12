@@ -1,5 +1,4 @@
-import { Box, Checkbox, CheckedState, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Checkbox, CheckedState, Text } from "@saleor/macaw-ui-next";
 
 interface HeaderProps {
   description: string;
@@ -17,15 +16,15 @@ export const Header = ({
   onFullAccessChange,
 }: HeaderProps) => (
   <Box>
-    <Text variant="body">{description}</Text>
-    <Box marginTop={6} marginBottom={7}>
+    <Text>{description}</Text>
+    <Box marginTop={3} marginBottom={2}>
       <Checkbox
         disabled={disabled}
         checked={hasFullAccess}
         onCheckedChange={onFullAccessChange}
         tabIndex={-1}
       >
-        <Text variant="body">{fullAccessLabel}</Text>
+        <Text>{fullAccessLabel}</Text>
       </Checkbox>
     </Box>
   </Box>

@@ -7,40 +7,34 @@ import {
   DatagridChangeStateContext,
   useDatagridChangeState,
 } from "@dashboard/components/Datagrid/hooks/useDatagridChange";
-import { TablePaginationWithContext } from "@dashboard/components/TablePagination";
+import { DatagridPagination } from "@dashboard/components/TablePagination";
 import { commonTooltipMessages } from "@dashboard/components/TooltipTableCellHeader/messages";
 import { ProductListColumns } from "@dashboard/config";
 import {
+  AttributeTypeEnum,
   Exact,
   GridAttributesQuery,
   ProductListQuery,
   useAvailableColumnAttributesLazyQuery,
 } from "@dashboard/graphql";
+import { getPrevLocationState } from "@dashboard/hooks/useBackLinkWithState";
 import useLocale from "@dashboard/hooks/useLocale";
 import { ProductListUrlSortField } from "@dashboard/products/urls";
 import { canBeSorted } from "@dashboard/products/views/ProductList/sort";
-import { useSearchProductTypes } from "@dashboard/searches/useProductTypeSearch";
-import {
-  ChannelProps,
-  ListProps,
-  PageListProps,
-  RelayToFlat,
-  SortPage,
-} from "@dashboard/types";
+import { ChannelProps, ListProps, PageListProps, RelayToFlat, SortPage } from "@dashboard/types";
 import { mapEdgesToItems } from "@dashboard/utils/maps";
 import { Item } from "@glideapps/glide-data-grid";
-import { Box } from "@saleor/macaw-ui/next";
-import React, { useCallback, useMemo } from "react";
+import { Box, useTheme } from "@saleor/macaw-ui-next";
+import { useCallback, useEffect, useMemo } from "react";
 import { useIntl } from "react-intl";
+import { useLocation } from "react-router";
 
-import {
-  getAttributeIdFromColumnValue,
-  isAttributeColumnValue,
-} from "../ProductListPage/utils";
+import { getAttributeIdFromColumnValue, isAttributeColumnValue } from "../ProductListPage/utils";
 import {
   createGetCellContent,
   getAttributesFetchMoreProps,
   getAvailableAttributesData,
+  getCellAction,
   getColumnMetadata,
   getColumnSortIconName,
   getProductRowsLength,
@@ -48,6 +42,7 @@ import {
   productListStaticColumnAdapter,
 } from "./datagrid";
 import { messages } from "./messages";
+import { usePriceClick } from "./usePriceClick";
 
 interface ProductListDatagridProps
   extends ListProps<ProductListColumns>,
@@ -64,15 +59,13 @@ interface ProductListDatagridProps
   products: RelayToFlat<ProductListQuery["products"]>;
   onRowClick: (id: string) => void;
   rowAnchor?: (id: string) => string;
-  availableColumnsAttributesOpts: ReturnType<
-    typeof useAvailableColumnAttributesLazyQuery
-  >;
+  availableColumnsAttributesOpts: ReturnType<typeof useAvailableColumnAttributesLazyQuery>;
   onSelectProductIds: (rowsIndex: number[], clearSelection: () => void) => void;
   hasRowHover?: boolean;
   loading: boolean;
 }
 
-export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
+export const ProductListDatagrid = ({
   products,
   onRowClick,
   disabled,
@@ -89,12 +82,15 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
   onSelectProductIds,
   hasRowHover,
   rowAnchor,
-}) => {
+}: ProductListDatagridProps) => {
+  const isChannelSelected = !!selectedChannelId;
   const intl = useIntl();
-  const searchProductType = useSearchProductTypes();
+  const { theme } = useTheme();
   const datagrid = useDatagridChangeState();
   const { locale } = useLocale();
+  const location = useLocation();
   const productsLength = getProductRowsLength(disabled, products, disabled);
+  const onPriceClick = usePriceClick({ isChannelSelected });
 
   const handleColumnChange = useCallback(
     (picked: ProductListColumns[]) => {
@@ -102,15 +98,17 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
     },
     [onUpdateListSettings],
   );
-
   const memoizedStaticColumns = useMemo(
-    () => productListStaticColumnAdapter(intl, sort),
+    () =>
+      productListStaticColumnAdapter({
+        intl,
+        sort,
+        onPriceClick,
+      }),
     [intl, sort],
   );
-
   const [queryAvailableColumnsAttributes, availableColumnsAttributesData] =
     availableColumnsAttributesOpts;
-
   const {
     handlers,
     visibleColumns,
@@ -120,20 +118,19 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
     columnCategories,
     recentlyAddedColumn,
   } = useColumns({
+    gridName: "product_list",
     staticColumns: memoizedStaticColumns,
     columnCategories: productListDynamicColumnAdapter({
       availableAttributesData: getAvailableAttributesData({
         availableColumnsAttributesData,
         gridAttributesOpts,
       }),
-      selectedAttributesData: mapEdgesToItems(
-        gridAttributesOpts.data?.selectedAttributes,
-      ),
+      selectedAttributesData: mapEdgesToItems(gridAttributesOpts.data?.selectedAttributes),
       activeAttributeSortId,
       sort,
       onSearch: (query: string) =>
         queryAvailableColumnsAttributes({
-          variables: { search: query, first: 10 },
+          variables: { search: query, first: 10, type: AttributeTypeEnum.PRODUCT_TYPE },
         }),
       initialSearch: availableColumnsAttributesData.variables?.search ?? "",
       ...getAttributesFetchMoreProps({
@@ -150,26 +147,23 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
   // Logic for updating sort icon in dynamic columns
   // This is workaround before sorting is abstracted into useColumns
   // Tracked in https://github.com/saleor/saleor-dashboard/issues/3685
-  React.useEffect(() => {
+  useEffect(() => {
     handlers.onCustomUpdateVisible(prevColumns =>
       prevColumns?.map(column => {
         if (isAttributeColumnValue(column.id)) {
-          if (
-            getAttributeIdFromColumnValue(column.id) === activeAttributeSortId
-          ) {
+          if (getAttributeIdFromColumnValue(column.id) === activeAttributeSortId) {
             return {
               ...column,
-              icon: getColumnSortIconName(
-                sort,
-                ProductListUrlSortField.attribute,
-              ),
+              icon: getColumnSortIconName(sort, ProductListUrlSortField.attribute),
             };
           }
+
           return {
             ...column,
             icon: undefined,
           };
         }
+
         return column;
       }),
     );
@@ -177,9 +171,7 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
 
   const handleHeaderClicked = useCallback(
     (col: number) => {
-      const { columnName, columnId } = getColumnMetadata(
-        visibleColumns[col].id,
-      );
+      const { columnName, columnId } = getColumnMetadata(visibleColumns[col].id);
 
       if (canBeSorted(columnName, !!selectedChannelId)) {
         onSort(columnName, columnId);
@@ -187,39 +179,47 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
     },
     [visibleColumns, onSort, selectedChannelId],
   );
-
   const handleRowClick = useCallback(
-    ([_, row]: Item) => {
+    ([col, row]: Item) => {
       if (!onRowClick) {
         return;
       }
+
+      const action = getCellAction(visibleColumns, col);
+
+      if (action) {
+        const result = action(products[row].id);
+
+        if (result) return;
+      }
+
       const rowData = products[row];
+
       onRowClick(rowData.id);
     },
     [onRowClick, products],
   );
-
   const handleRowAnchor = useCallback(
     ([, row]: Item) => {
       if (!rowAnchor) {
         return;
       }
+
       const rowData = products[row];
+
       return rowAnchor(rowData.id);
     },
     [rowAnchor, products],
   );
-
   const handleGetColumnTooltipContent = useCallback(
     (colIndex: number): string => {
       const { columnName } = getColumnMetadata(visibleColumns[colIndex].id);
+
       // Sortable column or empty
-      if (
-        canBeSorted(columnName, !!selectedChannelId) ||
-        visibleColumns[colIndex].id === "empty"
-      ) {
+      if (canBeSorted(columnName, !!selectedChannelId) || visibleColumns[colIndex].id === "empty") {
         return "";
       }
+
       // No sortable column
       if (!Object.keys(ProductListUrlSortField).includes(columnName)) {
         return intl.formatMessage(commonTooltipMessages.noSortable);
@@ -232,25 +232,17 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
     },
     [visibleColumns, filterDependency.label, intl, selectedChannelId],
   );
-
   const getCellContent = useMemo(
     () =>
       createGetCellContent({
         columns: visibleColumns,
         products,
         intl,
-        getProductTypes: searchProductType,
+        theme,
         locale,
         selectedChannelId,
       }),
-    [
-      visibleColumns,
-      products,
-      intl,
-      searchProductType,
-      locale,
-      selectedChannelId,
-    ],
+    [visibleColumns, products, intl, locale, selectedChannelId],
   );
 
   return (
@@ -259,12 +251,12 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
         <Datagrid
           readonly
           loading={loading}
-          rowMarkers="checkbox"
+          rowMarkers="checkbox-visible"
           columnSelect="single"
           hasRowHover={hasRowHover}
           onColumnMoved={handlers.onMove}
           onColumnResize={handlers.onResize}
-          verticalBorder={col => col > 0}
+          verticalBorder={false}
           getColumnTooltipContent={handleGetColumnTooltipContent}
           availableColumns={visibleColumns}
           onHeaderClicked={handleHeaderClicked}
@@ -275,7 +267,6 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
           rows={productsLength}
           onRowSelectionChange={onSelectProductIds}
           selectionActions={() => null}
-          fullScreenTitle={intl.formatMessage(messages.products)}
           onRowClick={handleRowClick}
           rowAnchor={handleRowAnchor}
           recentlyAddedColumn={recentlyAddedColumn}
@@ -288,17 +279,16 @@ export const ProductListDatagrid: React.FC<ProductListDatagridProps> = ({
               onToggle={handlers.onToggle}
             />
           )}
+          navigatorOpts={{ state: getPrevLocationState(location) }}
         />
 
-        <Box paddingX={6}>
-          <TablePaginationWithContext
-            component="div"
-            colSpan={(products?.length === 0 ? 1 : 2) + settings.columns.length}
-            settings={settings}
-            disabled={disabled}
-            onUpdateListSettings={onUpdateListSettings}
-          />
-        </Box>
+        <DatagridPagination
+          component="div"
+          colSpan={(products?.length === 0 ? 1 : 2) + settings.columns.length}
+          settings={settings}
+          disabled={disabled}
+          onUpdateListSettings={onUpdateListSettings}
+        />
       </DatagridChangeStateContext.Provider>
     </Box>
   );

@@ -1,25 +1,32 @@
 // @ts-strict-ignore
+import { QueryResult } from "@apollo/client";
 import {
   getReferenceAttributeEntityTypeFromAttribute,
   mergeAttributeValues,
 } from "@dashboard/attributes/utils/data";
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
-import AssignAttributeValueDialog from "@dashboard/components/AssignAttributeValueDialog";
+import AssignAttributeValueDialog, {
+  AssignAttributeValueDialogFilterChangeMap,
+} from "@dashboard/components/AssignAttributeValueDialog";
 import {
   AttributeInput,
   Attributes,
   VariantAttributeScope,
 } from "@dashboard/components/Attributes";
+import { DashboardCard } from "@dashboard/components/Card";
 import CardSpacer from "@dashboard/components/CardSpacer";
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import Grid from "@dashboard/components/Grid";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
+import Link from "@dashboard/components/Link";
 import { Metadata } from "@dashboard/components/Metadata";
-import Savebar from "@dashboard/components/Savebar";
+import { Savebar } from "@dashboard/components/Savebar";
 import {
   ProductErrorWithAttributesFragment,
   ProductVariantCreateDataQuery,
   SearchAttributeValuesQuery,
+  SearchCategoriesQuery,
+  SearchCollectionsQuery,
   SearchPagesQuery,
   SearchProductsQuery,
   SearchWarehousesQuery,
@@ -28,9 +35,11 @@ import { SubmitPromise } from "@dashboard/hooks/useForm";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { ProductDetailsChannelsAvailabilityCard } from "@dashboard/products/components/ProductVariantChannels/ChannelsAvailabilityCard";
 import { productUrl } from "@dashboard/products/urls";
-import { FetchMoreProps, RelayToFlat, ReorderAction } from "@dashboard/types";
-import React from "react";
-import { defineMessages, useIntl } from "react-intl";
+import { productTypeUrl } from "@dashboard/productTypes/urls";
+import { Container, FetchMoreProps, RelayToFlat, ReorderAction } from "@dashboard/types";
+import { mapEdgesToItems } from "@dashboard/utils/maps";
+import { Box, Text } from "@saleor/macaw-ui-next";
+import { defineMessages, FormattedMessage, useIntl } from "react-intl";
 
 import { ProductShipping } from "../ProductShipping";
 import { ProductStocks } from "../ProductStocks";
@@ -40,8 +49,9 @@ import ProductVariantCheckoutSettings from "../ProductVariantCheckoutSettings/Pr
 import ProductVariantName from "../ProductVariantName";
 import ProductVariantNavigation from "../ProductVariantNavigation";
 import { ProductVariantPrice } from "../ProductVariantPrice";
-import ProductVariantCreateForm, {
+import {
   ProductVariantCreateData,
+  ProductVariantCreateForm,
   ProductVariantCreateHandlers,
 } from "./form";
 
@@ -82,13 +92,12 @@ interface ProductVariantCreatePageProps {
   header: string;
   product: ProductVariantCreateDataQuery["product"];
   saveButtonBarState: ConfirmButtonTransitionState;
-  warehouses: RelayToFlat<SearchWarehousesQuery["search"]>;
   weightUnit: string;
   referencePages?: RelayToFlat<SearchPagesQuery["search"]>;
   referenceProducts?: RelayToFlat<SearchProductsQuery["search"]>;
-  attributeValues: RelayToFlat<
-    SearchAttributeValuesQuery["attribute"]["choices"]
-  >;
+  referenceCategories?: RelayToFlat<SearchCategoriesQuery["search"]>;
+  referenceCollections?: RelayToFlat<SearchCollectionsQuery["search"]>;
+  attributeValues: RelayToFlat<SearchAttributeValuesQuery["attribute"]["choices"]>;
   onSubmit: (data: ProductVariantCreateData) => SubmitPromise;
   onVariantClick: (variantId: string) => void;
   onVariantReorder: ReorderAction;
@@ -97,15 +106,23 @@ interface ProductVariantCreatePageProps {
   onAssignReferencesClick: (attribute: AttributeInput) => void;
   fetchReferencePages?: (data: string) => void;
   fetchReferenceProducts?: (data: string) => void;
+  fetchReferenceCategories?: (data: string) => void;
+  fetchReferenceCollections?: (data: string) => void;
   fetchAttributeValues: (query: string, attributeId: string) => void;
   fetchMoreReferencePages?: FetchMoreProps;
   fetchMoreReferenceProducts?: FetchMoreProps;
+  fetchMoreReferenceCategories?: FetchMoreProps;
+  fetchMoreReferenceCollections?: FetchMoreProps;
   fetchMoreAttributeValues?: FetchMoreProps;
   onCloseDialog: () => void;
   onAttributeSelectBlur: () => void;
+  fetchMoreWarehouses: () => void;
+  searchWarehousesResult: QueryResult<SearchWarehousesQuery>;
+  searchWarehouses: (query: string) => void;
+  onFilterChange?: AssignAttributeValueDialogFilterChangeMap;
 }
 
-const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
+export const ProductVariantCreatePage = ({
   productId,
   defaultVariantId,
   disabled,
@@ -113,10 +130,11 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
   header,
   product,
   saveButtonBarState,
-  warehouses,
   weightUnit,
   referencePages = [],
   referenceProducts = [],
+  referenceCategories = [],
+  referenceCollections = [],
   attributeValues,
   onSubmit,
   onVariantReorder,
@@ -125,21 +143,27 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
   onAssignReferencesClick,
   fetchReferencePages,
   fetchReferenceProducts,
+  fetchReferenceCategories,
+  fetchReferenceCollections,
   fetchAttributeValues,
   fetchMoreReferencePages,
   fetchMoreReferenceProducts,
+  fetchMoreReferenceCategories,
+  fetchMoreReferenceCollections,
   fetchMoreAttributeValues,
   onCloseDialog,
   onAttributeSelectBlur,
-}) => {
+  fetchMoreWarehouses,
+  searchWarehousesResult,
+  searchWarehouses,
+  onFilterChange,
+}: ProductVariantCreatePageProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
-  const { isOpen: isManageChannelsModalOpen, toggle: toggleManageChannels } =
-    useManageChannels();
+  const { isOpen: isManageChannelsModalOpen, toggle: toggleManageChannels } = useManageChannels();
   const canOpenAssignReferencesAttributeDialog = !!assignReferencesAttributeId;
-
   const handleAssignReferenceAttribute = (
-    attributeValues: string[],
+    attributeValues: Container[],
     data: ProductVariantCreateData,
     handlers: ProductVariantCreateHandlers,
   ) => {
@@ -147,9 +171,13 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
       assignReferencesAttributeId,
       mergeAttributeValues(
         assignReferencesAttributeId,
-        attributeValues,
+        attributeValues.map(({ id }) => id),
         data.attributes,
       ),
+    );
+    handlers.selectAttributeReferenceAdditionalData(
+      assignReferencesAttributeId,
+      attributeValues.map(({ id, name }) => ({ value: id, label: name })),
     );
     onCloseDialog();
   };
@@ -158,20 +186,24 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
     <ProductVariantCreateForm
       product={product}
       onSubmit={onSubmit}
-      warehouses={warehouses}
       referencePages={referencePages}
       referenceProducts={referenceProducts}
+      referenceCategories={referenceCategories}
+      referenceCollections={referenceCollections}
       fetchReferencePages={fetchReferencePages}
       fetchMoreReferencePages={fetchMoreReferencePages}
       fetchReferenceProducts={fetchReferenceProducts}
       fetchMoreReferenceProducts={fetchMoreReferenceProducts}
+      fetchReferenceCategories={fetchReferenceCategories}
+      fetchMoreReferenceCategories={fetchMoreReferenceCategories}
+      fetchReferenceCollections={fetchReferenceCollections}
+      fetchMoreReferenceCollections={fetchMoreReferenceCollections}
       assignReferencesAttributeId={assignReferencesAttributeId}
       disabled={disabled}
     >
       {({
         change,
         data,
-        formErrors,
         validationErrors,
         handlers,
         submit,
@@ -181,7 +213,7 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
         const errors = [...apiErrors, ...validationErrors];
 
         return (
-          <DetailPageLayout>
+          <DetailPageLayout gridTemplateColumns={1}>
             <TopNav href={productUrl(productId)} title={header} />
             <DetailPageLayout.Content>
               <Grid variant="inverted">
@@ -196,63 +228,92 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
                   />
                 </div>
                 <div>
-                  <ProductVariantName
-                    value={data.variantName}
-                    onChange={change}
-                    errors={errors}
-                  />
+                  <ProductVariantName value={data.variantName} onChange={change} errors={errors} />
                   <CardSpacer />
                   <ProductDetailsChannelsAvailabilityCard
+                    disabled={disabled}
+                    listings={data.channelListings}
                     product={product}
                     onManageClick={toggleManageChannels}
                   />
-                  <Attributes
-                    title={intl.formatMessage(messages.attributesHeader)}
-                    attributes={data.attributes.filter(
-                      attribute =>
-                        attribute.data.variantAttributeScope ===
-                        VariantAttributeScope.NOT_VARIANT_SELECTION,
-                    )}
-                    attributeValues={attributeValues}
-                    loading={disabled}
-                    disabled={disabled}
-                    errors={errors}
-                    onChange={handlers.selectAttribute}
-                    onMultiChange={handlers.selectAttributeMultiple}
-                    onFileChange={handlers.selectAttributeFile}
-                    onReferencesRemove={handlers.selectAttributeReference}
-                    onReferencesAddClick={onAssignReferencesClick}
-                    onReferencesReorder={handlers.reorderAttributeValue}
-                    fetchAttributeValues={fetchAttributeValues}
-                    fetchMoreAttributeValues={fetchMoreAttributeValues}
-                    onAttributeSelectBlur={onAttributeSelectBlur}
-                    richTextGetters={attributeRichTextGetters}
-                  />
                   <CardSpacer />
-                  <Attributes
-                    title={intl.formatMessage(
-                      messages.attributesSelectionHeader,
-                    )}
-                    attributes={data.attributes.filter(
-                      attribute =>
-                        attribute.data.variantAttributeScope ===
-                        VariantAttributeScope.VARIANT_SELECTION,
-                    )}
-                    attributeValues={attributeValues}
-                    loading={disabled}
-                    disabled={disabled}
-                    errors={errors}
-                    onChange={handlers.selectAttribute}
-                    onMultiChange={handlers.selectAttributeMultiple}
-                    onFileChange={handlers.selectAttributeFile}
-                    onReferencesRemove={handlers.selectAttributeReference}
-                    onReferencesAddClick={onAssignReferencesClick}
-                    onReferencesReorder={handlers.reorderAttributeValue}
-                    fetchAttributeValues={fetchAttributeValues}
-                    fetchMoreAttributeValues={fetchMoreAttributeValues}
-                    onAttributeSelectBlur={onAttributeSelectBlur}
-                    richTextGetters={attributeRichTextGetters}
-                  />
+                  {product?.productType?.hasVariants && (
+                    <Attributes
+                      title={intl.formatMessage(messages.attributesHeader)}
+                      attributes={data.attributes.filter(
+                        attribute =>
+                          attribute.data.variantAttributeScope ===
+                          VariantAttributeScope.NOT_VARIANT_SELECTION,
+                      )}
+                      attributeValues={attributeValues}
+                      loading={disabled}
+                      disabled={disabled}
+                      errors={errors}
+                      onChange={handlers.selectAttribute}
+                      onMultiChange={handlers.selectAttributeMultiple}
+                      onFileChange={handlers.selectAttributeFile}
+                      onReferencesRemove={handlers.selectAttributeReference}
+                      onReferencesAddClick={onAssignReferencesClick}
+                      onReferencesReorder={handlers.reorderAttributeValue}
+                      fetchAttributeValues={fetchAttributeValues}
+                      fetchMoreAttributeValues={fetchMoreAttributeValues}
+                      onAttributeSelectBlur={onAttributeSelectBlur}
+                      richTextGetters={attributeRichTextGetters}
+                    />
+                  )}
+                  {product?.productType?.hasVariants && (
+                    <>
+                      <CardSpacer />
+                      <Attributes
+                        title={intl.formatMessage(messages.attributesSelectionHeader)}
+                        attributes={data.attributes.filter(
+                          attribute =>
+                            attribute.data.variantAttributeScope ===
+                            VariantAttributeScope.VARIANT_SELECTION,
+                        )}
+                        attributeValues={attributeValues}
+                        loading={disabled}
+                        disabled={disabled}
+                        errors={errors}
+                        onChange={handlers.selectAttribute}
+                        onMultiChange={handlers.selectAttributeMultiple}
+                        onFileChange={handlers.selectAttributeFile}
+                        onReferencesRemove={handlers.selectAttributeReference}
+                        onReferencesAddClick={onAssignReferencesClick}
+                        onReferencesReorder={handlers.reorderAttributeValue}
+                        fetchAttributeValues={fetchAttributeValues}
+                        fetchMoreAttributeValues={fetchMoreAttributeValues}
+                        onAttributeSelectBlur={onAttributeSelectBlur}
+                        richTextGetters={attributeRichTextGetters}
+                      />
+                    </>
+                  )}
+                  {!product?.productType?.hasVariants && data.attributes.length > 0 && (
+                    <DashboardCard paddingTop={6}>
+                      <DashboardCard.Content>
+                        <Box display="flex" flexDirection="column" gap={4} paddingBottom={4}>
+                          <Text size={5} fontWeight="bold">
+                            {intl.formatMessage(messages.attributesHeader)}
+                          </Text>
+                          <Text size={2} color="default2">
+                            <FormattedMessage
+                              id="zN0Eub"
+                              defaultMessage="This product type has {count, plural, one {# variant attribute} other {# variant attributes}} defined, but 'Product type uses Variant Attributes' is disabled. Edit {productTypeLink} product type to enable variant attributes."
+                              description="info message when hasVariants is false but variant attributes exist"
+                              values={{
+                                count: data.attributes.length,
+                                productTypeLink: product?.productType ? (
+                                  <Link href={productTypeUrl(product.productType.id)} underline>
+                                    {product.productType.name}
+                                  </Link>
+                                ) : null,
+                              }}
+                            />
+                          </Text>
+                        </Box>
+                      </DashboardCard.Content>
+                    </DashboardCard>
+                  )}
                   <CardSpacer />
                   <ProductVariantCheckoutSettings
                     data={data}
@@ -271,46 +332,47 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
                   <CardSpacer />
                   <ProductVariantPrice
                     disabled={!product}
-                    ProductVariantChannelListings={data.channelListings.map(
-                      channel => ({
-                        ...channel.data,
-                        ...channel.value,
-                      }),
-                    )}
-                    errors={[]}
+                    productVariantChannelListings={data.channelListings.map(channel => ({
+                      ...channel.data,
+                      ...channel.value,
+                    }))}
+                    errors={errors}
                     loading={!product}
                     onChange={handlers.changeChannels}
                   />
                   <CardSpacer />
                   <ProductStocks
                     data={data}
-                    disabled={disabled}
+                    warehouses={mapEdgesToItems(searchWarehousesResult?.data?.search) ?? []}
+                    fetchMoreWarehouses={fetchMoreWarehouses}
+                    hasMoreWarehouses={searchWarehousesResult?.data?.search?.pageInfo?.hasNextPage}
                     hasVariants={true}
                     onFormDataChange={change}
-                    formErrors={formErrors}
                     errors={errors}
                     stocks={data.stocks}
-                    warehouses={warehouses}
+                    loading={!product}
+                    searchWarehouses={searchWarehouses}
                     onChange={handlers.changeStock}
-                    onChangePreorderEndDate={handlers.changePreorderEndDate}
                     onWarehouseStockAdd={handlers.addStock}
                     onWarehouseStockDelete={handlers.deleteStock}
                     onWarehouseConfigure={onWarehouseConfigure}
+                    isCreate={true}
                   />
                   <CardSpacer />
                   <Metadata data={data} onChange={handlers.changeMetadata} />
                 </div>
               </Grid>
-              <Savebar
-                disabled={isSaveDisabled}
-                labels={{
-                  confirm: intl.formatMessage(messages.saveVariant),
-                  delete: intl.formatMessage(messages.deleteVariant),
-                }}
-                state={saveButtonBarState}
-                onCancel={() => navigate(productUrl(productId))}
-                onSubmit={submit}
-              />
+              <Savebar>
+                <Savebar.Spacer />
+                <Savebar.CancelButton onClick={() => navigate(productUrl(productId))} />
+                <Savebar.ConfirmButton
+                  transitionState={saveButtonBarState}
+                  onClick={submit}
+                  disabled={isSaveDisabled}
+                >
+                  {intl.formatMessage(messages.saveVariant)}
+                </Savebar.ConfirmButton>
+              </Savebar>
               {canOpenAssignReferencesAttributeDialog && (
                 <AssignAttributeValueDialog
                   entityType={getReferenceAttributeEntityTypeFromAttribute(
@@ -320,6 +382,9 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
                   confirmButtonState={"default"}
                   products={referenceProducts}
                   pages={referencePages}
+                  collections={referenceCollections}
+                  categories={referenceCategories}
+                  attribute={data.attributes.find(({ id }) => id === assignReferencesAttributeId)}
                   hasMore={handlers.fetchMoreReferences?.hasMore}
                   open={canOpenAssignReferencesAttributeDialog}
                   onFetch={handlers.fetchReferences}
@@ -327,12 +392,9 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
                   loading={handlers.fetchMoreReferences?.loading}
                   onClose={onCloseDialog}
                   onSubmit={attributeValues =>
-                    handleAssignReferenceAttribute(
-                      attributeValues,
-                      data,
-                      handlers,
-                    )
+                    handleAssignReferenceAttribute(attributeValues, data, handlers)
                   }
+                  onFilterChange={onFilterChange}
                 />
               )}
               {product && (
@@ -351,5 +413,5 @@ const ProductVariantCreatePage: React.FC<ProductVariantCreatePageProps> = ({
     </ProductVariantCreateForm>
   );
 };
+
 ProductVariantCreatePage.displayName = "ProductVariantCreatePage";
-export default ProductVariantCreatePage;

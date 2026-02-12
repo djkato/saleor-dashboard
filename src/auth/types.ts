@@ -1,10 +1,6 @@
 import { ApolloQueryResult } from "@apollo/client";
 import { UserDetailsQuery, UserFragment } from "@dashboard/graphql";
-import {
-  GetExternalAccessTokenData,
-  GetExternalAuthUrlData,
-  LoginData,
-} from "@saleor/sdk";
+import { GetExternalAccessTokenData, GetExternalAuthUrlData, LoginData } from "@saleor/sdk";
 
 export interface RequestExternalLoginInput {
   redirectUri: string;
@@ -24,26 +20,28 @@ export const UserContextError = {
   serverError: "serverError",
   noPermissionsError: "noPermissionsError",
   externalLoginError: "externalLoginError",
+  loginAttemptDelay: "loginAttemptDelay",
   unknownLoginError: "unknownLoginError",
+  invalidCredentials: "invalidCredentials",
 } as const;
 
-export type UserContextError =
-  (typeof UserContextError)[keyof typeof UserContextError];
+export type UserContextError = (typeof UserContextError)[keyof typeof UserContextError];
 
 export interface UserContext {
-  login: (username: string, password: string) => Promise<LoginData>;
-  loginByExternalPlugin: (
-    pluginId: string,
+  login?: (username: string, password: string) => Promise<LoginData | undefined>;
+  loginByExternalPlugin?: (
+    pluginId: string | null,
     input: ExternalLoginInput,
-  ) => Promise<GetExternalAccessTokenData>;
-  logout: () => Promise<void>;
-  requestLoginByExternalPlugin: (
+  ) => Promise<GetExternalAccessTokenData | undefined>;
+  logout?: () => Promise<void>;
+  requestLoginByExternalPlugin?: (
     pluginId: string,
     input: RequestExternalLoginInput,
-  ) => Promise<GetExternalAuthUrlData>;
-  user?: UserFragment;
+  ) => Promise<GetExternalAuthUrlData | undefined>;
+  user?: UserFragment | null;
   authenticating: boolean;
+  isCredentialsLogin: boolean;
   authenticated: boolean;
   errors: UserContextError[];
-  refetchUser: () => Promise<ApolloQueryResult<UserDetailsQuery>>;
+  refetchUser?: () => Promise<ApolloQueryResult<UserDetailsQuery>>;
 }

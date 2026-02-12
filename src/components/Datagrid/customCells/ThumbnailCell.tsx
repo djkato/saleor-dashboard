@@ -5,7 +5,6 @@ import {
   GridCellKind,
   TextCellEntry,
 } from "@glideapps/glide-data-grid";
-import React from "react";
 
 export interface ThumbnailCellProps {
   readonly kind: "thumbnail-cell";
@@ -22,44 +21,37 @@ export const thumbnailCellRenderer: CustomRenderer<ThumbnailCell> = {
   draw: (args, cell) => {
     const { ctx, rect, theme, imageLoader, col, row } = args;
     const { image, name } = cell.data;
-
-    const xPad = 7;
+    const xPad = 5;
     const size = rect.height - xPad * 2;
-
     const drawX = rect.x + xPad;
     const drawY = rect.y + xPad;
-
     const imageResult = imageLoader.loadOrGetImage(image, col, row);
 
     ctx.save();
 
     if (imageResult !== undefined && image) {
-      ctx.save();
       roundedImage(ctx, drawX, drawY, size, size, 4);
       ctx.strokeStyle = theme.borderColor;
       ctx.stroke();
       ctx.clip();
       ctx.drawImage(imageResult, drawX, drawY, size, size);
-      ctx.restore();
     } else {
-      ctx.save();
       ctx.beginPath();
       roundedImage(ctx, drawX, drawY, size, size, 4);
       ctx.fillStyle = theme.borderColor;
       ctx.fill();
-      ctx.restore();
     }
+
+    ctx.restore();
 
     if (name !== undefined) {
       ctx.fillStyle = theme.textDark;
       ctx.fillText(
         name,
-        drawX + size + xPad,
+        drawX + size + 10,
         rect.y + rect.height / 2 + getMiddleCenterBias(ctx, theme),
       );
     }
-
-    ctx.restore();
 
     return true;
   },
@@ -67,6 +59,7 @@ export const thumbnailCellRenderer: CustomRenderer<ThumbnailCell> = {
   provideEditor: () => ({
     editor: p => {
       const { isHighlighted, onChange, value } = p;
+
       return (
         <TextCellEntry
           highlight={isHighlighted}

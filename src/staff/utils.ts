@@ -1,8 +1,7 @@
-// @ts-strict-ignore
 import { StaffMemberDetailsFragment, UserFragment } from "@dashboard/graphql";
 import difference from "lodash/difference";
 
-import { StaffDetailsFormData } from "./components/StaffDetailsPage";
+import { StaffDetailsFormData } from "./components/StaffDetailsPage/StaffDetailsPage";
 
 /**
  * Return lists of groups which have to be added and removed from user.
@@ -15,8 +14,8 @@ export const groupsDiff = (
     return {};
   }
 
-  const newGroups = formData.permissionGroups;
-  const oldGroups = user.permissionGroups.map(u => u.id);
+  const newGroups = formData.permissionGroups.map(u => u.value);
+  const oldGroups = user.permissionGroups?.map(u => u.id) ?? [];
 
   return {
     addGroups: difference(newGroups, oldGroups),
@@ -24,9 +23,7 @@ export const groupsDiff = (
   };
 };
 
-export const isMemberActive = (
-  staffMember: StaffMemberDetailsFragment | UserFragment,
-) => {
+export const isMemberActive = (staffMember: StaffMemberDetailsFragment | UserFragment) => {
   if (staffMember && "isActive" in staffMember) {
     return staffMember.isActive;
   }

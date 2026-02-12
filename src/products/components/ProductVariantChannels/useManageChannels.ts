@@ -4,7 +4,7 @@ export const useManageChannels = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggle = () => {
-    setIsOpen(p => !p);
+    setIsOpen(!isOpen);
   };
 
   return {

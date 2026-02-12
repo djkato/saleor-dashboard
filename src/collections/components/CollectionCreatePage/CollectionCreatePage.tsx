@@ -7,7 +7,7 @@ import ChannelsAvailabilityCard from "@dashboard/components/ChannelsAvailability
 import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
 import { Metadata } from "@dashboard/components/Metadata";
-import Savebar from "@dashboard/components/Savebar";
+import { Savebar } from "@dashboard/components/Savebar";
 import { SeoForm } from "@dashboard/components/SeoForm";
 import {
   CollectionChannelListingErrorFragment,
@@ -16,14 +16,13 @@ import {
 } from "@dashboard/graphql";
 import { SubmitPromise } from "@dashboard/hooks/useForm";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import React from "react";
 import { useIntl } from "react-intl";
 
 import CollectionDetails from "../CollectionDetails/CollectionDetails";
 import { CollectionImage } from "../CollectionImage/CollectionImage";
 import CollectionCreateForm, { CollectionCreateData } from "./form";
 
-export interface CollectionCreatePageProps {
+interface CollectionCreatePageProps {
   channelsCount: number;
   channelsErrors: CollectionChannelListingErrorFragment[];
   currentChannels: ChannelCollectionData[];
@@ -35,7 +34,7 @@ export interface CollectionCreatePageProps {
   openChannelsModal: () => void;
 }
 
-const CollectionCreatePage: React.FC<CollectionCreatePageProps> = ({
+const CollectionCreatePage = ({
   channelsCount,
   channelsErrors,
   currentChannels = [],
@@ -67,12 +66,7 @@ const CollectionCreatePage: React.FC<CollectionCreatePageProps> = ({
             })}
           />
           <DetailPageLayout.Content>
-            <CollectionDetails
-              data={data}
-              disabled={disabled}
-              errors={errors}
-              onChange={change}
-            />
+            <CollectionDetails data={data} disabled={disabled} errors={errors} onChange={change} />
             <CardSpacer />
             <CollectionImage
               image={
@@ -153,16 +147,20 @@ const CollectionCreatePage: React.FC<CollectionCreatePageProps> = ({
               openModal={openChannelsModal}
             />
           </DetailPageLayout.RightSidebar>
-          <Savebar
-            state={saveButtonBarState}
-            disabled={isSaveDisabled}
-            onCancel={() => navigate(collectionListUrl())}
-            onSubmit={submit}
-          />
+          <Savebar>
+            <Savebar.Spacer />
+            <Savebar.CancelButton onClick={() => navigate(collectionListUrl())} />
+            <Savebar.ConfirmButton
+              transitionState={saveButtonBarState}
+              onClick={submit}
+              disabled={isSaveDisabled}
+            />
+          </Savebar>
         </DetailPageLayout>
       )}
     </CollectionCreateForm>
   );
 };
+
 CollectionCreatePage.displayName = "CollectionCreatePage";
 export default CollectionCreatePage;

@@ -1,10 +1,9 @@
-// @ts-strict-ignore
+import { Route } from "@dashboard/components/Router";
 import { sectionNames } from "@dashboard/intl";
+import { parseQs } from "@dashboard/url-utils";
 import { asSortParams } from "@dashboard/utils/sort";
-import { parse as parseQs } from "qs";
-import React from "react";
 import { useIntl } from "react-intl";
-import { Route, RouteComponentProps, Switch } from "react-router-dom";
+import { RouteComponentProps, Switch } from "react-router-dom";
 
 import { WindowTitle } from "../components/WindowTitle";
 import {
@@ -22,32 +21,25 @@ import CategoryListComponent from "./views/CategoryList";
 interface CategoryDetailsRouteParams {
   id: string;
 }
-const CategoryDetails: React.FC<
-  RouteComponentProps<CategoryDetailsRouteParams>
-> = ({ location, match }) => {
+
+const CategoryDetails = ({ location, match }: RouteComponentProps<CategoryDetailsRouteParams>) => {
   const qs = parseQs(location.search.substr(1));
   const params: CategoryUrlQueryParams = qs;
 
-  return (
-    <CategoryDetailsView
-      id={decodeURIComponent(match.params.id)}
-      params={params}
-    />
-  );
+  return <CategoryDetailsView id={decodeURIComponent(match.params.id)} params={params} />;
 };
 
 interface CategoryCreateRouteParams {
   id: string;
 }
-const CategoryCreate: React.FC<
-  RouteComponentProps<CategoryCreateRouteParams>
-> = ({ match }) => (
+
+const CategoryCreate = ({ match }: RouteComponentProps<CategoryCreateRouteParams>) => (
   <CategoryCreateView
     parentId={match.params.id ? decodeURIComponent(match.params.id) : undefined}
   />
 );
 
-const CategoryList: React.FC<RouteComponentProps<{}>> = ({ location }) => {
+const CategoryList = ({ location }: RouteComponentProps<{}>) => {
   const qs = parseQs(location.search.substr(1)) as any;
   const params: CategoryListUrlQueryParams = {
     ...asSortParams(qs, CategoryListUrlSortField),

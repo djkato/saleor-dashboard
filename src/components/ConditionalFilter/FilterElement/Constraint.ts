@@ -1,43 +1,69 @@
-import { CONSTRAINTS } from "../constants"
-import { StaticElementName } from "./ConditionOptions"
-import { FilterContainer, FilterElement } from "./FilterElement"
+import { CONSTRAINTS } from "../constants";
+import { StaticElementName } from "./ConditionOptions";
+import { FilterContainer, FilterElement } from "./FilterElement";
 
-type DisabledScope = "left" | "right" | "condition"
+export const GLOBAL = "GLOBAL" as const;
+
+type DisabledScope = "left" | "right" | "condition";
 
 export class Constraint {
+  public readonly dependsOn: string[];
+
+  public readonly isGlobal: boolean;
+
   constructor(
-    public dependsOn: string[],
-    public disabled?: [DisabledScope],
+    dependsOnOrGlobal: string[] | typeof GLOBAL,
+    public disabled?: DisabledScope[],
     public removable?: boolean,
-  ) {}
-
-  public static getDependency (slug: string): StaticElementName | null {
-    const fieldConstraint = Object.entries(CONSTRAINTS)
-      .find(([_, v]) => v.dependsOn.includes(slug))
-
-    if (!fieldConstraint) return null
-
-    return fieldConstraint[0] as StaticElementName
+  ) {
+    if (dependsOnOrGlobal === GLOBAL) {
+      this.dependsOn = [];
+      this.isGlobal = true;
+    } else {
+      this.dependsOn = dependsOnOrGlobal;
+      this.isGlobal = false;
+    }
   }
 
-  public static fromSlug(slug: string) {
-    const constraintKey = Object.keys(CONSTRAINTS).find(key => key === slug)
+  public static getDependency(slug: string): StaticElementName | null {
+    const fieldConstraint = Object.entries(CONSTRAINTS).find(([_, v]) =>
+      v.dependsOn.includes(slug),
+    );
 
-    if (!constraintKey) return null
-    const fieldConstraint = CONSTRAINTS[constraintKey as keyof typeof CONSTRAINTS]
+    if (!fieldConstraint) return null;
+
+    return fieldConstraint[0] as StaticElementName;
+  }
+
+  public static fromSlug(slug: string): Constraint | null {
+    const constraintKey = Object.keys(CONSTRAINTS).find(key => key === slug);
+
+    if (!constraintKey) return null;
+
+    const fieldConstraint = CONSTRAINTS[constraintKey as keyof typeof CONSTRAINTS];
 
     return new Constraint(
       fieldConstraint.dependsOn,
-      fieldConstraint.disabled as [DisabledScope],
-      fieldConstraint.removable
-    )
+      fieldConstraint.disabled as DisabledScope[],
+      fieldConstraint.removable,
+    );
   }
 
-  public existIn (container: FilterContainer) {
-    return container.some((s) => {
-      if (!FilterElement.isCompatible(s)) return false
+  public existIn(container: FilterContainer): boolean {
+    // We mark as existing, in order to not get removed by useContainerState
+    // constraints cleanup - global constraint are not tied to any filter row.
+    if (this.isGlobal) {
+      return true;
+    }
 
-      return this.dependsOn.includes(s.value.value)
-    })
+    if (this.dependsOn.length === 0) {
+      return false;
+    }
+
+    return container.some(s => {
+      if (!FilterElement.isFilterElement(s)) return false;
+
+      return this.dependsOn.includes(s.value.value);
+    });
   }
 }

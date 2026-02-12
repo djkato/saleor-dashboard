@@ -1,25 +1,22 @@
 // @ts-strict-ignore
-import {
-  ConfirmButton,
-  ConfirmButtonProps,
-} from "@dashboard/components/ConfirmButton";
-import React from "react";
+import { ConfirmButton, ConfirmButtonProps } from "@dashboard/components/ConfirmButton";
 
 import { useManualTransactionContext } from "../context";
 
-export const SubmitButton: React.FC<
-  Omit<ConfirmButtonProps, "type" | "transitionState">
-> = ({ disabled, ...props }) => {
+export const SubmitButton = ({
+  disabled,
+  ...props
+}: Omit<ConfirmButtonProps, "type" | "transitionState">) => {
   const { submitState, amount } = useManualTransactionContext();
 
   return (
     <ConfirmButton
-      {...props}
       size="large"
       type="submit"
       transitionState={submitState}
       disabled={!amount || disabled}
       data-test-id="manualTransactionSubmit"
+      {...props}
     />
   );
 };

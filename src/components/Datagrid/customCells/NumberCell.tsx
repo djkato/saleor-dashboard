@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import {
   CustomCell,
   CustomRenderer,
@@ -6,19 +5,23 @@ import {
   GridCellKind,
   ProvideEditorCallback,
 } from "@glideapps/glide-data-grid";
-import React from "react";
 
 import { Locale } from "../../Locale";
 
 export const numberCellEmptyValue = Symbol("number-cell-empty-value");
-interface NumberCellProps {
+export interface NumberCellProps {
   readonly kind: "number-cell";
   readonly value: number | typeof numberCellEmptyValue;
+  readonly options?: {
+    format?: "number" | "percent";
+    hasFloatingPoint?: boolean;
+    cursor?: "pointer" | "default";
+  };
 }
 
 export type NumberCell = CustomCell<NumberCellProps>;
 
-const onlyDigitsRegExp = /^\d+$/;
+const floatOrDigits = /^\d+$|^[0-9]+[.,]?[0-9]+$/;
 
 const NumberCellEdit: ReturnType<ProvideEditorCallback<NumberCell>> = ({
   value: cell,
@@ -31,7 +34,7 @@ const NumberCellEdit: ReturnType<ProvideEditorCallback<NumberCell>> = ({
         ...cell,
         data: {
           ...cell.data,
-          value: event.target.value ? parseFloat(event.target.value) : null,
+          value: event.target.value ? parseFloat(event.target.value) : numberCellEmptyValue,
         },
       })
     }
@@ -40,16 +43,18 @@ const NumberCellEdit: ReturnType<ProvideEditorCallback<NumberCell>> = ({
   />
 );
 
-export const numberCellRenderer = (
-  locale: Locale,
-): CustomRenderer<NumberCell> => ({
+export const numberCellRenderer = (locale: Locale): CustomRenderer<NumberCell> => ({
   kind: GridCellKind.Custom,
   isMatch: (c): c is NumberCell => (c.data as any).kind === "number-cell",
   draw: (args, cell) => {
     const { ctx, theme, rect } = args;
-    const { value } = cell.data;
-    const formatted =
-      value === numberCellEmptyValue ? "-" : value.toLocaleString(locale);
+    const { value, options } = cell.data;
+    let formatted = value === numberCellEmptyValue ? "-" : value.toLocaleString(locale);
+
+    if (options?.format === "percent") {
+      formatted += "%";
+    }
+
     ctx.fillStyle = theme.textDark;
     ctx.textAlign = "right";
     ctx.fillText(
@@ -73,13 +78,11 @@ export const numberCellRenderer = (
     }),
   }),
   onPaste: (value, data) => {
-    if (!onlyDigitsRegExp.test(value)) {
-      return undefined;
-    }
+    const isValueValid = floatOrDigits.test(value);
 
     return {
       ...data,
-      value: value ? parseFloat(value) : numberCellEmptyValue,
+      value: isValueValid ? parseFloat(value) : numberCellEmptyValue,
     };
   },
 });

@@ -1,10 +1,9 @@
-import { Box, Text, Toggle } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Text, Toggle } from "@saleor/macaw-ui-next";
 
 import { AvailableColumn } from "../types";
 import { filterEmptyColumn, isLastEnabledColumn } from "./utils";
 
-export interface ColumnPickerStaticColumnsProps {
+interface ColumnPickerStaticColumnsProps {
   staticColumns: AvailableColumn[];
   handleToggle: (id: string) => void;
   selectedColumns: string[];
@@ -23,13 +22,9 @@ export const ColumnPickerStaticColumns = ({
           onPressedChange={() => handleToggle(column.id)}
           pressed={selectedColumns.includes(column.id)}
           // One static column must always be enabled
-          disabled={isLastEnabledColumn(
-            column.id,
-            staticColumns,
-            selectedColumns,
-          )}
+          disabled={isLastEnabledColumn(column.id, staticColumns, selectedColumns)}
         >
-          <Text variant="body" size="small" color="textNeutralDefault">
+          <Text size={3} color="default1">
             {column.title}
           </Text>
         </Toggle>

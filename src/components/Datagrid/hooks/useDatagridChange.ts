@@ -24,6 +24,7 @@ export interface DatagridChangeOpts {
   added: number[];
   removed: number[];
   updates: DatagridChange[];
+  currentUpdate?: DatagridChange;
 }
 export type OnDatagridChange = (
   opts: DatagridChangeOpts,
@@ -42,7 +43,6 @@ export function useDatagridChangeState(): UseDatagridChangeState {
   const [added, setAdded] = useState<number[]>([]);
   const [removed, setRemoved] = useState<number[]>([]);
   const changes = useRef<DatagridChange[]>([]);
-
   const clear = () => {
     changes.current = [];
     setAdded([]);
@@ -59,10 +59,9 @@ export function useDatagridChangeState(): UseDatagridChangeState {
   };
 }
 
-export const DatagridChangeStateContext =
-  createContext<UseDatagridChangeState>(undefined);
-export const useDatagridChangeStateContext = () =>
-  useContext(DatagridChangeStateContext);
+export const DatagridChangeStateContext = createContext<UseDatagridChangeState>(undefined);
+
+const useDatagridChangeStateContext = () => useContext(DatagridChangeStateContext);
 
 function useDatagridChange(
   availableColumns: readonly AvailableColumn[],
@@ -70,24 +69,31 @@ function useDatagridChange(
   onChange?: OnDatagridChange,
   setMarkCellsDirty?: (areCellsDirty: boolean) => void,
 ) {
-  const { added, setAdded, removed, setRemoved, changes } =
-    useDatagridChangeStateContext();
+  const { added, setAdded, removed, setRemoved, changes } = useDatagridChangeStateContext();
   const getChangeIndex = useCallback(
     (column: string, row: number): number =>
-      changes.current.findIndex(
-        change => change.column === column && change.row === row,
-      ),
+      changes.current.findIndex(change => change.column === column && change.row === row),
     [],
   );
-
   const notify = useCallback(
-    (updates: DatagridChange[], added: number[], removed: number[]) => {
+    ({
+      added,
+      currentUpdate,
+      removed,
+      updates,
+    }: {
+      updates: DatagridChange[];
+      added: number[];
+      removed: number[];
+      currentUpdate: DatagridChange;
+    }) => {
       if (onChange) {
         onChange(
           {
             updates,
             removed,
             added,
+            currentUpdate,
           },
           setMarkCellsDirty,
         );
@@ -95,27 +101,29 @@ function useDatagridChange(
     },
     [onChange, setMarkCellsDirty],
   );
-
   const onCellEdited = useCallback(
     ([column, row]: Item, newValue: EditableGridCell): void => {
       const columnId = availableColumns[column].id;
       const existingIndex = getChangeIndex(columnId, row);
       const update = { data: newValue.data, column: columnId, row };
+
       changes.current =
         existingIndex === -1
           ? [...changes.current, update]
           : updateAtIndex(update, changes.current, existingIndex);
-      notify(changes.current, added, removed);
+      notify({
+        updates: changes.current,
+        added,
+        removed,
+        currentUpdate: update,
+      });
     },
     [availableColumns, notify, added, removed],
   );
-
   const onRowsRemoved = useCallback(
     (rows: number[]) => {
       const getRowOffset = (row: number) => rows.filter(r => r < row).length;
-      const newAdded = added
-        .filter(row => !rows.includes(row))
-        .map(row => row - getRowOffset(row));
+      const newAdded = added.filter(row => !rows.includes(row)).map(row => row - getRowOffset(row));
       const newRemoved = [
         ...removed,
         ...rows
@@ -131,16 +139,25 @@ function useDatagridChange(
           row: change.row - getRowOffset(change.row),
         }));
       setAdded(newAdded);
-
-      notify(changes.current, newAdded, newRemoved);
+      notify({
+        updates: changes.current,
+        added: newAdded,
+        removed: newRemoved,
+        currentUpdate: undefined,
+      });
     },
     [added, removed, notify],
   );
-
   const onRowAdded = useCallback(() => {
     const newAdded = [...added, rows - removed.length + added.length];
+
     setAdded(newAdded);
-    notify(changes.current, newAdded, removed);
+    notify({
+      updates: changes.current,
+      added: newAdded,
+      removed,
+      currentUpdate: undefined,
+    });
   }, [added, notify, removed, rows]);
 
   return {

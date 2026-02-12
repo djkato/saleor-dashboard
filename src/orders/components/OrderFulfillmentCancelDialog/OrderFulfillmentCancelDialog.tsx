@@ -1,28 +1,17 @@
 // @ts-strict-ignore
 import BackButton from "@dashboard/components/BackButton";
-import {
-  ConfirmButton,
-  ConfirmButtonTransitionState,
-} from "@dashboard/components/ConfirmButton";
+import { ConfirmButton, ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButton";
 import Form from "@dashboard/components/Form";
-import FormSpacer from "@dashboard/components/FormSpacer";
-import SingleAutocompleteSelectField from "@dashboard/components/SingleAutocompleteSelectField";
-import { OrderErrorFragment, WarehouseFragment } from "@dashboard/graphql";
+import { DashboardModal } from "@dashboard/components/Modal";
+import { FulfillmentStatus, OrderErrorFragment, WarehouseFragment } from "@dashboard/graphql";
 import { buttonMessages } from "@dashboard/intl";
 import getOrderErrorMessage from "@dashboard/utils/errors/order";
-import createSingleAutocompleteSelectHandler from "@dashboard/utils/handlers/singleAutocompleteSelectChangeHandler";
-import {
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import { DynamicCombobox, Option, Text } from "@saleor/macaw-ui-next";
+import { useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
-export interface OrderFulfillmentCancelDialogFormData {
+interface OrderFulfillmentCancelDialogFormData {
   warehouseId: string;
 }
 
@@ -41,108 +30,110 @@ const useStyles = makeStyles(
   { name: "OrderFulfillmentCancelDialog" },
 );
 
-export interface OrderFulfillmentCancelDialogProps {
+interface OrderFulfillmentCancelDialogProps {
   confirmButtonState: ConfirmButtonTransitionState;
   errors: OrderErrorFragment[];
   open: boolean;
   warehouses: WarehouseFragment[];
+  fulfillmentStatus: string;
   onClose: () => any;
   onConfirm: (data: OrderFulfillmentCancelDialogFormData) => any;
 }
 
-const OrderFulfillmentCancelDialog: React.FC<
-  OrderFulfillmentCancelDialogProps
-> = props => {
-  const { confirmButtonState, errors, open, warehouses, onConfirm, onClose } =
+const OrderFulfillmentCancelDialog = (props: OrderFulfillmentCancelDialogProps) => {
+  const { confirmButtonState, errors, open, warehouses, fulfillmentStatus, onConfirm, onClose } =
     props;
-
   const classes = useStyles(props);
   const intl = useIntl();
-  const [displayValue, setDisplayValue] = React.useState("");
-
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Option | null>(null);
   const choices = warehouses?.map(warehouse => ({
     label: warehouse.name,
     value: warehouse.id,
   }));
+  const waitingForApproval = fulfillmentStatus === FulfillmentStatus.WAITING_FOR_APPROVAL;
 
   return (
-    <Dialog
-      classes={{
-        paper: classes.enableOverflow,
-      }}
-      onClose={onClose}
-      open={open}
-      fullWidth
-      maxWidth="sm"
-    >
+    <DashboardModal onChange={onClose} open={open}>
       <Form initial={{ warehouseId: null }} onSubmit={onConfirm}>
         {({ change, data: formData, submit }) => {
-          const handleChange = createSingleAutocompleteSelectHandler(
-            change,
-            setDisplayValue,
-            choices,
-          );
+          const handleWarehouseChange = (option: Option | null) => {
+            setSelectedWarehouse(option);
+            change({
+              target: {
+                name: "warehouseId",
+                value: option?.value ?? null,
+              },
+            });
+          };
+
           return (
-            <>
-              <DialogTitle disableTypography>
+            <DashboardModal.Content size="sm">
+              <DashboardModal.Header>
                 <FormattedMessage
                   id="bb4nSp"
                   defaultMessage="Cancel Fulfillment"
                   description="dialog header"
                 />
-              </DialogTitle>
-              <DialogContent className={classes.enableOverflow}>
-                <DialogContentText className={classes.paragraph}>
+              </DashboardModal.Header>
+
+              <Text>
+                <FormattedMessage
+                  id="+cGU63"
+                  defaultMessage="Are you sure you want to cancel fulfillment?"
+                />
+                {!waitingForApproval && (
                   <FormattedMessage
-                    id="xco5tZ"
-                    defaultMessage="Are you sure you want to cancel fulfillment? Canceling a fulfillment will restock products at a selected warehouse."
+                    id="QV5QKO"
+                    defaultMessage=" Canceling a fulfillment will restock products at a selected warehouse."
                   />
-                </DialogContentText>
+                )}
+              </Text>
+
+              {!waitingForApproval && (
                 <div
                   className={classes.selectCcontainer}
                   data-test-id="cancel-fulfillment-select-field"
                 >
-                  <SingleAutocompleteSelectField
-                    choices={choices}
-                    displayValue={displayValue}
+                  <DynamicCombobox
                     label={intl.formatMessage({
                       id: "aHc89n",
                       defaultMessage: "Select Warehouse",
                       description: "select warehouse to restock items",
                     })}
+                    options={choices}
                     name="warehouseId"
-                    value={formData.warehouseId}
-                    onChange={handleChange}
+                    size="small"
+                    value={selectedWarehouse}
+                    onChange={handleWarehouseChange}
                   />
                 </div>
-                {errors.length > 0 && (
-                  <>
-                    <FormSpacer />
-                    {errors.map((err, index) => (
-                      <DialogContentText color="error" key={index}>
-                        {getOrderErrorMessage(err, intl)}
-                      </DialogContentText>
-                    ))}
-                  </>
-                )}
-              </DialogContent>
-              <DialogActions>
+              )}
+
+              {errors.length > 0 &&
+                errors.map((err, index) => (
+                  <Text color="critical1" key={index}>
+                    {getOrderErrorMessage(err, intl)}
+                  </Text>
+                ))}
+
+              <DashboardModal.Actions>
                 <BackButton onClick={onClose} />
                 <ConfirmButton
                   data-test-id="submit"
-                  disabled={formData.warehouseId === null}
+                  disabled={!waitingForApproval && formData.warehouseId === null}
                   transitionState={confirmButtonState}
                   onClick={submit}
                 >
                   <FormattedMessage {...buttonMessages.accept} />
                 </ConfirmButton>
-              </DialogActions>
-            </>
+              </DashboardModal.Actions>
+            </DashboardModal.Content>
           );
         }}
       </Form>
-    </Dialog>
+    </DashboardModal>
   );
 };
+
 OrderFulfillmentCancelDialog.displayName = "OrderFulfillmentCancelDialog";
 export default OrderFulfillmentCancelDialog;

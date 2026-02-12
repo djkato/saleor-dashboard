@@ -1,40 +1,20 @@
 // @ts-strict-ignore
-import {
-  ChannelVoucherData,
-  validateSalePrice,
-  validateVoucherPrice,
-} from "@dashboard/channels/utils";
-import {
-  ChannelSaleFormData,
-  SaleDetailsPageFormData,
-} from "@dashboard/discounts/components/SaleDetailsPage";
+import { ChannelVoucherData, validateVoucherPrice } from "@dashboard/channels/utils";
 import { VoucherDetailsPageFormData } from "@dashboard/discounts/components/VoucherDetailsPage";
-import { DiscountTypeEnum } from "@dashboard/discounts/types";
-import {
-  DiscountErrorCode,
-  DiscountErrorFragment,
-  SaleType,
-  VoucherTypeEnum,
-} from "@dashboard/graphql";
-import {
-  ChangeEvent,
-  FormChange,
-  SubmitPromise,
-} from "@dashboard/hooks/useForm";
+import { DiscountTypeEnum, RequirementsPicker } from "@dashboard/discounts/types";
+import { DiscountErrorCode, DiscountErrorFragment, VoucherTypeEnum } from "@dashboard/graphql";
+import { ChangeEvent, FormChange, SubmitPromise } from "@dashboard/hooks/useForm";
 import { RequireOnlyOne } from "@dashboard/misc";
 import { arrayDiff } from "@dashboard/utils/arrays";
 
 import { getAddedChannelsInputFromFormData } from "./data";
 
-export interface ChannelArgs {
+interface ChannelArgs {
   discountValue: string;
   minSpent: string;
 }
 
-export type ChannelInput = RequireOnlyOne<
-  ChannelArgs,
-  "discountValue" | "minSpent"
->;
+export type ChannelInput = RequireOnlyOne<ChannelArgs, "discountValue" | "minSpent">;
 
 export function createDiscountTypeChangeHandler(change: FormChange) {
   return (formData: VoucherDetailsPageFormData, event: ChangeEvent) => {
@@ -55,6 +35,7 @@ export function createDiscountTypeChangeHandler(change: FormChange) {
         },
       });
     }
+
     change(event);
   };
 }
@@ -65,9 +46,7 @@ export function createChannelsChangeHandler(
   triggerChange: () => void,
 ) {
   return (id: string, input: ChannelInput) => {
-    const channelIndex = channelListings.findIndex(
-      channel => channel.id === id,
-    );
+    const channelIndex = channelListings.findIndex(channel => channel.id === id);
     const channel = channelListings[channelIndex];
     const { discountValue, minSpent } = input;
     const updatedChannels = [
@@ -79,37 +58,6 @@ export function createChannelsChangeHandler(
           : {
               discountValue,
             }),
-      },
-      ...channelListings.slice(channelIndex + 1),
-    ];
-    updateChannels(updatedChannels);
-    triggerChange();
-  };
-}
-
-export function createSaleChannelsChangeHandler(
-  channelListings: ChannelSaleFormData[],
-  updateChannels: (data: ChannelSaleFormData[]) => void,
-  triggerChange: () => void,
-  saleType: SaleType,
-) {
-  return (id: string, passedValue: string) => {
-    const channelIndex = channelListings.findIndex(
-      channel => channel.id === id,
-    );
-    const channel = channelListings[channelIndex];
-    const { percentageValue, fixedValue } = channel;
-
-    const newPercentage =
-      saleType === SaleType.PERCENTAGE ? passedValue : percentageValue;
-    const newFixed = saleType === SaleType.FIXED ? passedValue : fixedValue;
-
-    const updatedChannels = [
-      ...channelListings.slice(0, channelIndex),
-      {
-        ...channel,
-        fixedValue: newFixed,
-        percentageValue: newPercentage,
       },
       ...channelListings.slice(channelIndex + 1),
     ];
@@ -126,7 +74,6 @@ export const getChannelsVariables = (
 ) => {
   const initialIds = prevChannels.map(channel => channel.id);
   const modifiedIds = formData.channelListings.map(channel => channel.id);
-
   const idsDiff = arrayDiff(initialIds, modifiedIds);
 
   return {
@@ -138,59 +85,33 @@ export const getChannelsVariables = (
   };
 };
 
-export const getSaleChannelsVariables = (
-  id: string,
-  formData: SaleDetailsPageFormData,
-  prevChannelsIds?: string[],
-) => {
-  const modifiedIds = formData.channelListings.map(channel => channel.id);
-
-  const idsDiff = arrayDiff(prevChannelsIds, modifiedIds);
-
-  return {
-    id,
-    input: {
-      addChannels:
-        formData.channelListings
-          ?.map(channel => ({
-            channelId: channel.id,
-            discountValue:
-              formData.type === SaleType.FIXED
-                ? channel.fixedValue
-                : channel.percentageValue,
-          }))
-          .filter(channel => !!channel.discountValue) || [],
-      removeChannels: idsDiff.removed,
-    },
-  };
-};
-
-export function createSaleUpdateHandler(
-  submit: (data: SaleDetailsPageFormData) => SubmitPromise<any[]>,
+export function createVoucherUpdateHandler(
+  submit: (data: VoucherDetailsPageFormData) => SubmitPromise<any[]>,
   setLocalErrors: (errors: DiscountErrorFragment[]) => void,
 ) {
-  return async (formData: SaleDetailsPageFormData) => {
-    const { channelListings } = formData;
+  return async (formData: VoucherDetailsPageFormData) => {
+    const { channelListings, discountType, requirementsPicker } = formData;
+    const { valid, invalidChannels } = validateChannelListing(
+      channelListings,
+      discountType,
+      requirementsPicker,
+    );
 
-    const invalidChannelListings = channelListings
-      ?.filter(channel => validateSalePrice(formData, channel))
-      .map(channel => channel.id);
-    const localErrors: DiscountErrorFragment[] =
-      !!invalidChannelListings?.length
-        ? [
-            {
-              __typename: "DiscountError",
-              code: DiscountErrorCode.INVALID,
-              field: "value",
-              channels: invalidChannelListings,
-              message: "Invalid discount value",
-            },
-          ]
-        : [];
+    const localErrors: DiscountErrorFragment[] = !valid
+      ? [
+          {
+            __typename: "DiscountError",
+            code: DiscountErrorCode.INVALID,
+            field: "discountValue",
+            channels: invalidChannels,
+            message: "Invalid discount value",
+          },
+        ]
+      : [];
 
     setLocalErrors(localErrors);
 
-    if (!!localErrors.length) {
+    if (localErrors.length) {
       return localErrors;
     }
 
@@ -198,35 +119,25 @@ export function createSaleUpdateHandler(
   };
 }
 
-export function createVoucherUpdateHandler(
-  submit: (data: VoucherDetailsPageFormData) => SubmitPromise<any[]>,
-  setLocalErrors: (errors: DiscountErrorFragment[]) => void,
+export function validateChannelListing(
+  channelListings: ChannelVoucherData[],
+  discountType: DiscountTypeEnum,
+  requirementsPicker: RequirementsPicker,
 ) {
-  return async (formData: VoucherDetailsPageFormData) => {
-    const { channelListings } = formData;
+  // When discount type is shipping, there is no need to check if all selected channels have a discount value
+  if (discountType === DiscountTypeEnum.SHIPPING) {
+    return {
+      valid: true,
+      invalidChannels: [],
+    };
+  }
 
-    const invalidChannelListings = channelListings
-      ?.filter(channel => validateVoucherPrice(formData, channel))
-      .map(channel => channel.id);
-    const localErrors: DiscountErrorFragment[] =
-      !!invalidChannelListings?.length
-        ? [
-            {
-              __typename: "DiscountError",
-              code: DiscountErrorCode.INVALID,
-              field: "discountValue",
-              channels: invalidChannelListings,
-              message: "Invalid discount value",
-            },
-          ]
-        : [];
+  const invalidChannelListings = channelListings
+    ?.filter(channel => validateVoucherPrice(requirementsPicker, channel))
+    .map(channel => channel.id);
 
-    setLocalErrors(localErrors);
-
-    if (!!localErrors.length) {
-      return localErrors;
-    }
-
-    return submit(formData);
+  return {
+    valid: !invalidChannelListings.length,
+    invalidChannels: invalidChannelListings,
   };
 }

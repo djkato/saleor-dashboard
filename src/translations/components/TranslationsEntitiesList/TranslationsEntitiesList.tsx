@@ -1,16 +1,10 @@
-import ResponsiveTable from "@dashboard/components/ResponsiveTable";
-import Skeleton from "@dashboard/components/Skeleton";
+import { ResponsiveTable } from "@dashboard/components/ResponsiveTable";
 import { TablePaginationWithContext } from "@dashboard/components/TablePagination";
 import TableRowLink from "@dashboard/components/TableRowLink";
-import {
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-} from "@material-ui/core";
+import { TableBody, TableCell, TableHead } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
+import { Skeleton } from "@saleor/macaw-ui-next";
 import clsx from "clsx";
-import React from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import { maybe, renderCollection } from "../../../misc";
@@ -25,7 +19,7 @@ export interface TranslatableEntity {
   };
 }
 
-export interface TranslationsEntitiesListProps extends ListProps {
+interface TranslationsEntitiesListProps extends ListProps {
   entities: TranslatableEntity[];
   getRowHref: (id: string) => string;
 }
@@ -44,16 +38,13 @@ const useStyles = makeStyles(
   },
   { name: "TranslationsEntitiesList" },
 );
-const TranslationsEntitiesList: React.FC<
-  TranslationsEntitiesListProps
-> = props => {
+const TranslationsEntitiesList = (props: TranslationsEntitiesListProps) => {
   const { disabled, entities, getRowHref } = props;
-
   const classes = useStyles(props);
   const intl = useIntl();
 
   return (
-    <ResponsiveTable>
+    <ResponsiveTable footer={<TablePaginationWithContext disabled={disabled} />}>
       <TableHead>
         <TableRowLink>
           <TableCell className={classes.wideColumn}>
@@ -64,18 +55,10 @@ const TranslationsEntitiesList: React.FC<
             />
           </TableCell>
           <TableCell className={classes.textRight}>
-            <FormattedMessage
-              id="LWmYSU"
-              defaultMessage="Completed Translations"
-            />
+            <FormattedMessage id="LWmYSU" defaultMessage="Completed Translations" />
           </TableCell>
         </TableRowLink>
       </TableHead>
-      <TableFooter>
-        <TableRowLink>
-          <TablePaginationWithContext colSpan={2} disabled={disabled} />
-        </TableRowLink>
-      </TableFooter>
       <TableBody>
         {renderCollection(
           entities,
@@ -109,10 +92,7 @@ const TranslationsEntitiesList: React.FC<
           () => (
             <TableRowLink>
               <TableCell colSpan={2}>
-                <FormattedMessage
-                  id="vcwrgW"
-                  defaultMessage="No translatable entities found"
-                />
+                <FormattedMessage id="vcwrgW" defaultMessage="No translatable entities found" />
               </TableCell>
             </TableRowLink>
           ),
@@ -121,5 +101,6 @@ const TranslationsEntitiesList: React.FC<
     </ResponsiveTable>
   );
 };
+
 TranslationsEntitiesList.displayName = "TranslationsEntitiesList";
 export default TranslationsEntitiesList;

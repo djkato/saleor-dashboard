@@ -1,7 +1,7 @@
 import { FulfillmentStatus } from "@dashboard/graphql";
 import { defineMessages, IntlShape } from "react-intl";
 
-export const messages = defineMessages({
+const messages = defineMessages({
   fulfillment: {
     id: "MewrtN",
     defaultMessage: "Fulfillment",
@@ -19,10 +19,7 @@ export const messages = defineMessages({
   },
 });
 
-export const getTitle = (
-  fulfillmentStatus: FulfillmentStatus,
-  intl: IntlShape,
-) => {
+export const getTitle = (fulfillmentStatus: FulfillmentStatus, intl: IntlShape) => {
   switch (fulfillmentStatus) {
     case FulfillmentStatus.RETURNED:
       return intl.formatMessage(messages.fulfillmentReturned);

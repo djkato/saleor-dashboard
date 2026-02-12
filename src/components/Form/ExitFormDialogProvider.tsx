@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import React from "react";
+import { createContext } from "react";
 
 import ExitFormDialog from "./ExitFormDialog";
 import { ExitFormDialogData } from "./types";
@@ -8,7 +8,7 @@ import { useExitFormDialogProvider } from "./useExitFormDialogProvider";
 
 // Do not use this context directly in components
 // use useExitFormDialog hook instead
-export const ExitFormDialogContext = React.createContext<ExitFormDialogData>({
+export const ExitFormDialogContext = createContext<ExitFormDialogData>({
   setIsDirty: () => undefined,
   setEnableExitDialog: () => undefined,
   setExitDialogSubmitRef: () => undefined,
@@ -33,11 +33,7 @@ const ExitFormDialogProvider = ({ children }) => {
 
   return (
     <ExitFormDialogContext.Provider value={providerData}>
-      <ExitFormDialog
-        isOpen={showDialog}
-        onLeave={handleLeave}
-        onClose={handleClose}
-      />
+      <ExitFormDialog isOpen={showDialog} onLeave={handleLeave} onClose={handleClose} />
       {children}
     </ExitFormDialogContext.Provider>
   );

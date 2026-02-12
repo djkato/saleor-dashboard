@@ -6,8 +6,9 @@ export const shippingZones = gql`
     $after: String
     $last: Int
     $before: String
+    $filter: ShippingZoneFilterInput
   ) {
-    shippingZones(first: $first, after: $after, last: $last, before: $before) {
+    shippingZones(first: $first, after: $after, last: $last, before: $before, filter: $filter) {
       edges {
         node {
           ...ShippingZone
@@ -21,13 +22,7 @@ export const shippingZones = gql`
 `;
 
 export const shippingZone = gql`
-  query ShippingZone(
-    $id: ID!
-    $before: String
-    $after: String
-    $first: Int
-    $last: Int
-  ) {
+  query ShippingZone($id: ID!, $before: String, $after: String, $first: Int, $last: Int) {
     shippingZone(id: $id) {
       ...ShippingZone
       default

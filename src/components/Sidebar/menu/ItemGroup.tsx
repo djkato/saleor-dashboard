@@ -1,6 +1,5 @@
 // @ts-strict-ignore
-import { Box, List, sprinkles, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, List, sprinkles, Text } from "@saleor/macaw-ui-next";
 import { Link } from "react-router-dom";
 
 import { MenuItem } from "./Item";
@@ -11,19 +10,19 @@ interface Props {
   menuItem: SidebarMenuItem;
 }
 
-export const ItemGroup: React.FC<Props> = ({ menuItem }) => {
-  const hasSubmenuActive = menuItem?.children.some(item =>
-    isMenuActive(location.pathname, item),
-  );
-  const isActive =
-    isMenuActive(location.pathname, menuItem) && !hasSubmenuActive;
+export const ItemGroup = ({ menuItem }: Props) => {
+  const hasSubmenuActive = menuItem?.children.some(item => isMenuActive(location.pathname, item));
+  const isActive = isMenuActive(location.pathname, menuItem) && !hasSubmenuActive;
   const isExpanded = isActive || hasSubmenuActive;
 
+  const handleMenuGroupClick = () => {
+    if (menuItem.onClick) {
+      menuItem.onClick();
+    }
+  };
+
   return (
-    <List.ItemGroup
-      defaultExpanded={isExpanded}
-      data-test-id={`menu-list-item`}
-    >
+    <List.ItemGroup defaultExpanded={isExpanded} data-test-id={`menu-list-item`}>
       <List.ItemGroup.Trigger
         paddingX={2}
         paddingRight={1}
@@ -32,6 +31,9 @@ export const ItemGroup: React.FC<Props> = ({ menuItem }) => {
         active={isActive}
         justifyContent="space-between"
         data-test-id={`menu-item-label-${menuItem.id}`}
+        position="relative"
+        onClick={handleMenuGroupClick}
+        className="sidebar-item-group-trigger"
       >
         <Link
           replace={isActive}
@@ -41,17 +43,12 @@ export const ItemGroup: React.FC<Props> = ({ menuItem }) => {
             display: "block",
           })}
         >
-          <Box
-            display="flex"
-            alignItems="center"
-            gap={3}
-            paddingY={1.5}
-            borderRadius={3}
-          >
+          <Box display="flex" alignItems="center" gap={3} paddingY={1.5} borderRadius={3}>
             {menuItem.icon}
-            <Text size="small" variant="bodyEmp">
+            <Text size={3} fontWeight="medium">
               {menuItem.label}
             </Text>
+            {menuItem.endAdornment && <Box>{menuItem.endAdornment}</Box>}
           </Box>
         </Link>
       </List.ItemGroup.Trigger>
@@ -59,7 +56,7 @@ export const ItemGroup: React.FC<Props> = ({ menuItem }) => {
         <Box
           borderLeftWidth={1}
           borderLeftStyle="solid"
-          borderColor="neutralPlain"
+          borderColor="default1"
           paddingLeft={4}
           marginLeft={4}
           display="flex"

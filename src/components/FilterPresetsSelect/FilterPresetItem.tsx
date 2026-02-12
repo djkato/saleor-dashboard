@@ -1,5 +1,8 @@
-import { Box, Dropdown, List, RemoveIcon, Text } from "@saleor/macaw-ui/next";
-import React, { MouseEvent } from "react";
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { Box, Dropdown, List, Text } from "@saleor/macaw-ui-next";
+import { X } from "lucide-react";
+import { MouseEvent } from "react";
+import * as React from "react";
 
 interface FilterPresetItemProps {
   onSelect: (e: MouseEvent<HTMLLIElement>) => void;
@@ -32,7 +35,7 @@ export const FilterPresetItem = ({
         onMouseLeave={() => setHasHover(false)}
         data-test-id="preset"
       >
-        <Text ellipsis variant={isActive ? "bodyStrong" : "body"}>
+        <Text ellipsis fontWeight={isActive ? "bold" : "regular"}>
           {children}
         </Text>
         {hasHover && (
@@ -47,13 +50,10 @@ export const FilterPresetItem = ({
             display="flex"
             alignItems="center"
           >
-            <RemoveIcon
+            <X
               data-test-id="preset-delete-button"
-              color={{
-                default: "iconNeutralSubdued",
-                hover: "iconNeutralPlain",
-                focusVisible: "iconNeutralPlain",
-              }}
+              size={iconSize.small}
+              strokeWidth={iconStrokeWidthBySize.small}
             />
           </Box>
         )}

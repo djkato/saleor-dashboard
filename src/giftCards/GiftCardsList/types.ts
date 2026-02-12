@@ -1,25 +1,15 @@
 import {
   ActiveTab,
-  AutocompleteFilterOpts,
   Dialog,
-  FetchMoreProps,
-  FilterOpts,
   Filters,
   FiltersWithMultipleValues,
-  MinMax,
   Pagination,
   Search,
-  SearchProps,
   SingleAction,
   Sort,
 } from "@dashboard/types";
 
-export type GiftCardListColummns =
-  | "giftCardCode"
-  | "tag"
-  | "balance"
-  | "usedBy"
-  | "product";
+export type GiftCardListColummns = "giftCardCode" | "tag" | "balance" | "usedBy" | "product";
 
 export enum GiftCardUrlSortField {
   usedBy = "usedBy",
@@ -27,7 +17,7 @@ export enum GiftCardUrlSortField {
   product = "product",
 }
 
-export type GiftCardUrlSort = Sort<GiftCardUrlSortField>;
+type GiftCardUrlSort = Sort<GiftCardUrlSortField>;
 
 export enum GiftCardListActionParamsEnum {
   CREATE = "gift-card-create",
@@ -55,7 +45,7 @@ export enum GiftCardListUrlFiltersEnum {
   status = "status",
 }
 
-export enum GiftCardListUrlFiltersWithMultipleValuesEnum {
+enum GiftCardListUrlFiltersWithMultipleValuesEnum {
   tag = "tag",
   product = "product",
   usedBy = "usedBy",
@@ -76,20 +66,3 @@ export enum GiftCardListFilterKeys {
 
 export type GiftCardListUrlFilters = Filters<GiftCardListUrlFiltersEnum> &
   FiltersWithMultipleValues<GiftCardListUrlFiltersWithMultipleValuesEnum>;
-
-export interface GiftCardListFilterOpts {
-  tag: FilterOpts<string[]> & AutocompleteFilterOpts;
-  currency: FilterOpts<string> & AutocompleteFilterOpts;
-  product: FilterOpts<string[]> & AutocompleteFilterOpts;
-  usedBy: FilterOpts<string[]> & AutocompleteFilterOpts;
-  initialBalanceAmount: FilterOpts<MinMax>;
-  currentBalanceAmount: FilterOpts<MinMax>;
-  status: FilterOpts<string>;
-}
-
-export type SearchWithFetchMoreProps = FetchMoreProps & Search & SearchProps;
-
-export enum GiftCardStatusFilterEnum {
-  enabled = "enabled",
-  disabled = "disabled",
-}

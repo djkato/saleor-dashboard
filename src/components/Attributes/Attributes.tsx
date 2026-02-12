@@ -9,10 +9,11 @@ import {
   ProductErrorWithAttributesFragment,
 } from "@dashboard/graphql";
 import { FormsetAtomicData } from "@dashboard/hooks/useFormset";
+import { AttributeValuesMetadata } from "@dashboard/products/utils/data";
 import { FetchMoreProps } from "@dashboard/types";
 import { RichTextGetters } from "@dashboard/utils/richText/useMultipleRichText";
-import { Accordion, Box, Divider, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Accordion, Box, Text } from "@saleor/macaw-ui-next";
+import * as React from "react";
 import { defineMessages, FormattedMessage, useIntl } from "react-intl";
 
 import { DashboardCard } from "../Card";
@@ -29,9 +30,12 @@ export interface AttributeInputData {
   selectedValues?: AttributeValueDetailsFragment[];
   references?: AttributeReference[];
 }
-export type AttributeInput = FormsetAtomicData<AttributeInputData, string[]>;
-export type AttributeFileInput = FormsetAtomicData<AttributeInputData, File[]>;
-export interface AttributesProps extends AttributeRowHandlers {
+export type AttributeInput = FormsetAtomicData<
+  AttributeInputData,
+  string[],
+  AttributeValuesMetadata[]
+>;
+interface AttributesProps extends AttributeRowHandlers {
   attributes: AttributeInput[];
   attributeValues: AttributeValueFragment[];
   fetchAttributeValues: (query: string, attributeId: string) => void;
@@ -39,9 +43,7 @@ export interface AttributesProps extends AttributeRowHandlers {
   onAttributeSelectBlur: () => void;
   disabled: boolean;
   loading: boolean;
-  errors: Array<
-    ProductErrorWithAttributesFragment | PageErrorWithAttributesFragment
-  >;
+  errors: Array<ProductErrorWithAttributesFragment | PageErrorWithAttributesFragment>;
   title?: React.ReactNode;
   richTextGetters: RichTextGetters<string>;
 }
@@ -59,7 +61,7 @@ const messages = defineMessages({
   },
 });
 
-export const Attributes: React.FC<AttributesProps> = ({
+export const Attributes = ({
   attributes,
   attributeValues,
   errors,
@@ -67,36 +69,40 @@ export const Attributes: React.FC<AttributesProps> = ({
   onAttributeSelectBlur,
   richTextGetters,
   ...props
-}) => {
+}: AttributesProps) => {
   const intl = useIntl();
 
   return (
-    <DashboardCard>
-      <DashboardCard.Title>
-        {title || intl.formatMessage(messages.header)}
-      </DashboardCard.Title>
+    <DashboardCard paddingTop={6}>
       <DashboardCard.Content>
-        <Box display="flex" flexDirection="column" gap={2}>
+        <Box display="flex" flexDirection="column" gap={1}>
           <Accordion defaultValue="attributes-accordion">
             <Accordion.Item value="attributes-accordion">
-              <Accordion.Trigger buttonDataTestId="attributes-expand">
-                <Text variant="caption" color="textNeutralSubdued">
-                  <FormattedMessage
-                    {...messages.attributesNumber}
-                    values={{
-                      number: attributes.length,
-                    }}
-                  />
-                </Text>
+              <Accordion.Trigger
+                data-testid="attributes-expand"
+                flexWrap="wrap"
+                alignItems="flex-start"
+              >
+                <Box display="flex" flexDirection="column" gap={2}>
+                  <Text size={5} fontWeight="bold">
+                    {title || intl.formatMessage(messages.header)}
+                  </Text>
+                  <Text size={2} color="default2">
+                    <FormattedMessage
+                      {...messages.attributesNumber}
+                      values={{
+                        number: attributes.length,
+                      }}
+                    />
+                  </Text>
+                </Box>
                 <Accordion.TriggerButton dataTestId="expand-icon" />
               </Accordion.Trigger>
               <Accordion.Content>
                 {attributes.length > 0 && (
                   <ul>
-                    <Divider />
-                    {attributes.map((attribute, attributeIndex) => (
+                    {attributes.map(attribute => (
                       <React.Fragment key={attribute.id}>
-                        {attributeIndex > 0 && <Divider />}
                         <AttributeListItem
                           attribute={attribute}
                           errors={errors}

@@ -121,7 +121,7 @@ export const voucherFragment = gql`
   fragment Voucher on Voucher {
     ...Metadata
     id
-    code
+    name
     startDate
     endDate
     usageLimit
@@ -149,15 +149,26 @@ export const voucherFragment = gql`
   }
 `;
 
+export const voucherCodeFragment = gql`
+  fragment VoucherCode on VoucherCode {
+    code
+    used
+    isActive
+  }
+`;
+
 export const voucherDetailsFragment = gql`
   fragment VoucherDetails on Voucher {
     ...Voucher
-    code
     usageLimit
     used
     applyOncePerOrder
     applyOncePerCustomer
     onlyForStaff
+    singleUse
+    variantsCount: variants {
+      totalCount
+    }
     productsCount: products {
       totalCount
     }
@@ -219,5 +230,95 @@ export const voucherDetailsFragment = gql`
         ...PageInfo
       }
     }
+    variants(after: $after, before: $before, first: $first, last: $last)
+      @include(if: $includeVariants) {
+      edges {
+        node {
+          id
+          name
+          product {
+            id
+            name
+            thumbnail {
+              url
+              __typename
+            }
+            productType {
+              id
+              name
+              __typename
+            }
+            channelListings {
+              ...ChannelListingProductWithoutPricing
+              __typename
+            }
+            __typename
+          }
+          __typename
+        }
+        __typename
+      }
+      pageInfo {
+        ...PageInfo
+        __typename
+      }
+      __typename
+    }
+  }
+`;
+
+export const promotionRuleChannelFragment = gql`
+  fragment PromotionRuleChannel on Channel {
+    id
+    isActive
+    name
+    slug
+    currencyCode
+    defaultCountry {
+      code
+      country
+    }
+  }
+`;
+
+export const promotionRuleDetailsFragment = gql`
+  fragment PromotionRuleDetails on PromotionRule {
+    id
+    name
+    description
+    channels {
+      ...PromotionRuleChannel
+    }
+    giftIds
+    rewardType
+    rewardValueType
+    rewardValue
+    cataloguePredicate
+    orderPredicate
+  }
+`;
+
+export const promotionDetailsFragments = gql`
+  fragment PromotionDetails on Promotion {
+    id
+    name
+    type
+    description
+    startDate
+    endDate
+    rules {
+      ...PromotionRuleDetails
+    }
+  }
+`;
+
+export const promotionFragment = gql`
+  fragment Promotion on Promotion {
+    ...Metadata
+    id
+    name
+    startDate
+    endDate
+    type
   }
 `;

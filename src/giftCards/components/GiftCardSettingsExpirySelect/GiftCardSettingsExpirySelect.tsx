@@ -1,13 +1,9 @@
 import ControlledCheckbox from "@dashboard/components/ControlledCheckbox";
 import VerticalSpacer from "@dashboard/components/VerticalSpacer";
 import { getGiftCardSettingsErrorMessage } from "@dashboard/giftCards/GiftCardSettings/messages";
-import {
-  GiftCardSettingsErrorFragment,
-  TimePeriodTypeEnum,
-} from "@dashboard/graphql";
+import { GiftCardSettingsErrorFragment, TimePeriodTypeEnum } from "@dashboard/graphql";
 import { FormChange } from "@dashboard/hooks/useForm";
-import { Typography } from "@material-ui/core";
-import React from "react";
+import { Text } from "@saleor/macaw-ui-next";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import TimePeriodField from "../TimePeriodField/TimePeriodField";
@@ -22,16 +18,14 @@ export interface GiftCardSettingsExpirySelectProps {
   errors?: Record<"expiryPeriod", GiftCardSettingsErrorFragment>;
 }
 
-const GiftCardSettingsExpirySelect: React.FC<
-  GiftCardSettingsExpirySelectProps
-> = ({
+const GiftCardSettingsExpirySelect = ({
   errors,
   change,
   disabled,
   expiryPeriodActive,
   expiryPeriodType,
   expiryPeriodAmount,
-}) => {
+}: GiftCardSettingsExpirySelectProps) => {
   const intl = useIntl();
 
   return (
@@ -41,9 +35,9 @@ const GiftCardSettingsExpirySelect: React.FC<
         label={
           <>
             <FormattedMessage {...messages.setExpirationPeriodTitle} />
-            <Typography variant="caption">
+            <Text size={2} fontWeight="light">
               <FormattedMessage {...messages.setExpirationPeriodDescription} />
-            </Typography>
+            </Text>
           </>
         }
         checked={expiryPeriodActive}
@@ -57,10 +51,7 @@ const GiftCardSettingsExpirySelect: React.FC<
           <VerticalSpacer spacing={2} />
           <TimePeriodField
             isError={!!errors?.expiryPeriod}
-            helperText={getGiftCardSettingsErrorMessage(
-              errors?.expiryPeriod,
-              intl,
-            )}
+            helperText={getGiftCardSettingsErrorMessage(errors?.expiryPeriod, intl)}
             change={change}
             periodType={expiryPeriodType}
             periodAmount={expiryPeriodAmount}

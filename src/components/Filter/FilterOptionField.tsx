@@ -3,7 +3,6 @@ import { toggle } from "@dashboard/utils/lists";
 import { FormControlLabel, Radio } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
 import clsx from "clsx";
-import React from "react";
 
 import Checkbox from "../Checkbox";
 import { FieldType, FilterFieldBaseProps } from "./types";
@@ -21,10 +20,11 @@ const useStyles = makeStyles(
   }),
   { name: "FilterOptionField" },
 );
-
-const FilterOptionField: React.FC<
-  FilterFieldBaseProps<string, FieldType.options>
-> = ({ filter, onFilterPropertyChange, ...rest }) => {
+const FilterOptionField = ({
+  filter,
+  onFilterPropertyChange,
+  ...rest
+}: FilterFieldBaseProps<string, FieldType.options>) => {
   const classes = useStyles({});
   const handleSelect = (value: string) =>
     onFilterPropertyChange({
@@ -32,9 +32,7 @@ const FilterOptionField: React.FC<
         name: filter.name,
         update: {
           active: true,
-          value: filter.multiple
-            ? toggle(value, filter.value, (a, b) => a === b)
-            : [value],
+          value: filter.multiple ? toggle(value, filter.value, (a, b) => a === b) : [value],
         },
       },
       type: "set-property",

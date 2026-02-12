@@ -13,40 +13,18 @@ export const searchProducts = gql`
     $first: Int!
     $query: String!
     $channel: String
+    $where: ProductWhereInput
   ) {
     search: products(
       after: $after
       first: $first
-      filter: { search: $query }
+      search: $query
       channel: $channel
+      where: $where
     ) {
       edges {
         node {
-          id
-          name
-          thumbnail {
-            url
-          }
-          variants {
-            id
-            name
-            sku
-            channelListings {
-              channel {
-                id
-                isActive
-                name
-                currencyCode
-              }
-              price {
-                amount
-                currency
-              }
-            }
-          }
-          collections {
-            id
-          }
+          ...SearchProduct
         }
       }
       pageInfo {
@@ -56,7 +34,6 @@ export const searchProducts = gql`
   }
 `;
 
-export default makeTopLevelSearch<
-  SearchProductsQuery,
-  SearchProductsQueryVariables
->(SearchProductsDocument);
+export default makeTopLevelSearch<SearchProductsQuery, SearchProductsQueryVariables>(
+  SearchProductsDocument,
+);

@@ -1,5 +1,4 @@
-import { Box, Button, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box, Button, Text } from "@saleor/macaw-ui-next";
 import { FormattedMessage } from "react-intl";
 
 import { ColumnPickerAvailableNodes } from "./ColumnPickerAvailableNodes";
@@ -11,7 +10,7 @@ import { useCategorySelection } from "./useCategorySelection";
 import { ColumnCategory } from "./useColumns";
 import { getExitIcon, getExitOnClick } from "./utils";
 
-export interface ColumnPickerCategoriesProps {
+interface ColumnPickerCategoriesProps {
   columnCategories: ColumnCategory[];
   selectedColumns: string[];
   onClose: () => void;
@@ -24,13 +23,12 @@ export const ColumnPickerCategories = ({
   onToggle,
   selectedColumns,
 }: ColumnPickerCategoriesProps) => {
-  const { currentCategory, setCurrentCategory } =
-    useCategorySelection(columnCategories);
+  const { currentCategory, setCurrentCategory } = useCategorySelection(columnCategories);
   const { query, setQuery } = useAvailableColumnsQuery(currentCategory);
 
   return (
     <Box
-      backgroundColor="subdued"
+      backgroundColor="default2"
       display="flex"
       flexDirection="column"
       justifyContent="space-between"
@@ -38,13 +36,7 @@ export const ColumnPickerCategories = ({
       __width="320px"
     >
       <Box display="flex" flexDirection="column" height="100%">
-        <Box
-          display="flex"
-          paddingX={4}
-          paddingY={2}
-          gap={2}
-          alignItems="center"
-        >
+        <Box display="flex" paddingX={4} paddingY={2} gap={2} alignItems="center">
           <Button
             variant="tertiary"
             size="small"
@@ -57,10 +49,8 @@ export const ColumnPickerCategories = ({
             })}
             data-test-id="close-search"
           />
-          <Text size="small">
-            {currentCategory?.name ?? (
-              <FormattedMessage {...messages.categories} />
-            )}
+          <Text size={3}>
+            {currentCategory?.name ?? <FormattedMessage {...messages.categories} />}
           </Text>
         </Box>
         {currentCategory ? (

@@ -2,13 +2,18 @@
 import { ListFilters } from "@dashboard/components/AppLayout/ListFilters";
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
 import { BulkDeleteButton } from "@dashboard/components/BulkDeleteButton";
+import { ButtonGroupWithDropdown } from "@dashboard/components/ButtonGroupWithDropdown";
+import { DashboardCard } from "@dashboard/components/Card";
 import { getByName } from "@dashboard/components/Filter/utils";
 import { FilterPresetsSelect } from "@dashboard/components/FilterPresetsSelect";
 import { ListPageLayout } from "@dashboard/components/Layouts";
+import { voucherAddUrl, VoucherListUrlSortField } from "@dashboard/discounts/urls";
+import { extensionMountPoints } from "@dashboard/extensions/extensionMountPoints";
 import {
-  voucherAddUrl,
-  VoucherListUrlSortField,
-} from "@dashboard/discounts/urls";
+  getExtensionItemsForOverviewCreate,
+  getExtensionsItemsForVoucherOverviewActions,
+} from "@dashboard/extensions/getExtensionsItems";
+import { useExtensions } from "@dashboard/extensions/hooks/useExtensions";
 import { VoucherFragment } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { sectionNames } from "@dashboard/intl";
@@ -18,19 +23,14 @@ import {
   PageListProps,
   SortPage,
 } from "@dashboard/types";
-import { Card } from "@material-ui/core";
-import { Box, Button, ChevronRightIcon } from "@saleor/macaw-ui/next";
-import React, { useState } from "react";
+import { Box, Button } from "@saleor/macaw-ui-next";
+import { useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import { VoucherListDatagrid } from "../VoucherListDatagrid";
-import {
-  createFilterStructure,
-  VoucherFilterKeys,
-  VoucherListFilterOpts,
-} from "./filters";
+import { createFilterStructure, VoucherFilterKeys, VoucherListFilterOpts } from "./filters";
 
-export interface VoucherListPageProps
+interface VoucherListPageProps
   extends PageListProps,
     FilterPagePropsWithPresets<VoucherFilterKeys, VoucherListFilterOpts>,
     SortPage<VoucherListUrlSortField>,
@@ -40,10 +40,10 @@ export interface VoucherListPageProps
   onVoucherDelete: () => void;
   onSelectVouchersIds: (rows: number[], clearSelection: () => void) => void;
 }
-const VoucherListPage: React.FC<VoucherListPageProps> = ({
+
+const VoucherListPage = ({
   filterOpts,
   initialSearch,
-  onFilterChange,
   onSearchChange,
   hasPresetsChanged,
   onFilterPresetChange,
@@ -55,15 +55,22 @@ const VoucherListPage: React.FC<VoucherListPageProps> = ({
   selectedFilterPreset,
   onVoucherDelete,
   selectedVouchersIds,
-  currencySymbol,
   ...listProps
-}) => {
+}: VoucherListPageProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
   const structure = createFilterStructure(intl, filterOpts);
   const [isFilterPresetOpen, setFilterPresetOpen] = useState(false);
-
   const filterDependency = structure.find(getByName("channel"));
+
+  const { VOUCHER_OVERVIEW_CREATE, VOUCHER_OVERVIEW_MORE_ACTIONS } = useExtensions(
+    extensionMountPoints.VOUCHER_LIST,
+  );
+  const extensionMenuItems = getExtensionsItemsForVoucherOverviewActions(
+    VOUCHER_OVERVIEW_MORE_ACTIONS,
+    selectedVouchersIds,
+  );
+  const extensionCreateButtonItems = getExtensionItemsForOverviewCreate(VOUCHER_OVERVIEW_CREATE);
 
   return (
     <ListPageLayout>
@@ -72,17 +79,8 @@ const VoucherListPage: React.FC<VoucherListPageProps> = ({
         withoutBorder
         isAlignToRight={false}
       >
-        <Box
-          __flex={1}
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-        >
+        <Box __flex={1} display="flex" justifyContent="space-between" alignItems="center">
           <Box display="flex">
-            <Box marginX={3} display="flex" alignItems="center">
-              <ChevronRightIcon />
-            </Box>
-
             <FilterPresetsSelect
               presetsChanged={hasPresetsChanged()}
               onSelect={onFilterPresetChange}
@@ -101,28 +99,38 @@ const VoucherListPage: React.FC<VoucherListPageProps> = ({
               })}
             />
           </Box>
-          <Box>
-            <Button
-              onClick={() => navigate(voucherAddUrl())}
-              variant="primary"
-              data-test-id="create-voucher"
-            >
-              <FormattedMessage
-                id="GbhZJ4"
-                defaultMessage="Create voucher"
-                description="button"
-              />
-            </Button>
+          <Box display="flex" alignItems="center" gap={2}>
+            {extensionMenuItems.length > 0 && <TopNav.Menu items={extensionMenuItems} />}
+
+            {extensionCreateButtonItems.length > 0 ? (
+              <ButtonGroupWithDropdown
+                options={extensionCreateButtonItems}
+                data-test-id="create-voucher"
+                onClick={() => navigate(voucherAddUrl())}
+              >
+                <FormattedMessage
+                  id="GbhZJ4"
+                  defaultMessage="Create voucher"
+                  description="button"
+                />
+              </ButtonGroupWithDropdown>
+            ) : (
+              <Button data-test-id="create-voucher" onClick={() => navigate(voucherAddUrl())}>
+                <FormattedMessage
+                  id="GbhZJ4"
+                  defaultMessage="Create voucher"
+                  description="button"
+                />
+              </Button>
+            )}
           </Box>
         </Box>
       </TopNav>
-      <Card>
-        <ListFilters<VoucherFilterKeys>
-          currencySymbol={currencySymbol}
+      <DashboardCard>
+        <ListFilters
+          type="expression-filter"
           initialSearch={initialSearch}
-          onFilterChange={onFilterChange}
           onSearchChange={onSearchChange}
-          filterStructure={structure}
           searchPlaceholder={intl.formatMessage({
             id: "bPshhv",
             defaultMessage: "Search vouchers...",
@@ -131,23 +139,18 @@ const VoucherListPage: React.FC<VoucherListPageProps> = ({
             <Box display="flex" gap={4}>
               {selectedVouchersIds.length > 0 && (
                 <BulkDeleteButton onClick={onVoucherDelete}>
-                  <FormattedMessage
-                    defaultMessage="Delete vouchers"
-                    id="lfXze9"
-                  />
+                  <FormattedMessage defaultMessage="Delete vouchers" id="lfXze9" />
                 </BulkDeleteButton>
               )}
             </Box>
           }
         />
 
-        <VoucherListDatagrid
-          filterDependency={filterDependency}
-          {...listProps}
-        />
-      </Card>
+        <VoucherListDatagrid filterDependency={filterDependency} {...listProps} />
+      </DashboardCard>
     </ListPageLayout>
   );
 };
+
 VoucherListPage.displayName = "VoucherListPage";
 export default VoucherListPage;

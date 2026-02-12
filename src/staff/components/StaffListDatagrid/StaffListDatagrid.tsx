@@ -5,28 +5,22 @@ import {
   useDatagridChangeState,
 } from "@dashboard/components/Datagrid/hooks/useDatagridChange";
 import { useEmptyColumn } from "@dashboard/components/Datagrid/hooks/useEmptyColumn";
-import { TablePaginationWithContext } from "@dashboard/components/TablePagination";
+import { DatagridPagination } from "@dashboard/components/TablePagination";
+import { getPrevLocationState } from "@dashboard/hooks/useBackLinkWithState";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { StaffMember, StaffMembers } from "@dashboard/staff/types";
-import {
-  StaffListUrlSortField,
-  staffMemberDetailsUrl,
-} from "@dashboard/staff/urls";
+import { StaffListUrlSortField, staffMemberDetailsUrl } from "@dashboard/staff/urls";
 import { ListProps, SortPage } from "@dashboard/types";
 import { Item } from "@glideapps/glide-data-grid";
-import { Box, useTheme } from "@saleor/macaw-ui/next";
-import React, { useCallback, useMemo } from "react";
+import { useTheme } from "@saleor/macaw-ui-next";
+import { useCallback, useMemo } from "react";
 import { useIntl } from "react-intl";
+import { useLocation } from "react-router";
 
-import {
-  createGetCellContent,
-  staffMemebersListStaticColumnsAdapter,
-} from "./datagrid";
+import { createGetCellContent, staffMembersListStaticColumnsAdapter } from "./datagrid";
 import { messages } from "./messages";
 
-interface StaffListDatagridProps
-  extends ListProps,
-    SortPage<StaffListUrlSortField> {
+interface StaffListDatagridProps extends ListProps, SortPage<StaffListUrlSortField> {
   staffMembers: StaffMembers;
 }
 
@@ -40,15 +34,14 @@ export const StaffListDatagrid = ({
 }: StaffListDatagridProps) => {
   const datagridState = useDatagridChangeState();
   const navigate = useNavigator();
+  const location = useLocation();
   const intl = useIntl();
-  const { themeValues } = useTheme();
-
+  const { theme: currentTheme } = useTheme();
   const emptyColumn = useEmptyColumn();
-  const staffMemebersListStaticColumns = useMemo(
-    () => staffMemebersListStaticColumnsAdapter(intl, sort, emptyColumn),
+  const staffMembersListStaticColumns = useMemo(
+    () => staffMembersListStaticColumnsAdapter(intl, sort, emptyColumn),
     [intl, sort, emptyColumn],
   );
-
   const onColumnChange = useCallback(
     (picked: string[]) => {
       if (onUpdateListSettings) {
@@ -57,34 +50,32 @@ export const StaffListDatagrid = ({
     },
     [onUpdateListSettings],
   );
-
   const { handlers, visibleColumns, recentlyAddedColumn } = useColumns({
     selectedColumns: settings?.columns ?? [],
-    staticColumns: staffMemebersListStaticColumns,
+    staticColumns: staffMembersListStaticColumns,
     onSave: onColumnChange,
   });
-
   const getCellContent = useCallback(
     createGetCellContent({
       staffMembers,
       columns: visibleColumns,
       intl,
-      currentTheme: themeValues,
+      currentTheme,
     }),
     [staffMembers, intl, visibleColumns],
   );
-
   const handleRowClick = useCallback(
     ([_, row]: Item) => {
       const rowData: StaffMember = staffMembers[row];
 
       if (rowData) {
-        navigate(staffMemberDetailsUrl(rowData?.id));
+        navigate(staffMemberDetailsUrl(rowData?.id), {
+          state: getPrevLocationState(location),
+        });
       }
     },
     [staffMembers],
   );
-
   const handleRowAnchor = useCallback(
     ([, row]: Item) => staffMemberDetailsUrl(staffMembers[row]?.id),
     [staffMembers],
@@ -110,7 +101,7 @@ export const StaffListDatagrid = ({
         hasRowHover={true}
         onColumnMoved={handlers.onMove}
         onColumnResize={handlers.onResize}
-        verticalBorder={col => col > 1}
+        verticalBorder={false}
         rows={staffMembers?.length ?? 0}
         availableColumns={visibleColumns}
         emptyText={intl.formatMessage(messages.empty)}
@@ -122,16 +113,15 @@ export const StaffListDatagrid = ({
         onHeaderClicked={handleHeaderClick}
         rowAnchor={handleRowAnchor}
         recentlyAddedColumn={recentlyAddedColumn}
+        navigatorOpts={{ state: getPrevLocationState(location) }}
       />
 
-      <Box paddingX={6}>
-        <TablePaginationWithContext
-          component="div"
-          settings={settings}
-          disabled={disabled}
-          onUpdateListSettings={onUpdateListSettings}
-        />
-      </Box>
+      <DatagridPagination
+        component="div"
+        settings={settings}
+        disabled={disabled}
+        onUpdateListSettings={onUpdateListSettings}
+      />
     </DatagridChangeStateContext.Provider>
   );
 };

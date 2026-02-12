@@ -1,17 +1,12 @@
-import {
-  Box,
-  Button,
-  ConfigurationIcon,
-  Dropdown,
-  List,
-  Text,
-} from "@saleor/macaw-ui/next";
-import React from "react";
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { Box, Button, Dropdown, List, Text, TextProps } from "@saleor/macaw-ui-next";
+import { Settings } from "lucide-react";
 
 interface TopNavMenuItem {
   label: string;
   testId?: string;
-  onSelect: () => void;
+  onSelect: <T extends object>(params: T) => void;
+  color?: TextProps["color"];
 }
 
 interface TopNavMenuProps {
@@ -19,23 +14,18 @@ interface TopNavMenuProps {
   dataTestId?: string;
 }
 
-export const Menu: React.FC<TopNavMenuProps> = ({ items, dataTestId }) => (
+export const Menu = ({ items, dataTestId }: TopNavMenuProps) => (
   <Dropdown data-test-id={dataTestId}>
     <Dropdown.Trigger>
       <Button
-        icon={<ConfigurationIcon />}
+        icon={<Settings size={iconSize.small} strokeWidth={iconStrokeWidthBySize.small} />}
         variant="secondary"
         data-test-id="show-more-button"
       />
     </Dropdown.Trigger>
     <Dropdown.Content align="end">
       <Box>
-        <List
-          padding={2}
-          borderRadius={4}
-          boxShadow="overlay"
-          backgroundColor="surfaceNeutralPlain"
-        >
+        <List padding={2} borderRadius={4} boxShadow="defaultOverlay" backgroundColor="default1">
           {items.map(item => (
             <Dropdown.Item key={item.label}>
               <List.Item
@@ -45,7 +35,7 @@ export const Menu: React.FC<TopNavMenuProps> = ({ items, dataTestId }) => (
                 onClick={item.onSelect}
                 data-test-id={item.testId}
               >
-                <Text>{item.label}</Text>
+                <Text color={item.color}>{item.label}</Text>
               </List.Item>
             </Dropdown.Item>
           ))}

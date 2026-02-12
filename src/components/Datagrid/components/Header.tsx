@@ -1,30 +1,13 @@
-import FullScreenIcon from "@dashboard/icons/FullScreenIcon";
-import { Button, makeStyles, PlusSmallIcon } from "@saleor/macaw-ui";
-import clsx from "clsx";
-import React, { FC, PropsWithChildren } from "react";
-
-import CardTitle from "../../CardTitle";
-
-const useStyles = makeStyles(
-  theme => ({
-    btnContainer: {
-      display: "flex",
-      flexDirection: "row-reverse",
-      gap: theme.spacing(1),
-    },
-    headerBtn: {
-      marginBottom: theme.spacing(2),
-    },
-
-    fullScreenIcon: {
-      fontSize: 14,
-    },
-    fullScreenIconClose: {
-      transform: "rotate(180deg)",
-    },
-  }),
-  { name: "Datagrid" },
-);
+import {
+  Box,
+  Button,
+  FullscreenOffIcon,
+  FullscreenOnIcon,
+  PlusIcon,
+  Text,
+} from "@saleor/macaw-ui-next";
+import { FC, PropsWithChildren } from "react";
+import * as React from "react";
 
 interface ButtonFullScreenProps {
   isOpen: boolean;
@@ -36,20 +19,11 @@ const ButtonFullScreen: FC<PropsWithChildren<ButtonFullScreenProps>> = ({
   onToggle,
   children,
 }) => {
-  const classes = useStyles();
-
   return (
-    <Button
-      data-test-id="button-exit-fullscreen"
-      className={classes.headerBtn}
-      variant="tertiary"
-      onClick={onToggle}
-    >
-      <FullScreenIcon
-        className={clsx(classes.fullScreenIcon, {
-          [classes.fullScreenIconClose]: isOpen,
-        })}
-      />
+    <Button data-test-id="button-exit-fullscreen" variant="secondary" onClick={onToggle}>
+      <Box as="span" display="flex">
+        {isOpen ? <FullscreenOffIcon /> : <FullscreenOnIcon />}
+      </Box>
       {children}
     </Button>
   );
@@ -57,22 +31,22 @@ const ButtonFullScreen: FC<PropsWithChildren<ButtonFullScreenProps>> = ({
 
 interface ButtonAddRowProps {
   onAddRow: React.MouseEventHandler<HTMLButtonElement>;
+  disabled?: boolean;
 }
 
 const ButtonAddRow: FC<PropsWithChildren<ButtonAddRowProps>> = ({
   onAddRow,
+  disabled,
   children,
 }) => {
-  const classes = useStyles();
-
   return (
     <Button
       data-test-id="button-add-variant"
-      className={classes.headerBtn}
-      variant="tertiary"
+      variant="secondary"
       onClick={onAddRow}
+      disabled={disabled}
     >
-      <PlusSmallIcon />
+      <PlusIcon />
       {children}
     </Button>
   );
@@ -88,13 +62,21 @@ interface GridHeader extends FC<PropsWithChildren<HeaderProps>> {
 }
 
 const Header: GridHeader = ({ title, children }) => {
-  const classes = useStyles();
-
   return (
-    <CardTitle
-      title={title}
-      toolbar={<div className={classes.btnContainer}>{children}</div>}
-    />
+    <Box
+      display="flex"
+      alignItems="center"
+      justifyContent="space-between"
+      paddingX={6}
+      paddingY={5}
+    >
+      <Text size={5} fontWeight="bold">
+        {title}
+      </Text>
+      <Box display="flex" __flexDirection="row-reverse" gap={2}>
+        {children}
+      </Box>
+    </Box>
   );
 };
 

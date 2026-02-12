@@ -9,12 +9,10 @@ import {
   useUpdateCustomerAddressMutation,
 } from "@dashboard/graphql";
 import useNavigator from "@dashboard/hooks/useNavigator";
-import useNotifier from "@dashboard/hooks/useNotifier";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
 import useShop from "@dashboard/hooks/useShop";
-import { commonMessages } from "@dashboard/intl";
 import createDialogActionHandlers from "@dashboard/utils/handlers/dialogActionHandlers";
-import { DialogContentText } from "@material-ui/core";
-import React from "react";
+import { Box } from "@saleor/macaw-ui-next";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import CustomerAddressDialog from "../components/CustomerAddressDialog";
@@ -30,10 +28,7 @@ interface CustomerAddressesProps {
   params: CustomerAddressesUrlQueryParams;
 }
 
-const CustomerAddresses: React.FC<CustomerAddressesProps> = ({
-  id,
-  params,
-}) => {
+const CustomerAddresses = ({ id, params }: CustomerAddressesProps) => {
   const navigate = useNavigator();
   const notify = useNotifier();
   const shop = useShop();
@@ -50,46 +45,50 @@ const CustomerAddresses: React.FC<CustomerAddressesProps> = ({
         closeModal();
         notify({
           status: "success",
-          text: intl.formatMessage(commonMessages.savedChanges),
+          text: intl.formatMessage({ id: "bIAY+o", defaultMessage: "Address updated" }),
         });
       }
     },
   });
 
-  const [createCustomerAddress, createCustomerAddressOpts] =
-    useCreateCustomerAddressMutation({
-      onCompleted: data => {
-        if (data.addressCreate.errors.length === 0) {
-          closeModal();
-        }
-      },
-    });
+  const [createCustomerAddress, createCustomerAddressOpts] = useCreateCustomerAddressMutation({
+    onCompleted: data => {
+      if (data.addressCreate.errors.length === 0) {
+        closeModal();
+        notify({
+          status: "success",
+          text: intl.formatMessage({
+            id: "sWvBZa",
+            defaultMessage: "Address created",
+          }),
+        });
+      }
+    },
+  });
 
-  const [updateCustomerAddress, updateCustomerAddressOpts] =
-    useUpdateCustomerAddressMutation({
-      onCompleted: data => {
-        if (data.addressUpdate.errors.length === 0) {
-          closeModal();
-          notify({
-            status: "success",
-            text: intl.formatMessage(commonMessages.savedChanges),
-          });
-        }
-      },
-    });
+  const [updateCustomerAddress, updateCustomerAddressOpts] = useUpdateCustomerAddressMutation({
+    onCompleted: data => {
+      if (data.addressUpdate.errors.length === 0) {
+        closeModal();
+        notify({
+          status: "success",
+          text: intl.formatMessage({ id: "bIAY+o", defaultMessage: "Address updated" }),
+        });
+      }
+    },
+  });
 
-  const [removeCustomerAddress, removeCustomerAddressOpts] =
-    useRemoveCustomerAddressMutation({
-      onCompleted: data => {
-        if (data.addressDelete.errors.length === 0) {
-          closeModal();
-          notify({
-            status: "success",
-            text: intl.formatMessage(commonMessages.savedChanges),
-          });
-        }
-      },
-    });
+  const [removeCustomerAddress, removeCustomerAddressOpts] = useRemoveCustomerAddressMutation({
+    onCompleted: data => {
+      if (data.addressDelete.errors.length === 0) {
+        closeModal();
+        notify({
+          status: "success",
+          text: intl.formatMessage({ id: "bIAY+o", defaultMessage: "Address updated" }),
+        });
+      }
+    },
+  });
 
   const customerData = useCustomerAddressesQuery({
     displayLoader: true,
@@ -141,9 +140,7 @@ const CustomerAddresses: React.FC<CustomerAddressesProps> = ({
         }
       />
       <CustomerAddressDialog
-        address={customerData?.data?.user.addresses.find(
-          addr => addr.id === params.id,
-        )}
+        address={customerData?.data?.user.addresses.find(addr => addr.id === params.id)}
         confirmButtonState={updateCustomerAddressOpts.status}
         countries={countryChoices}
         errors={updateCustomerAddressOpts?.data?.addressUpdate.errors || []}
@@ -177,14 +174,15 @@ const CustomerAddresses: React.FC<CustomerAddressesProps> = ({
           })
         }
       >
-        <DialogContentText>
+        <Box data-test-id="delete-address-dialog-content">
           <FormattedMessage
             id="/kWzY1"
             defaultMessage="Are you sure you want to delete this address from users address book?"
           />
-        </DialogContentText>
+        </Box>
       </ActionDialog>
     </>
   );
 };
+
 export default CustomerAddresses;

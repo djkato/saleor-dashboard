@@ -1,10 +1,9 @@
-import CardTitle from "@dashboard/components/CardTitle";
+import { DashboardCard } from "@dashboard/components/Card";
 import { ProductErrorFragment } from "@dashboard/graphql";
 import { FormChange } from "@dashboard/hooks/useForm";
 import { commonMessages } from "@dashboard/intl";
 import { getFormErrors, getProductErrorMessage } from "@dashboard/utils/errors";
-import { Card, CardContent, TextField } from "@material-ui/core";
-import React from "react";
+import { Input } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
 interface ProductVariantNameProps {
@@ -14,37 +13,35 @@ interface ProductVariantNameProps {
   errors: ProductErrorFragment[];
 }
 
-const ProductVariantName: React.FC<ProductVariantNameProps> = ({
-  value,
-  onChange,
-  disabled,
-  errors,
-}) => {
+const ProductVariantName = ({ value, onChange, disabled, errors }: ProductVariantNameProps) => {
   const intl = useIntl();
-  const formErrors = getFormErrors(["name"], errors);
+
+  const formErrors = getFormErrors(["variantName"], errors);
 
   return (
-    <Card>
-      <CardTitle
-        title={intl.formatMessage({
-          id: "T1f2Yl",
-          defaultMessage: "Variant Name",
-        })}
-      />
-      <CardContent>
-        <TextField
+    <DashboardCard>
+      <DashboardCard.Header>
+        <DashboardCard.Title>
+          {intl.formatMessage({
+            id: "T1f2Yl",
+            defaultMessage: "Variant Name",
+          })}
+        </DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
+        <Input
+          width="100%"
           name="variantName"
           value={value}
           label={intl.formatMessage(commonMessages.name)}
           onChange={onChange}
-          error={!!formErrors.name}
-          fullWidth
+          error={!!formErrors.variantName}
           disabled={disabled}
-          helperText={getProductErrorMessage(formErrors.name, intl)}
-          data-test-id="variant-name"
+          helperText={getProductErrorMessage(formErrors.variantName, intl)}
+          data-test-id="variant-name-input"
         />
-      </CardContent>
-    </Card>
+      </DashboardCard.Content>
+    </DashboardCard>
   );
 };
 

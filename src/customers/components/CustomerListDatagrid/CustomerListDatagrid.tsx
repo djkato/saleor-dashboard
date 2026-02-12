@@ -6,32 +6,25 @@ import {
   DatagridChangeStateContext,
   useDatagridChangeState,
 } from "@dashboard/components/Datagrid/hooks/useDatagridChange";
-import { TablePaginationWithContext } from "@dashboard/components/TablePagination";
+import { DatagridPagination } from "@dashboard/components/TablePagination";
 import { Customer, Customers } from "@dashboard/customers/types";
 import { CustomerListUrlSortField } from "@dashboard/customers/urls";
 import { PermissionEnum } from "@dashboard/graphql";
+import { getPrevLocationState } from "@dashboard/hooks/useBackLinkWithState";
 import { ListProps, SortPage } from "@dashboard/types";
 import { Item } from "@glideapps/glide-data-grid";
-import { Box } from "@saleor/macaw-ui/next";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useIntl } from "react-intl";
+import { useLocation } from "react-router";
 
-import {
-  createGetCellContent,
-  customerListStaticColumnsAdapter,
-} from "./datagrid";
+import { createGetCellContent, customerListStaticColumnsAdapter } from "./datagrid";
 import { messages } from "./messages";
 
-interface CustomerListDatagridProps
-  extends ListProps,
-    SortPage<CustomerListUrlSortField> {
+interface CustomerListDatagridProps extends ListProps, SortPage<CustomerListUrlSortField> {
   customers: Customers | undefined;
   loading: boolean;
   hasRowHover?: boolean;
-  onSelectCustomerIds: (
-    rowsIndex: number[],
-    clearSelection: () => void,
-  ) => void;
+  onSelectCustomerIds: (rowsIndex: number[], clearSelection: () => void) => void;
   onRowClick: (id: string) => void;
   rowAnchor?: (id: string) => string;
 }
@@ -50,19 +43,15 @@ export const CustomerListDatagrid = ({
   onSort,
 }: CustomerListDatagridProps) => {
   const intl = useIntl();
+  const location = useLocation();
   const datagrid = useDatagridChangeState();
-
   const userPermissions = useUserPermissions();
   const hasManageOrdersPermission =
-    userPermissions?.some(perm => perm.code === PermissionEnum.MANAGE_ORDERS) ??
-    false;
-
+    userPermissions?.some(perm => perm.code === PermissionEnum.MANAGE_ORDERS) ?? false;
   const customerListStaticColumns = useMemo(
-    () =>
-      customerListStaticColumnsAdapter(intl, sort, hasManageOrdersPermission),
+    () => customerListStaticColumnsAdapter(intl, sort, hasManageOrdersPermission),
     [intl, sort, hasManageOrdersPermission],
   );
-
   const onColumnChange = useCallback(
     (picked: string[]) => {
       if (onUpdateListSettings) {
@@ -71,19 +60,13 @@ export const CustomerListDatagrid = ({
     },
     [onUpdateListSettings],
   );
-
-  const {
-    handlers,
-    visibleColumns,
-    staticColumns,
-    selectedColumns,
-    recentlyAddedColumn,
-  } = useColumns({
-    staticColumns: customerListStaticColumns,
-    selectedColumns: settings?.columns ?? [],
-    onSave: onColumnChange,
-  });
-
+  const { handlers, visibleColumns, staticColumns, selectedColumns, recentlyAddedColumn } =
+    useColumns({
+      gridName: "customer_list",
+      staticColumns: customerListStaticColumns,
+      selectedColumns: settings?.columns ?? [],
+      onSave: onColumnChange,
+    });
   const getCellContent = useCallback(
     createGetCellContent({
       customers,
@@ -91,29 +74,30 @@ export const CustomerListDatagrid = ({
     }),
     [customers, visibleColumns],
   );
-
   const handleRowClick = useCallback(
     ([_, row]: Item) => {
       if (!onRowClick || !customers) {
         return;
       }
+
       const rowData: Customer = customers[row];
+
       onRowClick(rowData.id);
     },
     [onRowClick, customers],
   );
-
   const handleRowAnchor = useCallback(
     ([, row]: Item) => {
       if (!rowAnchor || !customers) {
         return "";
       }
+
       const rowData: Customer = customers[row];
+
       return rowAnchor(rowData.id);
     },
     [rowAnchor, customers],
   );
-
   const handleHeaderClick = useCallback(
     (col: number) => {
       const columnName = visibleColumns[col].id as CustomerListUrlSortField;
@@ -128,12 +112,12 @@ export const CustomerListDatagrid = ({
       <Datagrid
         readonly
         loading={loading}
-        rowMarkers="checkbox"
+        rowMarkers="checkbox-visible"
         columnSelect="single"
         hasRowHover={hasRowHover}
         onColumnMoved={handlers.onMove}
         onColumnResize={handlers.onResize}
-        verticalBorder={col => col > 0}
+        verticalBorder={false}
         rows={customers?.length ?? 0}
         availableColumns={visibleColumns}
         emptyText={intl.formatMessage(messages.empty)}
@@ -153,16 +137,15 @@ export const CustomerListDatagrid = ({
             onToggle={handlers.onToggle}
           />
         )}
+        navigatorOpts={{ state: getPrevLocationState(location) }}
       />
 
-      <Box paddingX={6}>
-        <TablePaginationWithContext
-          component="div"
-          settings={settings}
-          disabled={disabled}
-          onUpdateListSettings={onUpdateListSettings}
-        />
-      </Box>
+      <DatagridPagination
+        component="div"
+        settings={settings}
+        disabled={disabled}
+        onUpdateListSettings={onUpdateListSettings}
+      />
     </DatagridChangeStateContext.Provider>
   );
 };

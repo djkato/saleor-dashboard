@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import {
   PostalCodeRuleInclusionTypeEnum,
   SearchProductsQuery,
@@ -274,6 +273,7 @@ export const shippingZones: ShippingZoneFragment[] = [
     metadata: [],
     name: "Europe",
     privateMetadata: [],
+    priceRange: null,
   },
   {
     __typename: "ShippingZone",
@@ -429,6 +429,7 @@ export const shippingZones: ShippingZoneFragment[] = [
     metadata: [],
     name: "Oceania",
     privateMetadata: [],
+    priceRange: null,
   },
   {
     __typename: "ShippingZone",
@@ -694,6 +695,7 @@ export const shippingZones: ShippingZoneFragment[] = [
     metadata: [],
     name: "Asia",
     privateMetadata: [],
+    priceRange: null,
   },
   {
     __typename: "ShippingZone",
@@ -989,6 +991,7 @@ export const shippingZones: ShippingZoneFragment[] = [
     metadata: [],
     name: "Americas",
     privateMetadata: [],
+    priceRange: null,
   },
   {
     __typename: "ShippingZone",
@@ -1216,8 +1219,7 @@ export const shippingZones: ShippingZoneFragment[] = [
       {
         __typename: "CountryDisplay",
         code: "SH",
-        country:
-          "Wyspa Świętej Heleny, Wyspa Wniebowstąpienia i Tristan da Cunha",
+        country: "Wyspa Świętej Heleny, Wyspa Wniebowstąpienia i Tristan da Cunha",
       },
       {
         __typename: "CountryDisplay",
@@ -1300,11 +1302,13 @@ export const shippingZones: ShippingZoneFragment[] = [
     metadata: [],
     name: "Africa",
     privateMetadata: [],
+    priceRange: null,
   },
 ];
 
 export const shippingZone: ShippingZoneQuery["shippingZone"] = {
   __typename: "ShippingZone",
+  priceRange: null,
   default: true,
   channels: [
     { __typename: "Channel", id: "channel1", name: "GBP", currencyCode: "GBP" },
@@ -1886,7 +1890,7 @@ export const shippingZone: ShippingZoneQuery["shippingZone"] = {
   ],
 };
 
-export const products: RelayToFlat<SearchProductsQuery["search"]> = [
+export const products: RelayToFlat<NonNullable<SearchProductsQuery["search"]>> = [
   {
     __typename: "Product",
     id: "1",
@@ -1895,6 +1899,12 @@ export const products: RelayToFlat<SearchProductsQuery["search"]> = [
       __typename: "Image",
       url: "",
     },
+    productType: {
+      __typename: "ProductType",
+      id: "1",
+      name: "Juice",
+    },
+    channelListings: [],
     collections: [{ __typename: "Collection", id: "Q29sbGVjdGlvbjo0" }],
     variants: [
       {
@@ -1902,6 +1912,20 @@ export const products: RelayToFlat<SearchProductsQuery["search"]> = [
         id: "UHJvZHVjdFZhcmlhbnQ6MjAz",
         name: "1l",
         sku: "43226647",
+        product: {
+          __typename: "Product",
+          id: "UHJvZHVjdDo1",
+          name: "Apple Juice",
+          thumbnail: {
+            __typename: "Image",
+            url: "",
+          },
+          productType: {
+            __typename: "ProductType",
+            id: "1",
+            name: "Juice",
+          },
+        },
         channelListings: [
           {
             __typename: "ProductVariantChannelListing",

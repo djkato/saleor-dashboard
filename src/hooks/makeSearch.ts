@@ -18,7 +18,7 @@ export interface UseSearchResult<TData, TVariables extends SearchVariables> {
   search: (query: string) => void;
   query: string;
 }
-export type UseSearchOpts<TVariables extends SearchVariables> = Partial<{
+type UseSearchOpts<TVariables extends SearchVariables> = Partial<{
   skip: boolean;
   variables: TVariables;
 }>;
@@ -32,9 +32,7 @@ function makeSearch<TData, TVariables extends SearchVariables>(
 ): UseSearchHook<TData, TVariables> {
   const useSearchQuery = makeQuery<TData, TVariables>(query);
 
-  function useSearch(
-    opts: UseSearchOpts<TVariables>,
-  ): UseSearchResult<TData, TVariables> {
+  function useSearch(opts: UseSearchOpts<TVariables>): UseSearchResult<TData, TVariables> {
     const [searchQuery, setSearchQuery] = useState("");
     const debouncedSearch = useDebounce(setSearchQuery);
     const result = useSearchQuery({

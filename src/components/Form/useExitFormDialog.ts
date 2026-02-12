@@ -1,4 +1,4 @@
-import React, { useContext, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 
 import { ExitFormDialogContext } from "./ExitFormDialogProvider";
 import { ExitFormDialogData, SubmitFn, WithFormId } from "./types";
@@ -10,21 +10,20 @@ export interface UseExitFormDialogResult
   setExitDialogSubmitRef: (submitFn: SubmitFn) => void;
 }
 
-export interface UseExitFormDialogProps {
+interface UseExitFormDialogProps {
   formId: symbol | undefined;
   isDisabled?: boolean;
 }
 
+/** @deprecated Use react-hook-form instead */
 export const useExitFormDialog = (
   { formId, isDisabled }: UseExitFormDialogProps = { formId: undefined },
 ): UseExitFormDialogResult => {
   const id = useRef(formId || Symbol("exit-form-fallback-id")).current;
-
   const exitDialogProps = useContext(ExitFormDialogContext);
-  const { setIsDirty, setIsSubmitDisabled, setExitDialogSubmitRef } =
-    exitDialogProps;
+  const { setIsDirty, setIsSubmitDisabled, setExitDialogSubmitRef } = exitDialogProps;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDisabled !== undefined) {
       setIsSubmitDisabled(isDisabled);
     }
@@ -34,7 +33,6 @@ export const useExitFormDialog = (
     ...exitDialogProps,
     formId: id,
     setIsDirty: (value: boolean) => setIsDirty(id, value),
-    setExitDialogSubmitRef: (submitFn: SubmitFn) =>
-      setExitDialogSubmitRef(id, submitFn),
+    setExitDialogSubmitRef: (submitFn: SubmitFn) => setExitDialogSubmitRef(id, submitFn),
   };
 };

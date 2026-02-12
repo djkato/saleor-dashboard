@@ -1,7 +1,6 @@
 import { Name } from "@dashboard/featureFlags/availableFlags";
 import { useFlagsInfo } from "@dashboard/featureFlags/useFlagsInfo";
-import { List, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { List, Text } from "@saleor/macaw-ui-next";
 
 interface FlagListProps {
   selectedName: string;
@@ -17,7 +16,7 @@ export const FlagList = ({ selectedName, onItemClick }: FlagListProps) => {
       borderWidth={1}
       borderStyle="solid"
       borderBottomWidth={0}
-      borderColor="neutralHighlight"
+      borderColor="default1"
       overflowY="scroll"
     >
       {flags
@@ -28,18 +27,17 @@ export const FlagList = ({ selectedName, onItemClick }: FlagListProps) => {
             paddingX={3}
             paddingY={4}
             backgroundColor={{
-              default:
-                selectedName === flag.name
-                  ? "surfaceNeutralHighlight"
-                  : "surfaceNeutralSubdued",
-              hover: "surfaceNeutralHighlight",
+              default: selectedName === flag.name ? "default3" : "default1",
+              hover: selectedName !== flag.name ? "default2" : undefined,
             }}
-            borderColor="neutralHighlight"
+            borderColor="default1"
             borderBottomWidth={1}
             borderBottomStyle="solid"
             onClick={() => onItemClick(flag.name)}
           >
-            <Text variant="body">{flag.displayName}</Text>
+            <Text fontWeight={selectedName === flag.name ? "bold" : "regular"}>
+              {flag.displayName}
+            </Text>
           </List.Item>
         ))}
     </List>

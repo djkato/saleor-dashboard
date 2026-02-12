@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 
-export type MapOrEntries<K, V> = Map<K, V> | Array<[K, V]>;
+type MapOrEntries<K, V> = Map<K, V> | Array<[K, V]>;
 
 // Public interface
-export interface Actions<K, V> {
+interface Actions<K, V> {
   set: (key: K, value: V) => void;
   setAll: (entries: MapOrEntries<K, V>) => void;
   remove: (key: K) => void;
@@ -11,24 +11,21 @@ export interface Actions<K, V> {
 }
 
 // We hide some setters from the returned map to disable autocompletion
-type Return<K, V> = [
-  Omit<Map<K, V>, "set" | "clear" | "delete">,
-  Actions<K, V>,
-];
+type Return<K, V> = [Omit<Map<K, V>, "set" | "clear" | "delete">, Actions<K, V>];
 
-function useMap<K, V>(
-  initialState: MapOrEntries<K, V> = new Map(),
-): Return<K, V> {
+function useMap<K, V>(initialState: MapOrEntries<K, V> = new Map()): Return<K, V> {
   const [map, setMap] = useState(() => new Map(initialState));
-
   const actions: Actions<K, V> = {
     set: useCallback((key, value) => {
       setMap(prev => {
         if (prev.get(key) === value) {
           return prev;
         }
+
         const copy = new Map(prev);
+
         copy.set(key, value);
+
         return copy;
       });
     }, []),
@@ -40,7 +37,9 @@ function useMap<K, V>(
     remove: useCallback(key => {
       setMap(prev => {
         const copy = new Map(prev);
+
         copy.delete(key);
+
         return copy;
       });
     }, []),

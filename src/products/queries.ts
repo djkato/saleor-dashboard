@@ -1,59 +1,5 @@
 import { gql } from "@apollo/client";
 
-export const initialProductFilterAttributesQuery = gql`
-  query InitialProductFilterAttributes {
-    attributes(first: 100, filter: { type: PRODUCT_TYPE }) {
-      edges {
-        node {
-          id
-          name
-          inputType
-          slug
-        }
-      }
-    }
-  }
-`;
-
-export const initialProductFilterCategoriesQuery = gql`
-  query InitialProductFilterCategories($categories: [ID!]) {
-    categories(first: 100, filter: { ids: $categories }) {
-      edges {
-        node {
-          id
-          name
-        }
-      }
-    }
-  }
-`;
-
-export const initialProductFilterCollectionsQuery = gql`
-  query InitialProductFilterCollections($collections: [ID!]) {
-    collections(first: 100, filter: { ids: $collections }) {
-      edges {
-        node {
-          id
-          name
-        }
-      }
-    }
-  }
-`;
-
-export const initialProductFilterProductTypesQuery = gql`
-  query InitialProductFilterProductTypes($productTypes: [ID!]) {
-    productTypes(first: 100, filter: { ids: $productTypes }) {
-      edges {
-        node {
-          id
-          name
-        }
-      }
-    }
-  }
-`;
-
 export const productListQuery = gql`
   query ProductList(
     $first: Int
@@ -66,6 +12,8 @@ export const productListQuery = gql`
     $channel: String
     $sort: ProductOrder
     $hasChannel: Boolean!
+    $includeCategories: Boolean!
+    $includeCollections: Boolean!
   ) {
     products(
       before: $before
@@ -82,6 +30,7 @@ export const productListQuery = gql`
         node {
           ...ProductWithChannelListings
           updatedAt
+          created
           description
           attributes {
             ...ProductListAttribute
@@ -114,9 +63,13 @@ export const productDetailsQuery = gql`
     $afterValues: String
     $lastValues: Int
     $beforeValues: String
+    $searchValues: String
   ) {
     product(id: $id, channel: $channel) {
       ...Product
+      category {
+        ...CategoryWithAncestors
+      }
     }
   }
 `;
@@ -128,27 +81,14 @@ export const productTypeQuery = gql`
     $afterValues: String
     $lastValues: Int
     $beforeValues: String
+    $searchValues: String
   ) {
     productType(id: $id) {
       id
       name
       hasVariants
       productAttributes {
-        id
-        inputType
-        entityType
-        slug
-        name
-        valueRequired
-        unit
-        choices(
-          first: $firstValues
-          after: $afterValues
-          last: $lastValues
-          before: $beforeValues
-        ) {
-          ...AttributeValueList
-        }
+        ...AttributeDetails
       }
       taxClass {
         id
@@ -188,7 +128,7 @@ export const productVariantCreateQuery = gql`
       }
       channelListings {
         isPublished
-        publicationDate
+        publishedAt
         channel {
           id
           name
@@ -198,14 +138,12 @@ export const productVariantCreateQuery = gql`
       name
       productType {
         id
-        selectionVariantAttributes: variantAttributes(
-          variantSelection: VARIANT_SELECTION
-        ) {
+        name
+        hasVariants
+        selectionVariantAttributes: variantAttributes(variantSelection: VARIANT_SELECTION) {
           ...VariantAttribute
         }
-        nonSelectionVariantAttributes: variantAttributes(
-          variantSelection: NOT_VARIANT_SELECTION
-        ) {
+        nonSelectionVariantAttributes: variantAttributes(variantSelection: NOT_VARIANT_SELECTION) {
           ...VariantAttribute
         }
       }
@@ -253,8 +191,8 @@ export const productMediaQuery = gql`
 `;
 
 export const gridAttributes = gql`
-  query GridAttributes($ids: [ID!]!, $hasAttributes: Boolean!) {
-    availableAttributes: attributes(first: 10) {
+  query GridAttributes($ids: [ID!]!, $hasAttributes: Boolean!, $type: AttributeTypeEnum!) {
+    availableAttributes: attributes(first: 10, filter: { type: $type }) {
       edges {
         node {
           id
@@ -265,8 +203,7 @@ export const gridAttributes = gql`
         ...PageInfo
       }
     }
-    selectedAttributes: attributes(first: 25, filter: { ids: $ids })
-      @include(if: $hasAttributes) {
+    selectedAttributes: attributes(first: 25, filter: { ids: $ids }) @include(if: $hasAttributes) {
       edges {
         node {
           id
@@ -280,13 +217,14 @@ export const gridAttributes = gql`
 export const availableColumnAttribues = gql`
   query AvailableColumnAttributes(
     $search: String!
+    $type: AttributeTypeEnum!
     $before: String
     $after: String
     $first: Int
     $last: Int
   ) {
     attributes(
-      filter: { search: $search }
+      filter: { search: $search, type: $type }
       before: $before
       after: $after
       first: $first
@@ -305,6 +243,28 @@ export const availableColumnAttribues = gql`
   }
 `;
 
+export const gridWarehouses = gql`
+  query GridWarehouses($ids: [ID!]!, $hasWarehouses: Boolean!) {
+    availableWarehouses: warehouses(first: 10) {
+      edges {
+        node {
+          ...Warehouse
+        }
+      }
+      pageInfo {
+        ...PageInfo
+      }
+    }
+    selectedWarehouses: warehouses(first: 100, filter: { ids: $ids }) @include(if: $hasWarehouses) {
+      edges {
+        node {
+          ...Warehouse
+        }
+      }
+    }
+  }
+`;
+
 export const defaultGraphiQLQuery = `query ProductDetails($id: ID!) {
   product(id: $id) {
     id
@@ -313,3 +273,43 @@ export const defaultGraphiQLQuery = `query ProductDetails($id: ID!) {
     description
   }
 }`;
+
+/**
+ * Query for product availability diagnostics.
+ * Fetches channel and shipping zone data needed to determine
+ * if a product can be purchased in each channel.
+ */
+export const channelDiagnosticsQuery = gql`
+  query ChannelDiagnostics {
+    channels {
+      id
+      name
+      slug
+      currencyCode
+      isActive
+      warehouses {
+        id
+        name
+      }
+    }
+    shippingZones(first: 100) {
+      edges {
+        node {
+          id
+          name
+          channels {
+            id
+          }
+          warehouses {
+            id
+            name
+          }
+          countries {
+            code
+            country
+          }
+        }
+      }
+    }
+  }
+`;

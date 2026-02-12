@@ -1,17 +1,17 @@
 // @ts-strict-ignore
 import {
+  dateCell,
   moneyCell,
+  pillCell,
   readonlyTextCell,
-  tagsCell,
   textCell,
 } from "@dashboard/components/Datagrid/customCells/cells";
 import { GetCellContentOpts } from "@dashboard/components/Datagrid/Datagrid";
 import { AvailableColumn } from "@dashboard/components/Datagrid/types";
-import { Locale } from "@dashboard/components/Locale";
-import { OrderListQuery } from "@dashboard/graphql";
-import useLocale from "@dashboard/hooks/useLocale";
+import { OrderChargeStatusEnum, OrderListQuery } from "@dashboard/graphql";
 import {
   getStatusColor,
+  transformChargedStatus,
   transformOrderStatus,
   transformPaymentStatus,
 } from "@dashboard/misc";
@@ -19,12 +19,7 @@ import { OrderListUrlSortField } from "@dashboard/orders/urls";
 import { RelayToFlat, Sort } from "@dashboard/types";
 import { getColumnSortDirectionIcon } from "@dashboard/utils/columns/getColumnSortDirectionIcon";
 import { GridCell, Item, TextCell } from "@glideapps/glide-data-grid";
-import {
-  DefaultTheme,
-  ThemeTokensValues,
-  useTheme,
-} from "@saleor/macaw-ui/next";
-import moment from "moment-timezone";
+import { DefaultTheme, useTheme } from "@saleor/macaw-ui-next";
 import { IntlShape, useIntl } from "react-intl";
 
 import { columnsMessages } from "./messages";
@@ -44,7 +39,7 @@ export const orderListStaticColumnAdapter = (
     {
       id: "date",
       title: intl.formatMessage(columnsMessages.date),
-      width: 200,
+      width: 300,
     },
     {
       id: "customer",
@@ -66,6 +61,11 @@ export const orderListStaticColumnAdapter = (
       title: intl.formatMessage(columnsMessages.total),
       width: 150,
     },
+    {
+      id: "channel",
+      title: intl.formatMessage(columnsMessages.channel),
+      width: 200,
+    },
   ].map(column => ({
     ...column,
     icon: getColumnSortDirectionIcon(sort, column.id),
@@ -82,47 +82,41 @@ function getDatagridRowDataIndex(row, removeArray) {
 
 export const useGetCellContent = ({ columns, orders }: GetCellContentProps) => {
   const intl = useIntl();
-  const { locale } = useLocale();
-  const { theme: currentTheme, themeValues } = useTheme();
+  const { theme } = useTheme();
 
-  return (
-    [column, row]: Item,
-    { added, removed }: GetCellContentOpts,
-  ): GridCell => {
+  return ([column, row]: Item, { added, removed }: GetCellContentOpts): GridCell => {
     const columnId = columns[column]?.id;
+    const rowData = added.includes(row) ? undefined : orders[getDatagridRowDataIndex(row, removed)];
 
-    if (!columnId) {
+    if (!columnId || !rowData) {
       return readonlyTextCell("");
     }
-
-    const rowData = added.includes(row)
-      ? undefined
-      : orders[getDatagridRowDataIndex(row, removed)];
 
     switch (columnId) {
       case "number":
         return readonlyTextCell(rowData.number);
       case "date":
-        return getDateCellContent(locale, rowData);
+        return getDateCellContent(rowData);
       case "customer":
         return getCustomerCellContent(rowData);
       case "payment":
-        return getPaymentCellContent(intl, themeValues, currentTheme, rowData);
+        return getPaymentCellContent(intl, theme, rowData);
       case "status":
-        return getStatusCellContent(intl, themeValues, currentTheme, rowData);
+        return getStatusCellContent(intl, theme, rowData);
       case "total":
         return getTotalCellContent(rowData);
+      case "channel":
+        return getChannelCellContent(rowData);
       default:
         return textCell("");
     }
   };
 };
 
-export function getDateCellContent(
-  locale: Locale,
-  rowData: RelayToFlat<OrderListQuery["orders"]>[number],
-) {
-  return readonlyTextCell(moment(rowData.created).locale(locale).format("lll"));
+const COMMON_CELL_PROPS: Partial<GridCell> = { cursor: "pointer" };
+
+function getDateCellContent(rowData: RelayToFlat<OrderListQuery["orders"]>[number]) {
+  return dateCell(rowData?.created, COMMON_CELL_PROPS);
 }
 
 export function getCustomerCellContent(
@@ -134,74 +128,75 @@ export function getCustomerCellContent(
     );
   }
 
-  if (rowData.userEmail) {
+  if (rowData?.userEmail) {
     return readonlyTextCell(rowData.userEmail);
   }
 
   return readonlyTextCell("-");
 }
 
+function getStatusCellContent(
+  intl: IntlShape,
+  currentTheme: DefaultTheme,
+  rowData: RelayToFlat<OrderListQuery["orders"]>[number],
+) {
+  const orderStatus = transformOrderStatus(rowData.status, intl);
+
+  if (orderStatus) {
+    const color = getStatusColor({
+      status: orderStatus.status,
+      currentTheme,
+    });
+
+    return pillCell(orderStatus.localized, color, COMMON_CELL_PROPS);
+  }
+
+  return readonlyTextCell("-");
+}
+
+const higherPriorityChargeStatuses = [OrderChargeStatusEnum.OVERCHARGED];
+
 export function getPaymentCellContent(
   intl: IntlShape,
-  theme: ThemeTokensValues,
   currentTheme: DefaultTheme,
   rowData: RelayToFlat<OrderListQuery["orders"]>[number],
 ) {
-  const paymentStatus = transformPaymentStatus(rowData.paymentStatus, intl);
-  if (paymentStatus?.status) {
-    const statusColor = getStatusColor(paymentStatus.status, currentTheme);
+  if (higherPriorityChargeStatuses.includes(rowData.chargeStatus)) {
+    const { localized, status } = transformChargedStatus(rowData.chargeStatus, intl);
 
-    return tagsCell(
-      [
-        {
-          tag: paymentStatus.localized,
-          color: statusColor.startsWith("#")
-            ? statusColor
-            : theme.colors.background[statusColor],
-        },
-      ],
-      [paymentStatus.localized],
-      { cursor: "pointer" },
-    );
-  }
-
-  return readonlyTextCell("-");
-}
-
-export function getStatusCellContent(
-  intl: IntlShape,
-  theme: ThemeTokensValues,
-  currentTheme: DefaultTheme,
-  rowData: RelayToFlat<OrderListQuery["orders"]>[number],
-) {
-  const status = transformOrderStatus(rowData.status, intl);
-  const statusColor = getStatusColor(status.status, currentTheme);
-
-  if (status) {
-    return tagsCell(
-      [
-        {
-          tag: status.localized,
-          color: statusColor.startsWith("#")
-            ? statusColor
-            : theme.colors.background[statusColor],
-        },
-      ],
-      [status.localized],
-      { cursor: "pointer" },
-    );
-  }
-
-  return readonlyTextCell("-");
-}
-
-export function getTotalCellContent(
-  rowData: RelayToFlat<OrderListQuery["orders"]>[number],
-) {
-  if (rowData?.total?.gross) {
-    return moneyCell(rowData.total.gross.amount, rowData.total.gross.currency, {
-      cursor: "pointer",
+    const color = getStatusColor({
+      status,
+      currentTheme,
     });
+
+    return pillCell(localized, color, COMMON_CELL_PROPS);
+  }
+
+  const paymentStatus = transformPaymentStatus(rowData.paymentStatus, intl);
+
+  if (paymentStatus) {
+    const color = getStatusColor({
+      status: paymentStatus.status,
+      currentTheme,
+    });
+
+    return pillCell(paymentStatus.localized, color, COMMON_CELL_PROPS);
+  }
+
+  return readonlyTextCell("-");
+}
+
+function getTotalCellContent(rowData: RelayToFlat<OrderListQuery["orders"]>[number]) {
+  if (rowData?.total?.gross) {
+    return moneyCell(rowData.total.gross.amount, rowData.total.gross.currency, COMMON_CELL_PROPS);
+  }
+
+  return readonlyTextCell("-");
+}
+
+function getChannelCellContent(rowData: RelayToFlat<OrderListQuery["orders"]>[number]): TextCell {
+  if (rowData?.channel?.name) {
+    return readonlyTextCell(rowData.channel.name);
   }
 
   return readonlyTextCell("-");

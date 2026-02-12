@@ -1,59 +1,92 @@
 // @ts-strict-ignore
-import {
-  TransactionActionEnum,
-  TransactionItemFragment,
-} from "@dashboard/graphql";
-import { FakeTransaction, TransactionFakeEvent } from "@dashboard/orders/types";
-import { Card } from "@material-ui/core";
-import clsx from "clsx";
-import React from "react";
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { TransactionActionEnum } from "@dashboard/graphql";
+import { TransactionFakeEvent } from "@dashboard/orders/types";
+import { Accordion, Box } from "@saleor/macaw-ui-next";
+import { ChevronDown } from "lucide-react";
+import * as React from "react";
+import { useState } from "react";
 
-import { CardTitle } from "./components";
+import { OrderTransactionCardTitle } from "./components";
 import { TransactionEvents } from "./components/TransactionEvents";
-import { useStyles } from "./styles";
+import styles from "./OrderTransaction.module.css";
+import { ExtendedOrderTransaction } from "./types";
 import { getTransactionEvents } from "./utils";
 
 export interface OrderTransactionProps {
-  transaction: TransactionItemFragment | FakeTransaction;
+  transaction: ExtendedOrderTransaction;
   fakeEvents?: TransactionFakeEvent[];
-  onTransactionAction: (
-    transactionId: string,
-    actionType: TransactionActionEnum,
-  ) => void;
+  onTransactionAction: (transactionId: string, actionType: TransactionActionEnum) => void;
   showActions?: boolean;
   cardFooter?: React.ReactNode;
   disabled?: boolean;
+  defaultExpanded?: boolean;
 }
 
-const OrderTransaction: React.FC<OrderTransactionProps> = ({
+const OrderTransaction = ({
   transaction,
   fakeEvents,
   onTransactionAction,
   showActions,
   cardFooter,
   disabled = false,
-}) => {
-  const classes = useStyles();
-
+  defaultExpanded = true,
+}: OrderTransactionProps) => {
   const events = getTransactionEvents(transaction, fakeEvents);
-
-  if (!transaction) {
-    return null;
-  }
+  const [expanded, setExpanded] = useState<string | undefined>(
+    defaultExpanded ? transaction.id : undefined,
+  );
 
   return (
-    <Card
-      className={clsx(classes.card, disabled && classes.disabled)}
+    <Box
+      __opacity={disabled ? "0.6" : "1"}
       data-test-id="orderTransactionsList"
+      marginTop={4}
+      marginX={6}
     >
-      <CardTitle
-        transaction={transaction}
-        onTransactionAction={onTransactionAction}
-        showActions={showActions}
-      />
-      <TransactionEvents events={events} />
-      {cardFooter}
-    </Card>
+      <Accordion value={expanded} onValueChange={setExpanded}>
+        <Accordion.Item value={transaction.id}>
+          <Box
+            backgroundColor="default2"
+            borderRadius={4}
+            borderStyle="solid"
+            borderColor="default1"
+            borderWidth={1}
+            overflow="hidden"
+          >
+            <Accordion.Trigger>
+              <Box paddingY={4} paddingX={5} width="100%">
+                <OrderTransactionCardTitle
+                  transaction={transaction}
+                  onTransactionAction={onTransactionAction}
+                  showActions={showActions}
+                  chevron={
+                    <Box className={styles.chevron}>
+                      <ChevronDown
+                        size={iconSize.small}
+                        strokeWidth={iconStrokeWidthBySize.small}
+                      />
+                    </Box>
+                  }
+                />
+              </Box>
+            </Accordion.Trigger>
+
+            <Accordion.Content>
+              <Box
+                borderTopStyle="solid"
+                borderColor="default1"
+                borderTopWidth={1}
+                backgroundColor="default1"
+              >
+                <TransactionEvents events={events} />
+                {cardFooter}
+              </Box>
+            </Accordion.Content>
+          </Box>
+        </Accordion.Item>
+      </Accordion>
+    </Box>
   );
 };
 

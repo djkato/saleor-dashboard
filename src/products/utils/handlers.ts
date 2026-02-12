@@ -4,7 +4,6 @@ import {
   ChannelData,
   ChannelPriceAndPreorderData,
   ChannelPriceArgs,
-  ChannelPriceData,
 } from "@dashboard/channels/utils";
 import {
   ProductChannelListingAddInput,
@@ -25,13 +24,11 @@ export function createChannelsPriceChangeHandler(
 ) {
   return (id: string, priceData: ChannelPriceArgs) => {
     const { costPrice, price } = priceData;
-
     const updatedChannels = channelListings.map(channel =>
       channel.id === id ? { ...channel, costPrice, price } : channel,
     );
 
     updateChannels(updatedChannels);
-
     triggerChange();
   };
 }
@@ -41,13 +38,9 @@ export function createChannelsChangeHandler(
   updateChannels: (data: ChannelData[]) => void,
   triggerChange: () => void,
 ) {
-  return (
-    id: string,
-    data: Omit<ChannelData, "name" | "price" | "currency" | "id">,
-  ) => {
+  return (id: string, data: Omit<ChannelData, "name" | "price" | "currency" | "id">) => {
     const channelIndex = channelsData.findIndex(channel => channel.id === id);
     const channel = channelsData[channelIndex];
-
     const updatedChannels = [
       ...channelsData.slice(0, channelIndex),
       {
@@ -58,33 +51,6 @@ export function createChannelsChangeHandler(
     ];
 
     updateChannels(updatedChannels);
-
-    triggerChange();
-  };
-}
-
-export function createVariantChannelsChangeHandler(
-  channelListings: ChannelPriceData[],
-  setData: (data: ChannelPriceData[]) => void,
-  triggerChange: () => void,
-) {
-  return (id: string, priceData: ChannelPriceArgs) => {
-    const { costPrice, price } = priceData;
-    const channelIndex = channelListings.findIndex(
-      channel => channel.id === id,
-    );
-    const channel = channelListings[channelIndex];
-
-    const updatedChannels = [
-      ...channelListings.slice(0, channelIndex),
-      {
-        ...channel,
-        costPrice,
-        price,
-      },
-      ...channelListings.slice(channelIndex + 1),
-    ];
-    setData(updatedChannels);
     triggerChange();
   };
 }
@@ -95,6 +61,7 @@ export function createProductTypeSelectHandler(
 ): FormChange {
   return (event: React.ChangeEvent<any>) => {
     const id = event.target.value;
+
     setProductType(id);
     triggerChange();
   };
@@ -118,25 +85,21 @@ export const getAvailabilityVariables = (
   channels.map(channel => {
     const {
       isAvailableForPurchase,
-      availableForPurchase,
+      availableForPurchaseAt,
       isPublished,
-      publicationDate,
+      publishedAt,
       visibleInListings,
     } = channel;
     const isAvailable =
-      availableForPurchase && !isAvailableForPurchase
-        ? true
-        : isAvailableForPurchase;
+      availableForPurchaseAt && !isAvailableForPurchase ? true : isAvailableForPurchase;
 
     return {
-      availableForPurchaseDate:
-        isAvailableForPurchase || availableForPurchase === ""
-          ? null
-          : availableForPurchase,
+      availableForPurchaseAt:
+        isAvailableForPurchase || availableForPurchaseAt === "" ? null : availableForPurchaseAt,
       channelId: channel.id,
       isAvailableForPurchase: isAvailable,
       isPublished,
-      publicationDate,
+      publishedAt,
       visibleInListings,
     };
   });
@@ -149,30 +112,28 @@ export const createPreorderEndDateChangeHandler =
   ): FormChange =>
   event => {
     form.change(event);
+
     if (moment(event.target.value).isSameOrBefore(Date.now())) {
       form.setError("preorderEndDateTime", preorderPastDateErrorMessage);
     } else {
       form.clearErrors("preorderEndDateTime");
     }
+
     triggerChange();
   };
 
 export const createMediaChangeHandler =
-  (form: UseFormResult<{ media: string[] }>, triggerChange: () => void) =>
-  (ids: string[]) => {
+  (form: UseFormResult<{ media: string[] }>, triggerChange: () => void) => (ids: string[]) => {
     form.change({
       target: {
         name: "media",
         value: ids,
       },
     });
-
     triggerChange();
   };
 
-export const handleAssignMedia = async <
-  T extends Pick<ProductVariantFragment, "id" | "media">,
->(
+export const handleAssignMedia = async <T extends Pick<ProductVariantFragment, "id" | "media">>(
   media: string[],
   variant: T,
   assignMedia: (
@@ -186,7 +147,6 @@ export const handleAssignMedia = async <
     variant.media.map(mediaObj => mediaObj.id),
     media,
   );
-
   const assignResults = await Promise.all(
     added.map(mediaId =>
       assignMedia({
@@ -203,19 +163,12 @@ export const handleAssignMedia = async <
       }),
     ),
   );
-
   const assignErrors = assignResults.reduce(
-    (errors, result) => [
-      ...errors,
-      ...(result.data?.variantMediaAssign.errors || []),
-    ],
+    (errors, result) => [...errors, ...(result.data?.variantMediaAssign.errors || [])],
     [],
   );
   const unassignErrors = unassignResults.reduce(
-    (errors, result) => [
-      ...errors,
-      ...(result.data?.variantMediaUnassign.errors || []),
-    ],
+    (errors, result) => [...errors, ...(result.data?.variantMediaUnassign.errors || [])],
     [],
   );
 

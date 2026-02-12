@@ -6,7 +6,6 @@ import {
 import useGiftCardActivateToggle from "@dashboard/giftCards/GiftCardUpdate/GiftCardUpdatePageHeader/hooks/useGiftCardActivateToggle";
 import { ExtendedGiftCard } from "@dashboard/giftCards/GiftCardUpdate/providers/GiftCardDetailsProvider/types";
 import { CustomerGiftCardFragment } from "@dashboard/graphql";
-import * as React from "react";
 import { useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -20,25 +19,16 @@ interface CustomerGiftCardsCardListItemProps {
   giftCard: ExtendedGiftCard<CustomerGiftCardFragment>;
 }
 
-const CustomerGiftCardsCardListItem: React.FC<
-  CustomerGiftCardsCardListItemProps
-> = ({ giftCard }) => {
+const CustomerGiftCardsCardListItem = ({ giftCard }: CustomerGiftCardsCardListItemProps) => {
   const intl = useIntl();
   const classes = useListWrapperStyles();
   const [openDeleteGiftCard, setOpenDeleteGiftCard] = useState(false);
   const { isExpired, isActive, last4CodeChars } = giftCard;
-
   const onGiftCardDeleteDialogClose = () => setOpenDeleteGiftCard(false);
-
-  const {
-    giftCardActivate,
-    giftCardDeactivate,
-    giftCardActivateOpts,
-    giftCardDeactivateOpts,
-  } = useGiftCardActivateToggle({
-    isActive,
-  });
-
+  const { giftCardActivate, giftCardDeactivate, giftCardActivateOpts, giftCardDeactivateOpts } =
+    useGiftCardActivateToggle({
+      isActive,
+    });
   const handleGiftCardActivate = () => {
     giftCardActivate({
       variables: {
@@ -46,7 +36,6 @@ const CustomerGiftCardsCardListItem: React.FC<
       },
     });
   };
-
   const handleGiftCardDeactivate = () => {
     giftCardDeactivate({
       variables: {
@@ -54,9 +43,7 @@ const CustomerGiftCardsCardListItem: React.FC<
       },
     });
   };
-
   const handleGiftCardDelete = () => setOpenDeleteGiftCard(true);
-
   const getMenuItems = (): CardMenuItem[] => {
     const items = [
       {
@@ -71,18 +58,14 @@ const CustomerGiftCardsCardListItem: React.FC<
 
     const statusButton = isActive
       ? {
-          label: intl.formatMessage(
-            bulkEnableDisableSectionMessages.disableLabel,
-          ),
+          label: intl.formatMessage(bulkEnableDisableSectionMessages.disableLabel),
           onSelect: handleGiftCardDeactivate,
           loading: giftCardDeactivateOpts.loading,
           withLoading: true,
           hasError: !!giftCardDeactivateOpts.error,
         }
       : {
-          label: intl.formatMessage(
-            bulkEnableDisableSectionMessages.enableLabel,
-          ),
+          label: intl.formatMessage(bulkEnableDisableSectionMessages.enableLabel),
           onSelect: handleGiftCardActivate,
           loading: giftCardActivateOpts.loading,
           withLoading: true,
@@ -91,7 +74,6 @@ const CustomerGiftCardsCardListItem: React.FC<
 
     return [...items, statusButton];
   };
-
   const { onDeleteGiftCard, deleteGiftCardOpts } = useGiftCardSingleDelete({
     id: giftCard?.id,
     onClose: onGiftCardDeleteDialogClose,

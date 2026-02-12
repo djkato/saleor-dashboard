@@ -1,12 +1,10 @@
 import CardSpacer from "@dashboard/components/CardSpacer";
-import MultiAutocompleteSelectField, {
-  MultiAutocompleteChoiceType,
-} from "@dashboard/components/MultiAutocompleteSelectField";
+import { Multiselect } from "@dashboard/components/Combobox";
 import { ChannelFragment } from "@dashboard/graphql";
 import { useChannelsSearch } from "@dashboard/hooks/useChannelsSearch";
 import { FormChange } from "@dashboard/hooks/useForm";
 import { mapNodeToChoice } from "@dashboard/utils/maps";
-import React from "react";
+import { Option } from "@saleor/macaw-ui-next";
 import { defineMessages, FormattedMessage, useIntl } from "react-intl";
 
 const messages = defineMessages({
@@ -30,37 +28,31 @@ const messages = defineMessages({
 
 interface ChannelsSectionProps {
   onChange: FormChange;
-  selectedChannels: string[];
+  selectedChannels: Option[];
   allChannels?: ChannelFragment[];
-  channelsDisplayValues: MultiAutocompleteChoiceType[];
 }
 
-const ChannelsSection: React.FC<ChannelsSectionProps> = ({
+const ChannelsSection = ({
   onChange,
   allChannels = [],
   selectedChannels,
-  channelsDisplayValues,
-}) => {
+}: ChannelsSectionProps) => {
   const { onQueryChange, filteredChannels } = useChannelsSearch(allChannels);
-
   const intl = useIntl();
 
   return (
     <>
       <FormattedMessage {...messages.subtitle} />
       <CardSpacer />
-      <MultiAutocompleteSelectField
-        choices={mapNodeToChoice(filteredChannels)}
-        displayValues={channelsDisplayValues}
-        fetchChoices={onQueryChange}
-        hasMore={false}
+
+      <Multiselect
         label={intl.formatMessage(messages.selectFieldLabel)}
-        loading={false}
         name="channels"
-        onChange={onChange}
-        placeholder={intl.formatMessage(messages.selectFieldPlaceholder)}
+        options={mapNodeToChoice(filteredChannels)}
         value={selectedChannels}
-        testId="channels"
+        onChange={onChange}
+        fetchOptions={onQueryChange}
+        data-test-id="select-channel-for-shipping-method"
       />
     </>
   );

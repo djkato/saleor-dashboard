@@ -1,26 +1,21 @@
-import { FieldType, FilterFieldBaseProps } from "@dashboard/components/Filter";
 import Arrow from "@dashboard/components/Filter/Arrow";
+import { FieldType, FilterFieldBaseProps } from "@dashboard/components/Filter/types";
 import { TextField } from "@material-ui/core";
-import React from "react";
 import { FormattedMessage } from "react-intl";
 
 import { filterTestingContext, useCommonStyles } from "./utils";
 
-type FilterNumericFieldProps = FilterFieldBaseProps<
-  string,
-  FieldType.number | FieldType.price
-> & {
+type FilterNumericFieldProps = FilterFieldBaseProps<string, FieldType.number | FieldType.price> & {
   currencySymbol: string | undefined;
 };
 
-export const FilterNumericField: React.FC<FilterNumericFieldProps> = ({
+export const FilterNumericField = ({
   filter,
   onFilterPropertyChange,
   currencySymbol,
-}) => {
+}: FilterNumericFieldProps) => {
   const classes = useCommonStyles({});
   const isMultiple = filter.multiple;
-
   const handleChange = (value: string[]) =>
     onFilterPropertyChange({
       payload: {
@@ -83,9 +78,7 @@ export const FilterNumericField: React.FC<FilterNumericFieldProps> = ({
                 endAdornment: filter.type === FieldType.price && currencySymbol,
               }}
               value={filter.value[1]}
-              onChange={event =>
-                handleChange([filter.value[0], event.target.value])
-              }
+              onChange={event => handleChange([filter.value[0], event.target.value])}
             />
           </div>
         </>

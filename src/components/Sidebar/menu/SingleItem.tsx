@@ -1,10 +1,6 @@
-// @ts-strict-ignore
-import {
-  extensionMountPoints,
-  useExtensions,
-} from "@dashboard/apps/hooks/useExtensions";
-import { Box, List, sprinkles, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { extensionMountPoints } from "@dashboard/extensions/extensionMountPoints";
+import { useExtensions } from "@dashboard/extensions/hooks/useExtensions";
+import { Box, List, sprinkles, Text } from "@saleor/macaw-ui-next";
 import { Link } from "react-router-dom";
 
 import { SidebarMenuItem } from "./types";
@@ -14,16 +10,21 @@ interface Props {
   menuItem: SidebarMenuItem;
 }
 
-export const SingleItem: React.FC<Props> = ({ menuItem }) => {
+export const SingleItem = ({ menuItem }: Props) => {
   const extensions = useExtensions(extensionMountPoints.NAVIGATION_SIDEBAR);
   const active = isMenuActive(location.pathname, menuItem);
-
   const handleMenuItemClick = () => {
     const extension = getMenuItemExtension(extensions, menuItem.id);
+
     if (extension) {
       extension.open();
     }
+
+    if (menuItem.onClick) {
+      menuItem.onClick();
+    }
   };
+
   return (
     <List.Item
       borderRadius={3}
@@ -31,9 +32,10 @@ export const SingleItem: React.FC<Props> = ({ menuItem }) => {
       active={active}
       onClick={handleMenuItemClick}
       data-test-id={`menu-item-label-${menuItem.id}`}
+      position="relative"
     >
       <Link
-        to={menuItem.url}
+        to={menuItem.url || ""}
         replace={active}
         className={sprinkles({
           display: "block",
@@ -49,11 +51,16 @@ export const SingleItem: React.FC<Props> = ({ menuItem }) => {
           })}
         >
           {menuItem.icon}
-          <Text size="small" variant="bodyEmp">
+          <Text size={3} fontWeight="medium">
             {menuItem.label}
           </Text>
         </Box>
       </Link>
+      {menuItem.endAdornment && (
+        <Box position="absolute" right={2} zIndex={"3"}>
+          {menuItem.endAdornment}
+        </Box>
+      )}
     </List.Item>
   );
 };

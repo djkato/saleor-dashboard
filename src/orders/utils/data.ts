@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { subtractMoney } from "@dashboard/components/Money";
 import {
   AddressFragment,
@@ -8,6 +7,8 @@ import {
   FulfillmentStatus,
   OrderDetailsFragment,
   OrderDetailsQuery,
+  OrderDiscountFragment,
+  OrderDiscountType,
   OrderFulfillLineFragment,
   OrderLineFragment,
   OrderLineStockDataFragment,
@@ -18,19 +19,18 @@ import {
 import { FormsetData } from "@dashboard/hooks/useFormset";
 import { findInEnum, getById } from "@dashboard/misc";
 import { IMoney } from "@dashboard/utils/intl";
+import { IntlShape } from "react-intl";
 
-import {
-  LineItemData,
-  OrderReturnFormData,
-} from "../components/OrderReturnPage/form";
+import { LineItemData, OrderReturnFormData } from "../components/OrderReturnPage/form";
 import {
   getAllOrderFulfilledLines,
   getAllOrderWaitingLines,
 } from "../components/OrderReturnPage/utils";
+import { orderDiscountTypeLabelMessages } from "../messages";
 import { OrderRefundSharedType } from "../types";
 
 export type OrderWithTotalAndTotalCaptured = Pick<
-  OrderRefundDataQuery["order"],
+  NonNullable<OrderRefundDataQuery["order"]>,
   "total" | "totalCaptured"
 >;
 
@@ -44,6 +44,7 @@ export function getOrderCharged(order: OrderDetailsFragment) {
   if (order?.totalCharged) {
     return order.totalCharged;
   }
+
   return order?.totalCaptured;
 }
 
@@ -51,9 +52,7 @@ export function getToFulfillOrderLines(lines?: OrderLineStockDataFragment[]) {
   return lines?.filter(line => line.quantityToFulfill > 0) || [];
 }
 
-export function getWarehousesFromOrderLines<
-  T extends OrderLineWithStockWarehouses,
->(lines?: T[]) {
+export function getWarehousesFromOrderLines<T extends OrderLineWithStockWarehouses>(lines?: T[]) {
   return lines?.reduce(
     (warehouses, line) =>
       line.variant?.stocks?.reduce(
@@ -62,47 +61,48 @@ export function getWarehousesFromOrderLines<
             ? warehouses
             : [...warehouses, stock.warehouse],
         warehouses,
-      ),
+      ) ?? warehouses,
     [] as WarehouseFragment[],
   );
 }
 
-export function getPreviouslyRefundedPrice(
-  order: OrderRefundSharedType,
-): IMoney {
-  return (
-    getOrderCharged(order as OrderDetailsFragment) &&
-    order?.total?.gross &&
-    subtractMoney(
-      getOrderCharged(order as OrderDetailsFragment),
-      order?.total?.gross,
-    )
-  );
+export function getPreviouslyRefundedPrice(order: OrderRefundSharedType): IMoney {
+  const orderDetails = order as OrderDetailsFragment;
+  const charged = getOrderCharged(orderDetails);
+  const total = orderDetails?.total?.gross;
+
+  return charged && total ? subtractMoney(charged, total) : charged;
 }
 
-const getItemPriceAndQuantity = ({
+export const getItemPriceAndQuantity = ({
   orderLines,
   itemsQuantities,
   id,
 }: {
-  orderLines: OrderLineFragment[];
+  orderLines: Array<OrderLineFragment & { orderLineId?: string }>;
   itemsQuantities: FormsetData<LineItemData, number>;
   id: string;
 }) => {
-  const { unitPrice } = orderLines.find(getById(id));
+  if (orderLines.length === 0) {
+    return {};
+  }
+
+  const selectedOrderLine = orderLines.find(getById(id));
   const selectedQuantity = itemsQuantities.find(getById(id))?.value;
 
-  return { selectedQuantity, unitPrice };
+  return { selectedQuantity, unitPrice: selectedOrderLine?.unitPrice };
 };
 
-const getFulfillmentByFulfillmentLineId = (order, fulfillmentLineId) => {
+const getFulfillmentByFulfillmentLineId = (
+  order: OrderDetailsFragment,
+  fulfillmentLineId: string,
+) => {
   for (const fulfillment of order.fulfillments) {
-    if (fulfillment.lines.find(getById(fulfillmentLineId))) {
+    if (fulfillment.lines?.find(getById(fulfillmentLineId))) {
       return fulfillment;
     }
   }
 };
-
 const selectItemPriceAndQuantity = (
   order: OrderDetailsFragment,
   {
@@ -114,22 +114,24 @@ const selectItemPriceAndQuantity = (
   isFulfillment: boolean,
 ) => {
   const fulfillment = getFulfillmentByFulfillmentLineId(order, id);
+
   if (fulfillment?.status === FulfillmentStatus.WAITING_FOR_APPROVAL) {
     return getItemPriceAndQuantity({
       id,
-      itemsQuantities: waitingItemsQuantities,
+      itemsQuantities: waitingItemsQuantities ?? [],
       orderLines: getAllOrderWaitingLines(order),
     });
   }
+
   return isFulfillment
     ? getItemPriceAndQuantity({
         id,
-        itemsQuantities: fulfilledItemsQuantities,
+        itemsQuantities: fulfilledItemsQuantities ?? [],
         orderLines: getAllOrderFulfilledLines(order),
       })
     : getItemPriceAndQuantity({
         id,
-        itemsQuantities: unfulfilledItemsQuantities,
+        itemsQuantities: unfulfilledItemsQuantities ?? [],
         orderLines: order.lines,
       });
 };
@@ -143,7 +145,7 @@ export const getReplacedProductsAmount = (
     fulfilledItemsQuantities,
   }: Partial<OrderReturnFormData>,
 ) => {
-  if (!order || !itemsToBeReplaced.length) {
+  if (!order || !itemsToBeReplaced?.length) {
     return 0;
   }
 
@@ -167,7 +169,7 @@ export const getReplacedProductsAmount = (
         isFulfillment,
       );
 
-      return resultAmount + unitPrice?.gross?.amount * selectedQuantity;
+      return resultAmount + (unitPrice?.gross?.amount ?? 0) * (selectedQuantity ?? 0);
     },
     0,
   );
@@ -180,27 +182,25 @@ export const getReturnSelectedProductsAmount = (
     waitingItemsQuantities,
     unfulfilledItemsQuantities,
     fulfilledItemsQuantities,
-  },
+  }: Partial<OrderReturnFormData>,
 ) => {
   if (!order) {
     return 0;
   }
 
   const unfulfilledItemsValue = getPartialProductsValue({
-    itemsQuantities: unfulfilledItemsQuantities,
-    itemsToBeReplaced,
+    itemsQuantities: unfulfilledItemsQuantities ?? [],
+    itemsToBeReplaced: itemsToBeReplaced ?? [],
     orderLines: order.lines,
   });
-
   const fulfiledItemsValue = getPartialProductsValue({
-    itemsQuantities: fulfilledItemsQuantities,
-    itemsToBeReplaced,
+    itemsQuantities: fulfilledItemsQuantities ?? [],
+    itemsToBeReplaced: itemsToBeReplaced ?? [],
     orderLines: getAllOrderFulfilledLines(order),
   });
-
   const waitingItemsValue = getPartialProductsValue({
-    itemsQuantities: waitingItemsQuantities,
-    itemsToBeReplaced,
+    itemsQuantities: waitingItemsQuantities ?? [],
+    itemsToBeReplaced: itemsToBeReplaced ?? [],
     orderLines: getAllOrderWaitingLines(order),
   });
 
@@ -215,93 +215,93 @@ const getPartialProductsValue = ({
   itemsToBeReplaced: FormsetData<LineItemData, boolean>;
   itemsQuantities: FormsetData<LineItemData, number>;
   orderLines: OrderLineFragment[];
-}) =>
-  itemsQuantities.reduce(
-    (resultAmount, { id, value: quantity, data: { isRefunded } }) => {
-      const { value: isItemToBeReplaced } = itemsToBeReplaced.find(getById(id));
+}) => {
+  return itemsQuantities.reduce((resultAmount, { id, value: quantity, data: { isRefunded } }) => {
+    const { value: isItemToBeReplaced } = itemsToBeReplaced.find(getById(id)) ?? { value: false };
 
-      if (quantity < 1 || isItemToBeReplaced || isRefunded) {
-        return resultAmount;
-      }
+    if (quantity < 1 || isItemToBeReplaced || isRefunded) {
+      return resultAmount;
+    }
 
-      const { selectedQuantity, unitPrice } = getItemPriceAndQuantity({
-        id,
-        itemsQuantities,
-        orderLines,
-      });
+    const partialProductsValue = getItemPriceAndQuantity({
+      id,
+      itemsQuantities,
+      orderLines,
+    });
 
-      return resultAmount + unitPrice.gross.amount * selectedQuantity;
-    },
-    0,
-  );
+    return (
+      resultAmount +
+      (partialProductsValue?.unitPrice?.gross.amount ?? 0) *
+        (partialProductsValue?.selectedQuantity ?? 0)
+    );
+  }, 0);
+};
 
 export function getRefundedLinesPriceSum(
-  lines: OrderRefundDataQuery["order"]["lines"],
+  lines: NonNullable<OrderRefundDataQuery["order"]>["lines"],
   refundedProductQuantities: FormsetData<null, string | number>,
 ): number {
   return lines?.reduce((sum, line) => {
     const refundedLine = refundedProductQuantities.find(
       refundedLine => refundedLine.id === line.id,
     );
+
     return sum + line.unitPrice.gross.amount * Number(refundedLine?.value || 0);
   }, 0);
 }
 
 export function getAllFulfillmentLinesPriceSum(
-  fulfillments: OrderRefundDataQuery["order"]["fulfillments"],
+  fulfillments: NonNullable<OrderRefundDataQuery["order"]>["fulfillments"],
   refundedFulfilledProductQuantities: FormsetData<null, string | number>,
 ): number {
   return fulfillments?.reduce((sum, fulfillment) => {
-    const fulfilmentLinesSum = fulfillment?.lines.reduce((sum, line) => {
+    const fulfilmentLinesSum = fulfillment?.lines?.reduce((sum, line) => {
       const refundedLine = refundedFulfilledProductQuantities.find(
         refundedLine => refundedLine.id === line.id,
       );
-      return (
-        sum +
-        line.orderLine.unitPrice.gross.amount * Number(refundedLine?.value || 0)
-      );
+
+      return sum + (line.orderLine?.unitPrice.gross.amount ?? 0) * Number(refundedLine?.value || 0);
     }, 0);
-    return sum + fulfilmentLinesSum;
+
+    return sum + (fulfilmentLinesSum ?? 0);
   }, 0);
 }
 
 export function mergeRepeatedOrderLines(
   fulfillmentLines: OrderDetailsFragment["fulfillments"][0]["lines"],
 ) {
-  return fulfillmentLines.reduce((prev, curr) => {
-    const existingOrderLineIndex = prev.findIndex(
-      prevLine => prevLine.orderLine.id === curr.orderLine.id,
-    );
+  return (
+    fulfillmentLines?.reduce((prev, curr) => {
+      const existingOrderLineIndex = prev.findIndex(
+        prevLine => prevLine.orderLine?.id === curr.orderLine?.id,
+      );
 
-    if (existingOrderLineIndex === -1) {
-      prev.push(curr);
-    } else {
-      const existingOrderLine = prev[existingOrderLineIndex];
+      if (existingOrderLineIndex === -1) {
+        prev.push(curr);
+      } else {
+        const existingOrderLine = prev[existingOrderLineIndex];
 
-      prev[existingOrderLineIndex] = {
-        ...existingOrderLine,
-        quantity: existingOrderLine.quantity + curr.quantity,
-      };
-    }
+        prev[existingOrderLineIndex] = {
+          ...existingOrderLine,
+          quantity: existingOrderLine.quantity + curr.quantity,
+        };
+      }
 
-    return prev;
-  }, Array<OrderDetailsFragment["fulfillments"][0]["lines"][0]>());
+      return prev;
+    }, Array<NonNullable<OrderDetailsFragment["fulfillments"][0]["lines"]>[0]>()) ?? []
+  );
 }
 
-export function addressToAddressInput<T>(
-  address: T & AddressFragment,
-): AddressInput {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, __typename, ...rest } = address;
+function addressToAddressInput<T>(address: T & AddressFragment): AddressInput {
+  const { __typename, id: _id, ...rest } = address;
+
   return {
     ...rest,
     country: findInEnum(address.country.code, CountryCode),
   };
 }
 
-export const getVariantSearchAddress = (
-  order: OrderDetailsFragment,
-): AddressInput => {
+export const getVariantSearchAddress = (order: OrderDetailsFragment): AddressInput => {
   if (order.shippingAddress) {
     return addressToAddressInput(order.shippingAddress);
   }
@@ -313,13 +313,11 @@ export const getVariantSearchAddress = (
   return { country: order.channel.defaultCountry.code as CountryCode };
 };
 
-export const getAllocatedQuantityForLine = (
-  line: OrderLineStockDataFragment,
-  warehouseId: string,
-) => {
-  const warehouseAllocation = line.allocations.find(
+const getAllocatedQuantityForLine = (line: OrderLineStockDataFragment, warehouseId: string) => {
+  const warehouseAllocation = line.allocations?.find(
     allocation => allocation.warehouse.id === warehouseId,
   );
+
   return warehouseAllocation?.quantity || 0;
 };
 
@@ -330,13 +328,9 @@ export const getOrderLineAvailableQuantity = (
   if (!stock) {
     return 0;
   }
-  const allocatedQuantityForLine = getAllocatedQuantityForLine(
-    line,
-    stock.warehouse.id,
-  );
 
-  const availableQuantity =
-    stock.quantity - stock.quantityAllocated + allocatedQuantityForLine;
+  const allocatedQuantityForLine = getAllocatedQuantityForLine(line, stock.warehouse.id);
+  const availableQuantity = stock.quantity - stock.quantityAllocated + allocatedQuantityForLine;
 
   return availableQuantity;
 };
@@ -355,24 +349,8 @@ export const getFulfillmentFormsetQuantity = (
   line: OrderLineStockDataFragment,
 ) => formsetData?.find(getById(line.id))?.value?.[0]?.quantity;
 
-export const getWarehouseStock = (
-  stocks: StockFragment[],
-  warehouseId: string,
-) => stocks?.find(stock => stock.warehouse.id === warehouseId);
-
-export const isLineAvailableInWarehouse = (
-  line: OrderFulfillLineFragment | OrderLineStockDataFragment,
-  warehouse: WarehouseFragment,
-): boolean => {
-  if (!line?.variant?.stocks) {
-    return false;
-  }
-  const stock = getWarehouseStock(line.variant.stocks, warehouse.id);
-  if (stock) {
-    return line.quantityToFulfill <= getOrderLineAvailableQuantity(line, stock);
-  }
-  return false;
-};
+export const getWarehouseStock = (stocks: StockFragment[], warehouseId: string) =>
+  stocks?.find(stock => stock.warehouse.id === warehouseId);
 
 export const getLineAvailableQuantityInWarehouse = (
   line: OrderFulfillLineFragment,
@@ -381,40 +359,29 @@ export const getLineAvailableQuantityInWarehouse = (
   if (!line?.variant?.stocks) {
     return 0;
   }
+
   const stock = getWarehouseStock(line.variant.stocks, warehouse.id);
+
   if (stock) {
     return getOrderLineAvailableQuantity(line, stock);
   }
+
   return 0;
 };
 
 export const getLineAllocationWithHighestQuantity = (
   line: OrderFulfillLineFragment,
-): OrderFulfillLineFragment["allocations"][number] | undefined =>
-  line.allocations.reduce((prevAllocation, allocation) => {
-    if (!prevAllocation || prevAllocation.quantity < allocation.quantity) {
-      return allocation;
-    }
-    return prevAllocation;
-  }, null);
+): NonNullable<OrderFulfillLineFragment["allocations"]>[number] | undefined | null =>
+  line.allocations?.reduce(
+    (prevAllocation, allocation) => {
+      if (!prevAllocation || prevAllocation.quantity < allocation.quantity) {
+        return allocation;
+      }
 
-export const getWarehouseWithHighestAvailableQuantity = (
-  lines?: OrderLineFragment[],
-): WarehouseFragment | undefined => {
-  let highestAvailableQuantity = 0;
-
-  return lines?.reduce(
-    (selectedWarehouse, line) =>
-      line.allocations.reduce((warehouse, allocation) => {
-        if (allocation.quantity > highestAvailableQuantity) {
-          highestAvailableQuantity = allocation.quantity;
-          return allocation.warehouse;
-        }
-        return warehouse;
-      }, selectedWarehouse),
-    null as WarehouseFragment,
+      return prevAllocation;
+    },
+    null as NonNullable<OrderFulfillLineFragment["allocations"]>[number] | null,
   );
-};
 
 export const transformFuflillmentLinesToStockFormsetData = (
   lines: FulfillmentFragment["lines"],
@@ -422,36 +389,71 @@ export const transformFuflillmentLinesToStockFormsetData = (
 ): OrderFulfillStockFormsetData =>
   lines?.map(line => ({
     data: null,
-    id: line.orderLine.id,
+    id: line.orderLine?.id ?? "",
     value: [
       {
         quantity: line.quantity,
         warehouse,
       },
     ],
-  }));
+  })) ?? [];
 
 export const getAttributesCaption = (
-  attributes: OrderFulfillLineFragment["variant"]["attributes"] | undefined,
-): string | undefined =>
-  attributes
-    ?.map(attribute =>
-      attribute.values.map(attributeValue => attributeValue.name).join(", "),
-    )
-    .join(" / ");
+  attributes: NonNullable<OrderFulfillLineFragment["variant"]>["attributes"] | undefined,
+): string | undefined => {
+  const separator = " / ";
+
+  const names = attributes
+    ?.map(attribute => attribute.values.map(attributeValue => attributeValue.name).join(", "))
+    .filter(Boolean);
+
+  if (!names || names.length === 0) {
+    return "";
+  }
+
+  return `${separator}${names.join(separator)}`;
+};
 
 export const prepareMoney = (
   amount: number,
   currency: string,
-): OrderDetailsQuery["order"]["totalCaptured"] => ({
+): NonNullable<OrderDetailsQuery["order"]>["totalCaptured"] => ({
   __typename: "Money",
   amount,
   currency: currency ?? "USD",
 });
 
 export const isAnyAddressEditModalOpen = (uri: string | undefined): boolean =>
-  [
-    "edit-customer-addresses",
-    "edit-shipping-address",
-    "edit-billing-address",
-  ].includes(uri);
+  uri
+    ? ["edit-customer-addresses", "edit-shipping-address", "edit-billing-address"].includes(uri)
+    : false;
+
+const NAME_SEPARATOR = ":";
+const getDiscountNameLabel = (name: string) => {
+  if (name.includes(NAME_SEPARATOR)) {
+    const [promotionName] = name.split(NAME_SEPARATOR);
+
+    return promotionName.trim() || "-";
+  }
+
+  return name;
+};
+
+export const getDiscountTypeLabel = (discount: OrderDiscountFragment, intl: IntlShape) => {
+  switch (discount.type) {
+    case OrderDiscountType.MANUAL:
+      return intl.formatMessage(orderDiscountTypeLabelMessages.staffAdded);
+    case OrderDiscountType.ORDER_PROMOTION:
+      return getDiscountNameLabel(discount.name ?? "");
+    case OrderDiscountType.VOUCHER:
+      return intl.formatMessage(orderDiscountTypeLabelMessages.voucher, {
+        voucherName: discount.name,
+      });
+
+    case OrderDiscountType.PROMOTION:
+      return intl.formatMessage(orderDiscountTypeLabelMessages.promotion);
+
+    case OrderDiscountType.SALE:
+      return intl.formatMessage(orderDiscountTypeLabelMessages.sale);
+  }
+};

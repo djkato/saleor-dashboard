@@ -1,14 +1,13 @@
 // @ts-strict-ignore
 import AddressFormatter from "@dashboard/components/AddressFormatter";
-import { Button } from "@dashboard/components/Button";
-import CardTitle from "@dashboard/components/CardTitle";
+import { DashboardCard } from "@dashboard/components/Card";
 import { Hr } from "@dashboard/components/Hr";
 import { CustomerDetailsFragment } from "@dashboard/graphql";
 import { buttonMessages } from "@dashboard/intl";
-import { Card, CardContent, Typography } from "@material-ui/core";
 import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import { Button, Text } from "@saleor/macaw-ui-next";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Link } from "react-router-dom";
 
 import { maybe } from "../../../misc";
 
@@ -22,99 +21,86 @@ const useStyles = makeStyles(
   { name: "CustomerAddresses" },
 );
 
-export interface CustomerAddressesProps {
+interface CustomerAddressesProps {
   customer: CustomerDetailsFragment;
   disabled: boolean;
   manageAddressHref: string;
 }
 
-const CustomerAddresses: React.FC<CustomerAddressesProps> = props => {
+const CustomerAddresses = (props: CustomerAddressesProps) => {
   const { customer, disabled, manageAddressHref } = props;
   const classes = useStyles(props);
-
   const intl = useIntl();
 
   return (
-    <Card>
-      <CardTitle
-        title={intl.formatMessage({
-          id: "BfJGij",
-          defaultMessage: "Address Information",
-          description: "header",
-        })}
-        toolbar={
-          <Button
-            data-test-id="manage-addresses"
-            disabled={disabled}
-            variant="tertiary"
-            href={manageAddressHref}
-          >
-            <FormattedMessage {...buttonMessages.manage} />
-          </Button>
-        }
-      />
+    <DashboardCard>
+      <DashboardCard.Header>
+        <DashboardCard.Title>
+          {intl.formatMessage({
+            id: "BfJGij",
+            defaultMessage: "Address Information",
+            description: "header",
+          })}
+        </DashboardCard.Title>
+        <DashboardCard.Toolbar>
+          <Link to={manageAddressHref}>
+            <Button data-test-id="manage-addresses" disabled={disabled} variant="secondary">
+              <FormattedMessage {...buttonMessages.manage} />
+            </Button>
+          </Link>
+        </DashboardCard.Toolbar>
+      </DashboardCard.Header>
       {maybe(() => customer.defaultBillingAddress.id) !==
       maybe(() => customer.defaultShippingAddress.id) ? (
         <>
           {maybe(() => customer.defaultBillingAddress) !== null && (
-            <CardContent>
-              <Typography className={classes.label}>
+            <DashboardCard.Content>
+              <Text className={classes.label}>
                 <FormattedMessage
                   id="biVFKU"
                   defaultMessage="Billing Address"
                   description="subsection header"
                 />
-              </Typography>
-              <AddressFormatter
-                address={maybe(() => customer.defaultBillingAddress)}
-              />
-            </CardContent>
+              </Text>
+              <AddressFormatter address={maybe(() => customer.defaultBillingAddress)} />
+            </DashboardCard.Content>
           )}
-          {maybe(
-            () =>
-              customer.defaultBillingAddress && customer.defaultShippingAddress,
-          ) && <Hr />}
+          {maybe(() => customer.defaultBillingAddress && customer.defaultShippingAddress) && <Hr />}
           {maybe(() => customer.defaultShippingAddress) && (
-            <CardContent>
-              <Typography className={classes.label}>
+            <DashboardCard.Content>
+              <Text className={classes.label}>
                 <FormattedMessage
                   id="Zd3Eew"
                   defaultMessage="Shipping Address"
                   description="subsection header"
                 />
-              </Typography>
-              <AddressFormatter
-                address={maybe(() => customer.defaultShippingAddress)}
-              />
-            </CardContent>
+              </Text>
+              <AddressFormatter address={maybe(() => customer.defaultShippingAddress)} />
+            </DashboardCard.Content>
           )}
         </>
       ) : maybe(() => customer.defaultBillingAddress) === null &&
         maybe(() => customer.defaultShippingAddress) === null ? (
-        <CardContent>
-          <Typography>
-            <FormattedMessage
-              id="3d1RXL"
-              defaultMessage="This customer has no addresses yet"
-            />
-          </Typography>
-        </CardContent>
+        <DashboardCard.Content>
+          <Text>
+            <FormattedMessage id="3d1RXL" defaultMessage="This customer has no addresses yet" />
+          </Text>
+        </DashboardCard.Content>
       ) : (
-        <CardContent>
-          <Typography className={classes.label}>
+        <DashboardCard.Content>
+          <Text className={classes.label}>
             <FormattedMessage
               id="bHdFph"
               defaultMessage="Address"
               description="subsection header"
             />
-          </Typography>
-          <AddressFormatter
-            address={maybe(() => customer.defaultBillingAddress)}
-          />
-        </CardContent>
+          </Text>
+          <AddressFormatter address={maybe(() => customer.defaultBillingAddress)} />
+        </DashboardCard.Content>
       )}
-    </Card>
+    </DashboardCard>
   );
 };
+
 CustomerAddresses.displayName = "CustomerAddresses";
 export default CustomerAddresses;

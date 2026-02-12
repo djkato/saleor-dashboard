@@ -1,9 +1,5 @@
 // @ts-strict-ignore
-import {
-  OrderDetailsFragment,
-  OrderDetailsQuery,
-  OrderDiscountType,
-} from "@dashboard/graphql";
+import { OrderDetailsFragment, OrderDetailsQuery, OrderDiscountType } from "@dashboard/graphql";
 import { OrderDiscountCommonInput } from "@dashboard/orders/components/OrderDiscountCommonModal/types";
 import { useState } from "react";
 
@@ -11,7 +7,6 @@ import { OrderLineDiscountData } from "./types";
 
 export const useDiscountDialog = () => {
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
-
   const closeDialog = () => setIsDialogOpen(false);
   const openDialog = () => setIsDialogOpen(true);
 
@@ -20,7 +15,7 @@ export const useDiscountDialog = () => {
 export const getManualOrderDiscount = (order: OrderDetailsFragment) =>
   order ? getOrderDiscount(order, OrderDiscountType.MANUAL) : null;
 
-export const getOrderDiscount = (
+const getOrderDiscount = (
   order: OrderDetailsFragment,
   discountType: OrderDiscountType,
 ): OrderDetailsQuery["order"]["discounts"][0] =>
@@ -36,9 +31,7 @@ export const getOrderLineDiscount = (
     unitDiscountValue: value,
     undiscountedUnitPrice: undiscountedPrice,
     unitDiscountType: calculationMode,
-  } = order.lines.find(
-    ({ id }: OrderDetailsQuery["order"]["lines"][0]) => id === orderLineId,
-  );
+  } = order.lines.find(({ id }: OrderDetailsQuery["order"]["lines"][0]) => id === orderLineId);
 
   if (!value) {
     return null;

@@ -1,15 +1,7 @@
-// @ts-strict-ignore
-import {
-  ChannelShippingZonesQuery,
-  WarehouseFragment,
-} from "@dashboard/graphql";
+import { ChannelShippingZonesQuery, WarehouseFragment } from "@dashboard/graphql";
 import { RelayToFlat } from "@dashboard/types";
 
-export type ChannelShippingZones = RelayToFlat<
-  ChannelShippingZonesQuery["shippingZones"]
->;
-
-export type ChannelShippingZone = ChannelShippingZones[0];
+export type ChannelShippingZones = RelayToFlat<ChannelShippingZonesQuery["shippingZones"]>;
 
 export type ChannelWarehouses = WarehouseFragment[];
 

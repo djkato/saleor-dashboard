@@ -1,11 +1,11 @@
-import { useUser } from "@dashboard/auth";
+import { useUser } from "@dashboard/auth/useUser";
 import AccountPermissions from "@dashboard/components/AccountPermissions";
 import { TopNav } from "@dashboard/components/AppLayout/TopNav";
 import { ChannelPermission } from "@dashboard/components/ChannelPermission";
 import Form from "@dashboard/components/Form";
 import FormSpacer from "@dashboard/components/FormSpacer";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
-import Savebar from "@dashboard/components/Savebar";
+import { Savebar } from "@dashboard/components/Savebar";
 import {
   ChannelFragment,
   PermissionEnum,
@@ -13,18 +13,15 @@ import {
   PermissionGroupErrorFragment,
   UserPermissionFragment,
 } from "@dashboard/graphql";
+import { useBackLinkWithState } from "@dashboard/hooks/useBackLinkWithState";
 import { FormChange, SubmitPromise } from "@dashboard/hooks/useForm";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { buttonMessages } from "@dashboard/intl";
-import {
-  MembersListUrlSortField,
-  permissionGroupListUrl,
-} from "@dashboard/permissionGroups/urls";
+import { MembersListUrlSortField, permissionGroupListPath } from "@dashboard/permissionGroups/urls";
 import { ListActions, SortPage } from "@dashboard/types";
 import { getFormErrors } from "@dashboard/utils/errors";
 import getPermissionGroupErrorMessage from "@dashboard/utils/errors/permissionGroups";
-import { Box } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
 import {
@@ -47,15 +44,12 @@ export interface PermissionGroupDetailsPageFormData {
   channels: string[];
 }
 
-export interface PermissionData
-  extends Omit<UserPermissionFragment, "__typename"> {
+export interface PermissionData extends Omit<UserPermissionFragment, "__typename"> {
   lastSource?: boolean;
   disabled?: boolean;
 }
 
-export interface PermissonGroupDetailsPageProps
-  extends ListActions,
-    SortPage<MembersListUrlSortField> {
+interface PermissonGroupDetailsPageProps extends ListActions, SortPage<MembersListUrlSortField> {
   channels: ChannelFragment[];
   disabled: boolean;
   isUserAbleToEditChannels: boolean;
@@ -71,9 +65,7 @@ export interface PermissonGroupDetailsPageProps
   onSubmit: (data: PermissionGroupDetailsPageFormData) => SubmitPromise;
 }
 
-export const PermissionGroupDetailsPage: React.FC<
-  PermissonGroupDetailsPageProps
-> = ({
+export const PermissionGroupDetailsPage = ({
   disabled,
   errors,
   members,
@@ -86,31 +78,27 @@ export const PermissionGroupDetailsPage: React.FC<
   channels,
   isUserAbleToEditChannels,
   ...listProps
-}) => {
+}: PermissonGroupDetailsPageProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
   const user = useUser();
-
   const channelsOptions = getUserAccessibleChannelsOptions(channels, user.user);
-  const hasUserRestrictedChannels = checkIfUserHasRestictedAccessToChannels(
-    user.user,
-  );
-
+  const hasUserRestrictedChannels = checkIfUserHasRestictedAccessToChannels(user.user);
   const initialForm: PermissionGroupDetailsPageFormData = {
     hasFullAccess: isGroupFullAccess(permissionGroup, permissions),
-    hasAllChannels: !permissionGroup?.restrictedAccessToChannels ?? false,
+    hasAllChannels: !permissionGroup?.restrictedAccessToChannels,
     channels: getInitialChannels(permissionGroup, channels?.length ?? 0),
     isActive: false,
     name: permissionGroup?.name || "",
     permissions: extractPermissionCodes(permissionGroup),
     users: members,
   };
-
   const formErrors = getFormErrors(["addPermissions"], errors);
-  const permissionsError = getPermissionGroupErrorMessage(
-    formErrors.addPermissions,
-    intl,
-  );
+  const permissionsError = getPermissionGroupErrorMessage(formErrors.addPermissions, intl);
+
+  const permissionGroupListBackLink = useBackLinkWithState({
+    path: permissionGroupListPath,
+  });
 
   return (
     <Form confirmLeave initial={initialForm} onSubmit={onSubmit}>
@@ -123,7 +111,6 @@ export const PermissionGroupDetailsPage: React.FC<
             },
           });
         };
-
         const handleHasAllChannelsChange = () => {
           change({
             target: {
@@ -135,10 +122,7 @@ export const PermissionGroupDetailsPage: React.FC<
 
         return (
           <DetailPageLayout>
-            <TopNav
-              href={permissionGroupListUrl()}
-              title={permissionGroup?.name}
-            />
+            <TopNav href={permissionGroupListBackLink} title={permissionGroup?.name} />
             <DetailPageLayout.Content>
               <PermissionGroupInfo
                 data={data}
@@ -190,13 +174,16 @@ export const PermissionGroupDetailsPage: React.FC<
               />
             </DetailPageLayout.RightSidebar>
             <div>
-              <Savebar
-                onCancel={() => navigate(permissionGroupListUrl())}
-                onDelete={onDelete}
-                onSubmit={submit}
-                state={saveButtonBarState}
-                disabled={disabled}
-              />
+              <Savebar>
+                <Savebar.DeleteButton onClick={onDelete} />
+                <Savebar.Spacer />
+                <Savebar.CancelButton onClick={() => navigate(permissionGroupListBackLink)} />
+                <Savebar.ConfirmButton
+                  transitionState={saveButtonBarState}
+                  onClick={submit}
+                  disabled={disabled}
+                />
+              </Savebar>
             </div>
           </DetailPageLayout>
         );

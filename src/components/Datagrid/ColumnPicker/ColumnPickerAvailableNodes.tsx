@@ -1,13 +1,13 @@
-import { CircularProgress } from "@material-ui/core";
-import { Box, Checkbox, Text } from "@saleor/macaw-ui/next";
-import React from "react";
+import { SaleorThrobber } from "@dashboard/components/Throbber";
+import { Box, Checkbox, Text } from "@saleor/macaw-ui-next";
+import * as React from "react";
 import { FormattedMessage } from "react-intl";
 
 import { ColumnPickerSearch } from "./ColumnPickerSearch";
 import messages from "./messages";
 import { ColumnCategory } from "./useColumns";
 
-export interface ColumnPickerAvailableNodesProps {
+interface ColumnPickerAvailableNodesProps {
   currentCategory: ColumnCategory;
   selectedColumns: string[];
   query: string;
@@ -24,25 +24,18 @@ export const ColumnPickerAvailableNodes = ({
 }: ColumnPickerAvailableNodesProps) => {
   const areNodesLoading = currentCategory.availableNodes === undefined;
   const areNodesEmpty = currentCategory.availableNodes?.length === 0;
-
   const renderNodes = () => {
     if (areNodesLoading) {
       return (
-        <Box
-          width="100%"
-          height="100%"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <CircularProgress />
+        <Box width="100%" height="100%" display="flex" alignItems="center" justifyContent="center">
+          <SaleorThrobber />
         </Box>
       );
     }
 
     if (areNodesEmpty) {
       return (
-        <Text size="small" color="textNeutralSubdued">
+        <Text size={3} color="default2">
           <FormattedMessage {...messages.noResultsFound} />
         </Text>
       );
@@ -57,11 +50,11 @@ export const ColumnPickerAvailableNodes = ({
         >
           <Text
             data-test-id={`dynamic-column-name-${node.title}`}
-            size="small"
-            color="textNeutralSubdued"
+            size={3}
+            color="default2"
             ellipsis
           >
-            {node.title}
+            {node.pickerTitle ?? node.title}
           </Text>
         </Checkbox>
       </Box>
@@ -76,11 +69,7 @@ export const ColumnPickerAvailableNodes = ({
         style={{ boxSizing: "border-box" }}
         data-test-id="search-container"
       >
-        <ColumnPickerSearch
-          currentCategory={currentCategory}
-          query={query}
-          setQuery={setQuery}
-        />
+        <ColumnPickerSearch currentCategory={currentCategory} query={query} setQuery={setQuery} />
       </Box>
       <Box paddingX={5} paddingY={1.5} flexGrow="1">
         {renderNodes()}

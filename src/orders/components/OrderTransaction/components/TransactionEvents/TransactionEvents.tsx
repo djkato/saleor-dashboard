@@ -4,14 +4,14 @@ import { renderCollection } from "@dashboard/misc";
 import { TransactionFakeEvent } from "@dashboard/orders/types";
 import { TableCell, TableRow } from "@material-ui/core";
 import { makeStyles, ResponsiveTable } from "@saleor/macaw-ui";
-import { vars } from "@saleor/macaw-ui/next";
-import React, { useState } from "react";
+import { vars } from "@saleor/macaw-ui-next";
+import { useState } from "react";
 import { FormattedMessage } from "react-intl";
 
 import { EventItem } from "./components";
 import { messages } from "./messages";
 
-export interface OrderTransactionEventsProps {
+interface OrderTransactionEventsProps {
   events: TransactionEventFragment[] | TransactionFakeEvent[];
 }
 
@@ -19,15 +19,21 @@ const useStyles = makeStyles(
   theme => ({
     table: {
       "&& td": {
-        paddingLeft: vars.spacing[4],
-        paddingRight: vars.spacing[4],
+        paddingLeft: vars.spacing[3],
+        paddingRight: vars.spacing[3],
+        paddingTop: vars.spacing[3],
+        paddingBottom: vars.spacing[3],
         "&:first-child": {
-          paddingLeft: vars.spacing[9],
+          paddingLeft: "48px",
         },
+      },
+      "&& tr:last-child td": {
+        borderBottom: "none",
       },
     },
     noEvent: {
       color: theme.palette.saleor.main[2],
+      paddingLeft: "48px !important",
     },
   }),
   {
@@ -35,23 +41,9 @@ const useStyles = makeStyles(
   },
 );
 
-const isFakeEventsList = (
-  events: TransactionEventFragment[] | TransactionFakeEvent[],
-): events is TransactionFakeEvent[] =>
-  events[0]?.__typename === "TransactionFakeEvent";
-
-export const TransactionEvents: React.FC<OrderTransactionEventsProps> = ({
-  events,
-}) => {
+export const TransactionEvents = ({ events }: OrderTransactionEventsProps) => {
   const classes = useStyles();
   const [hoveredPspReference, setHoveredPspReference] = useState(null);
-
-  const hasCreatedBy = React.useMemo(() => {
-    if (isFakeEventsList(events)) {
-      return false;
-    }
-    return !!events.find(event => !!event.createdBy);
-  }, [events]);
 
   return (
     <ResponsiveTable
@@ -67,7 +59,6 @@ export const TransactionEvents: React.FC<OrderTransactionEventsProps> = ({
             event={transactionEvent}
             onHover={setHoveredPspReference}
             hoveredPspReference={hoveredPspReference}
-            hasCreatedBy={hasCreatedBy}
           />
         ),
         () => (

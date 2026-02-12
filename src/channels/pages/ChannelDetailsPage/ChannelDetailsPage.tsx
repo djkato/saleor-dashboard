@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import ChannelAllocationStrategy from "@dashboard/channels/components/ChannelAllocationStrategy";
-import ShippingZones from "@dashboard/channels/components/ShippingZones";
+import { ShippingZones } from "@dashboard/channels/components/ShippingZones/ShippingZones";
 import Warehouses from "@dashboard/channels/components/Warehouses";
 import { channelsListUrl } from "@dashboard/channels/urls";
 import { validateChannelFormData } from "@dashboard/channels/validation";
@@ -10,8 +10,7 @@ import { ConfirmButtonTransitionState } from "@dashboard/components/ConfirmButto
 import Form from "@dashboard/components/Form";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
 import RequirePermissions from "@dashboard/components/RequirePermissions";
-import Savebar from "@dashboard/components/Savebar";
-import { SingleAutocompleteChoiceType } from "@dashboard/components/SingleAutocompleteSelectField";
+import { Savebar } from "@dashboard/components/Savebar";
 import {
   AllocationStrategyEnum,
   ChannelDetailsFragment,
@@ -23,6 +22,7 @@ import {
   SearchWarehousesQuery,
   StockSettingsInput,
 } from "@dashboard/graphql";
+import { ChannelDetailsFragment as ChannelDetailsFragmentWithAllowLegacyGiftCardUse } from "@dashboard/graphql/staging";
 import {
   MarkAsPaidStrategyEnum,
   TransactionFlowStrategyEnum,
@@ -35,7 +35,8 @@ import useStateFromProps from "@dashboard/hooks/useStateFromProps";
 import { FetchMoreProps, RelayToFlat } from "@dashboard/types";
 import createSingleAutocompleteSelectHandler from "@dashboard/utils/handlers/singleAutocompleteSelectChangeHandler";
 import { mapCountriesToChoices } from "@dashboard/utils/maps";
-import React, { useState } from "react";
+import { Option } from "@saleor/macaw-ui-next";
+import { useState } from "react";
 import { useIntl } from "react-intl";
 
 import { ChannelForm, FormData } from "../../components/ChannelForm";
@@ -48,12 +49,11 @@ import {
   createWarehouseReorderHandler,
 } from "./handlers";
 import { ChannelShippingZones, ChannelWarehouses } from "./types";
+import { parseDateTimeToDateAndTime } from "./utils";
 
-export interface ChannelDetailsPageProps<
-  TErrors extends ChannelErrorFragment[],
-> {
+interface ChannelDetailsPageProps<TErrors extends ChannelErrorFragment[]> {
   channel?: ChannelDetailsFragment;
-  currencyCodes?: SingleAutocompleteChoiceType[];
+  currencyCodes?: Option[];
   disabled: boolean;
   disabledStatus?: boolean;
   errors: ChannelErrorFragment[];
@@ -98,23 +98,27 @@ const ChannelDetailsPage = function <TErrors extends ChannelErrorFragment[]>({
 }: ChannelDetailsPageProps<TErrors>) {
   const navigate = useNavigator();
   const intl = useIntl();
-
-  const [validationErrors, setValidationErrors] = useState<
-    ChannelErrorFragment[]
-  >([]);
-
+  const [validationErrors, setValidationErrors] = useState<ChannelErrorFragment[]>([]);
   const [selectedCurrencyCode, setSelectedCurrencyCode] = useState("");
-  const [selectedCountryDisplayName, setSelectedCountryDisplayName] =
-    useStateFromProps(channel?.defaultCountry.country || "");
-
+  const [selectedCountryDisplayName, setSelectedCountryDisplayName] = useStateFromProps(
+    channel?.defaultCountry.country || "",
+  );
   const countryChoices = mapCountriesToChoices(countries || []);
-
-  const { defaultCountry, stockSettings, orderSettings, ...formData } =
-    channel || ({} as ChannelDetailsFragment);
+  const {
+    defaultCountry,
+    stockSettings,
+    orderSettings,
+    paymentSettings,
+    checkoutSettings,
+    ...formData
+  } = channel || ({} as ChannelDetailsFragment | ChannelDetailsFragmentWithAllowLegacyGiftCardUse);
   const initialStockSettings: StockSettingsInput = {
     allocationStrategy: AllocationStrategyEnum.PRIORITIZE_SORTING_ORDER,
     ...stockSettings,
   };
+  const cutOffDateTime = parseDateTimeToDateAndTime(
+    checkoutSettings?.automaticCompletionCutOffDate,
+  );
   const initialData: FormData = {
     currencyCode: "",
     name: "",
@@ -128,21 +132,28 @@ const ChannelDetailsPage = function <TErrors extends ChannelErrorFragment[]>({
     ...initialStockSettings,
     shippingZonesToDisplay: channelShippingZones,
     warehousesToDisplay: channelWarehouses,
-    markAsPaidStrategy: orderSettings?.markAsPaidStrategy,
+    markAsPaidStrategy:
+      orderSettings?.markAsPaidStrategy ?? MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
     deleteExpiredOrdersAfter: orderSettings?.deleteExpiredOrdersAfter,
     allowUnpaidOrders: orderSettings?.allowUnpaidOrders,
-    defaultTransactionFlowStrategy:
-      orderSettings?.defaultTransactionFlowStrategy,
+    defaultTransactionFlowStrategy: paymentSettings?.defaultTransactionFlowStrategy,
+    allowLegacyGiftCardUse: checkoutSettings
+      ? "allowLegacyGiftCardUse" in checkoutSettings
+        ? checkoutSettings.allowLegacyGiftCardUse
+        : undefined
+      : undefined,
+    automaticallyCompleteCheckouts:
+      checkoutSettings?.automaticallyCompleteFullyPaidCheckouts ?? false,
+    automaticCompletionDelay: checkoutSettings?.automaticCompletionDelay ?? null,
+    automaticCompletionCutOffDate: cutOffDateTime.date,
+    automaticCompletionCutOffTime: cutOffDateTime.time,
   };
-
   const getFilteredShippingZonesChoices = (
     shippingZonesToDisplay: ChannelShippingZones,
   ): RelayToFlat<SearchShippingZonesQuery["search"]> =>
     getParsedSearchData({ data: searchShippingZonesData }).filter(
-      ({ id: searchedZoneId }) =>
-        !shippingZonesToDisplay.some(({ id }) => id === searchedZoneId),
+      ({ id: searchedZoneId }) => !shippingZonesToDisplay.some(({ id }) => id === searchedZoneId),
     );
-
   const getFilteredWarehousesChoices = (
     warehousesToDisplay: ChannelWarehouses,
   ): RelayToFlat<SearchWarehousesQuery["search"]> =>
@@ -150,7 +161,6 @@ const ChannelDetailsPage = function <TErrors extends ChannelErrorFragment[]>({
       ({ id: searchedWarehouseId }) =>
         !warehousesToDisplay.some(({ id }) => id === searchedWarehouseId),
     );
-
   const handleSubmit = async (data: FormData) => {
     const errors = validateChannelFormData(data);
 
@@ -171,54 +181,68 @@ const ChannelDetailsPage = function <TErrors extends ChannelErrorFragment[]>({
           setSelectedCurrencyCode,
           currencyCodes,
         );
-        const handleDefaultCountrySelect =
-          createSingleAutocompleteSelectHandler(
-            change,
-            setSelectedCountryDisplayName,
-            countryChoices,
-          );
-
+        const handleDefaultCountrySelect = createSingleAutocompleteSelectHandler(
+          change,
+          setSelectedCountryDisplayName,
+          countryChoices,
+        );
         const addShippingZone = createShippingZoneAddHandler(
           data,
           searchShippingZonesData,
           set,
           triggerChange,
         );
-        const removeShippingZone = createShippingZoneRemoveHandler(
-          data,
-          set,
-          triggerChange,
-        );
-
+        const removeShippingZone = createShippingZoneRemoveHandler(data, set, triggerChange);
         const addWarehouse = createWarehouseAddHandler(
           data,
           searchWarehousesData,
           set,
           triggerChange,
         );
-        const removeWarehouse = createWarehouseRemoveHandler(
-          data,
-          set,
-          triggerChange,
-        );
+        const removeWarehouse = createWarehouseRemoveHandler(data, set, triggerChange);
         const reorderWarehouse = createWarehouseReorderHandler(data, set);
         const handleMarkAsPaidStrategyChange = () => {
+          if (!data.markAsPaidStrategy) {
+            set({
+              markAsPaidStrategy: MarkAsPaidStrategyEnum.TRANSACTION_FLOW,
+            });
+
+            return;
+          }
+
           set({
             markAsPaidStrategy:
-              // Swap enum values
               data.markAsPaidStrategy === MarkAsPaidStrategyEnum.PAYMENT_FLOW
                 ? MarkAsPaidStrategyEnum.TRANSACTION_FLOW
                 : MarkAsPaidStrategyEnum.PAYMENT_FLOW,
           });
         };
-
         const handleTransactionFlowStrategyChange = () => {
+          if (!data.defaultTransactionFlowStrategy) {
+            set({
+              defaultTransactionFlowStrategy: TransactionFlowStrategyEnum.AUTHORIZATION,
+            });
+
+            return;
+          }
+
           set({
             defaultTransactionFlowStrategy:
-              data.defaultTransactionFlowStrategy ===
-              TransactionFlowStrategyEnum.CHARGE
+              data.defaultTransactionFlowStrategy === TransactionFlowStrategyEnum.CHARGE
                 ? TransactionFlowStrategyEnum.AUTHORIZATION
                 : TransactionFlowStrategyEnum.CHARGE,
+          });
+        };
+
+        const handleAutomaticallyCompleteCheckoutsChange = () => {
+          set({
+            automaticallyCompleteCheckouts: !data.automaticallyCompleteCheckouts,
+          });
+        };
+
+        const handleAllowLegacyGiftCardUseChange = () => {
+          set({
+            allowLegacyGiftCardUse: !data.allowLegacyGiftCardUse,
           });
         };
 
@@ -245,13 +269,18 @@ const ChannelDetailsPage = function <TErrors extends ChannelErrorFragment[]>({
                 countries={countryChoices}
                 selectedCurrencyCode={selectedCurrencyCode}
                 selectedCountryDisplayName={selectedCountryDisplayName}
+                savedAutomaticallyCompleteCheckouts={
+                  checkoutSettings?.automaticallyCompleteFullyPaidCheckouts ?? false
+                }
+                savedAutomaticCompletionCutOffDate={cutOffDateTime.date}
+                savedAutomaticCompletionCutOffTime={cutOffDateTime.time}
                 onChange={change}
                 onCurrencyCodeChange={handleCurrencyCodeSelect}
                 onDefaultCountryChange={handleDefaultCountrySelect}
                 onMarkAsPaidStrategyChange={handleMarkAsPaidStrategyChange}
-                onTransactionFlowStrategyChange={
-                  handleTransactionFlowStrategyChange
-                }
+                onTransactionFlowStrategyChange={handleTransactionFlowStrategyChange}
+                onAutomaticallyCompleteCheckoutsChange={handleAutomaticallyCompleteCheckoutsChange}
+                onAllowLegacyGiftCardUseChange={handleAllowLegacyGiftCardUseChange}
                 errors={allErrors}
               />
             </DetailPageLayout.Content>
@@ -266,9 +295,7 @@ const ChannelDetailsPage = function <TErrors extends ChannelErrorFragment[]>({
                   <CardSpacer />
                 </>
               )}
-              <RequirePermissions
-                requiredPermissions={[PermissionEnum.MANAGE_SHIPPING]}
-              >
+              <RequirePermissions requiredPermissions={[PermissionEnum.MANAGE_SHIPPING]}>
                 <ShippingZones
                   shippingZonesChoices={getFilteredShippingZonesChoices(
                     data.shippingZonesToDisplay,
@@ -291,9 +318,7 @@ const ChannelDetailsPage = function <TErrors extends ChannelErrorFragment[]>({
                 ]}
               >
                 <Warehouses
-                  warehousesChoices={getFilteredWarehousesChoices(
-                    data.warehousesToDisplay,
-                  )}
+                  warehousesChoices={getFilteredWarehousesChoices(data.warehousesToDisplay)}
                   warehouses={data.warehousesToDisplay}
                   addWarehouse={addWarehouse}
                   removeWarehouse={removeWarehouse}
@@ -305,19 +330,18 @@ const ChannelDetailsPage = function <TErrors extends ChannelErrorFragment[]>({
                 />
                 <CardSpacer />
               </RequirePermissions>
-              <ChannelAllocationStrategy
-                data={data}
-                disabled={disabled}
-                onChange={change}
-              />
+              <ChannelAllocationStrategy data={data} disabled={disabled} onChange={change} />
             </DetailPageLayout.RightSidebar>
-            <Savebar
-              onCancel={() => navigate(channelsListUrl())}
-              onSubmit={submit}
-              onDelete={onDelete}
-              state={saveButtonBarState}
-              disabled={disabled}
-            />
+            <Savebar>
+              <Savebar.DeleteButton onClick={onDelete} />
+              <Savebar.Spacer />
+              <Savebar.CancelButton onClick={() => navigate(channelsListUrl())} />
+              <Savebar.ConfirmButton
+                transitionState={saveButtonBarState}
+                onClick={submit}
+                disabled={disabled}
+              />
+            </Savebar>
           </DetailPageLayout>
         );
       }}

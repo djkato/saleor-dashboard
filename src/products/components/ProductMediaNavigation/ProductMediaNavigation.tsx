@@ -1,11 +1,8 @@
 // @ts-strict-ignore
-import CardTitle from "@dashboard/components/CardTitle";
-import Skeleton from "@dashboard/components/Skeleton";
-import { Card, CardContent } from "@material-ui/core";
+import { DashboardCard } from "@dashboard/components/Card";
 import { makeStyles } from "@saleor/macaw-ui";
-import { vars } from "@saleor/macaw-ui/next";
+import { Skeleton, vars } from "@saleor/macaw-ui-next";
 import clsx from "clsx";
-import React from "react";
 import { defineMessages, useIntl } from "react-intl";
 
 const messages = defineMessages({
@@ -15,7 +12,6 @@ const messages = defineMessages({
     description: "section header",
   },
 });
-
 const useStyles = makeStyles(
   theme => ({
     card: {
@@ -31,7 +27,7 @@ const useStyles = makeStyles(
       width: "100%",
     },
     imageContainer: {
-      border: `2px solid ${vars.colors.border.neutralPlain}`,
+      border: `2px solid ${vars.colors.border.default1}`,
       borderRadius: theme.spacing(),
       cursor: "pointer",
       height: 48,
@@ -63,47 +59,44 @@ interface ProductMediaNavigationProps {
   onRowClick: (id: string) => () => void;
 }
 
-const ProductMediaNavigation: React.FC<ProductMediaNavigationProps> = props => {
+const ProductMediaNavigation = (props: ProductMediaNavigationProps) => {
   const { highlighted, media, onRowClick } = props;
   const classes = useStyles(props);
   const intl = useIntl();
 
   return (
-    <Card className={classes.card}>
-      <CardTitle title={intl.formatMessage(messages.allMedia)} />
-      <CardContent>
+    <DashboardCard className={classes.card}>
+      <DashboardCard.Header>
+        <DashboardCard.Title>{intl.formatMessage(messages.allMedia)}</DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
         {!media ? (
           <Skeleton />
         ) : (
           <div className={classes.root}>
             {media.map(mediaObj => {
               const mediaObjOembedData = JSON.parse(mediaObj?.oembedData);
-              const mediaUrl =
-                mediaObjOembedData?.thumbnail_url || mediaObj.url;
+              const mediaUrl = mediaObjOembedData?.thumbnail_url || mediaObj.url;
 
               return (
                 <div
                   className={clsx({
                     [classes.imageContainer]: true,
-                    [classes.highlightedImageContainer]:
-                      mediaObj.id === highlighted,
+                    [classes.highlightedImageContainer]: mediaObj.id === highlighted,
                   })}
                   onClick={onRowClick(mediaObj.id)}
                   key={mediaObj.id}
                 >
-                  <img
-                    className={classes.image}
-                    src={mediaUrl}
-                    alt={mediaObj.alt}
-                  />
+                  <img className={classes.image} src={mediaUrl} alt={mediaObj.alt} />
                 </div>
               );
             })}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </DashboardCard.Content>
+    </DashboardCard>
   );
 };
+
 ProductMediaNavigation.displayName = "ProductMediaNavigation";
 export default ProductMediaNavigation;

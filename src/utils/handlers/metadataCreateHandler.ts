@@ -1,8 +1,5 @@
 import { MetadataFormData } from "@dashboard/components/Metadata/types";
-import {
-  UpdateMetadataMutationFn,
-  UpdatePrivateMetadataMutationFn,
-} from "@dashboard/graphql";
+import { UpdateMetadataMutationFn, UpdatePrivateMetadataMutationFn } from "@dashboard/graphql";
 
 import { filterMetadataArray } from "./filterMetadataArray";
 
@@ -24,7 +21,7 @@ function createMetadataCreateHandler<T extends MetadataFormData, TError>(
       return errors;
     }
 
-    if (data.metadata.length > 0) {
+    if (data?.metadata?.length > 0) {
       const updateMetaResult = await setMetadata({
         variables: {
           id,
@@ -42,7 +39,7 @@ function createMetadataCreateHandler<T extends MetadataFormData, TError>(
       }
     }
 
-    if (data.privateMetadata.length > 0) {
+    if (data?.privateMetadata?.length > 0) {
       const updatePrivateMetaResult = await setPrivateMetadata({
         variables: {
           id,
@@ -50,7 +47,6 @@ function createMetadataCreateHandler<T extends MetadataFormData, TError>(
           keysToDelete: [],
         },
       });
-
       const updatePrivateMetaErrors = [
         ...(updatePrivateMetaResult.data?.deletePrivateMetadata?.errors || []),
         ...(updatePrivateMetaResult.data?.updatePrivateMetadata?.errors || []),

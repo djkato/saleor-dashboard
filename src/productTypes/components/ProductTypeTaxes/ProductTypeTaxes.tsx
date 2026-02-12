@@ -1,15 +1,11 @@
-import CardTitle from "@dashboard/components/CardTitle";
-import SingleAutocompleteSelectField from "@dashboard/components/SingleAutocompleteSelectField";
+import { DashboardCard } from "@dashboard/components/Card";
 import { TaxClassBaseFragment } from "@dashboard/graphql";
+import { ChangeEvent } from "@dashboard/hooks/useForm";
 import { sectionNames } from "@dashboard/intl";
 import { taxesMessages } from "@dashboard/taxes/messages";
 import { FetchMoreProps } from "@dashboard/types";
-import { Card, CardContent } from "@material-ui/core";
-import { makeStyles } from "@saleor/macaw-ui";
-import React from "react";
+import { DynamicCombobox } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
-
-import { ProductTypeForm } from "../ProductTypeDetailsPage/ProductTypeDetailsPage";
 
 interface ProductTypeTaxesProps {
   data: {
@@ -18,56 +14,50 @@ interface ProductTypeTaxesProps {
   taxClassDisplayName: string;
   taxClasses: TaxClassBaseFragment[];
   disabled: boolean;
-  onChange: (event: React.ChangeEvent<any>) => void;
+  onChange: (event: ChangeEvent) => void;
   onFetchMore: FetchMoreProps;
 }
 
-const useStyles = makeStyles(
-  {
-    root: {
-      overflow: "visible",
-    },
-  },
-  { name: "ProductTypeTaxes" },
-);
-
-const ProductTypeTaxes: React.FC<ProductTypeTaxesProps> = props => {
-  const {
-    data,
-    disabled,
-    taxClasses,
-    taxClassDisplayName,
-    onChange,
-    onFetchMore,
-  } = props;
-  const classes = useStyles(props);
-
+export const ProductTypeTaxes = (props: ProductTypeTaxesProps) => {
+  const { data, disabled, taxClasses, taxClassDisplayName, onChange, onFetchMore } = props;
   const intl = useIntl();
 
   return (
-    <Card className={classes.root}>
-      <CardTitle title={intl.formatMessage(sectionNames.taxes)} />
-      <CardContent>
-        <SingleAutocompleteSelectField
-          emptyOption
+    <DashboardCard>
+      <DashboardCard.Header>
+        <DashboardCard.Title>{intl.formatMessage(sectionNames.taxes)}</DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
+        <DynamicCombobox
+          autoComplete="off"
           disabled={disabled}
-          displayValue={taxClassDisplayName}
           label={intl.formatMessage(taxesMessages.taxClass)}
-          name={"taxClassId" as keyof ProductTypeForm}
-          onChange={onChange}
-          value={data.taxClassId}
-          choices={taxClasses.map(choice => ({
+          options={taxClasses.map(choice => ({
             label: choice.name,
             value: choice.id,
           }))}
-          InputProps={{
-            autoComplete: "off",
+          onScrollEnd={() => {
+            if (onFetchMore.hasMore) {
+              onFetchMore.onFetchMore();
+            }
           }}
-          {...onFetchMore}
+          name="taxClassId"
+          value={{
+            label: taxClassDisplayName,
+            value: data.taxClassId,
+          }}
+          onChange={v =>
+            onChange({
+              target: {
+                name: "taxClassId",
+                value: v?.value ?? "",
+              },
+            })
+          }
         />
-      </CardContent>
-    </Card>
+      </DashboardCard.Content>
+    </DashboardCard>
   );
 };
+
 ProductTypeTaxes.displayName = "ProductTypeTaxes";
-export default ProductTypeTaxes;

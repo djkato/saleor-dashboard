@@ -1,51 +1,48 @@
-import {
-  Accordion as AccordionMacaw,
-  Box,
-  Divider,
-  sprinkles,
-  Text,
-} from "@saleor/macaw-ui/next";
-import React, { useState } from "react";
+import { Accordion as AccordionMacaw, Box, Divider, sprinkles, Text } from "@saleor/macaw-ui-next";
+import { useState } from "react";
+import * as React from "react";
 
 export interface AccordionProps {
   className?: string;
   initialExpand?: boolean;
   quickPeek?: React.ReactNode;
   title: string;
+  dataTestId?: string;
+  children?: React.ReactNode;
 }
 
 const AccordionItemId = "accordionItemId";
-
-const Accordion: React.FC<AccordionProps> = ({
+const Accordion = ({
   children,
   initialExpand,
   quickPeek,
   title,
   className,
-}) => {
-  const [openedAccordionId, setOpendAccordionId] = useState<undefined | string>(
-    !!initialExpand ? AccordionItemId : undefined,
+  dataTestId = "expand-icon",
+}: AccordionProps) => {
+  const [openedAccordionId, setOpenedAccordionId] = useState<undefined | string>(
+    initialExpand ? AccordionItemId : undefined,
   );
 
   return (
     <div className={className}>
       <AccordionMacaw
         value={openedAccordionId}
-        onValueChange={value => setOpendAccordionId(value)}
+        onValueChange={(value: string) => setOpenedAccordionId(value)}
         className={sprinkles({
           borderStyle: "solid",
           borderWidth: 1,
-          borderColor: "neutralPlain",
+          borderColor: "default1",
           paddingX: 4,
           borderRadius: 5,
         })}
       >
         <AccordionMacaw.Item value={AccordionItemId}>
           <AccordionMacaw.Trigger>
-            <Text paddingY={3} variant="body" size="small">
+            <Text paddingY={3} size={3}>
               {title}
             </Text>
-            <AccordionMacaw.TriggerButton dataTestId="expand-icon" />
+            <AccordionMacaw.TriggerButton dataTestId={dataTestId} />
           </AccordionMacaw.Trigger>
           <AccordionMacaw.Content>
             <Divider />

@@ -5,20 +5,15 @@ import { ChannelPermission } from "@dashboard/components/ChannelPermission";
 import Form from "@dashboard/components/Form";
 import FormSpacer from "@dashboard/components/FormSpacer";
 import { DetailPageLayout } from "@dashboard/components/Layouts";
-import Savebar from "@dashboard/components/Savebar";
-import {
-  ChannelFragment,
-  PermissionEnum,
-  PermissionGroupErrorFragment,
-} from "@dashboard/graphql";
+import { Savebar } from "@dashboard/components/Savebar";
+import { ChannelFragment, PermissionEnum, PermissionGroupErrorFragment } from "@dashboard/graphql";
 import { FormChange, SubmitPromise } from "@dashboard/hooks/useForm";
 import useNavigator from "@dashboard/hooks/useNavigator";
 import { buttonMessages, sectionNames } from "@dashboard/intl";
 import { permissionGroupListUrl } from "@dashboard/permissionGroups/urls";
 import { getFormErrors } from "@dashboard/utils/errors";
 import getPermissionGroupErrorMessage from "@dashboard/utils/errors/permissionGroups";
-import { Box } from "@saleor/macaw-ui/next";
-import React from "react";
+import { Box } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 
 import { PermissionData } from "../PermissionGroupDetailsPage";
@@ -42,7 +37,7 @@ const initialForm: PermissionGroupCreateFormData = {
   channels: [],
 };
 
-export interface PermissionGroupCreatePageProps {
+interface PermissionGroupCreatePageProps {
   disabled: boolean;
   errors: PermissionGroupErrorFragment[];
   permissions: PermissionData[];
@@ -52,9 +47,7 @@ export interface PermissionGroupCreatePageProps {
   onSubmit: (data: PermissionGroupCreateFormData) => SubmitPromise;
 }
 
-export const PermissionGroupCreatePage: React.FC<
-  PermissionGroupCreatePageProps
-> = ({
+export const PermissionGroupCreatePage = ({
   disabled,
   permissions,
   channels,
@@ -62,15 +55,11 @@ export const PermissionGroupCreatePage: React.FC<
   saveButtonBarState,
   hasRestrictedChannels,
   errors,
-}) => {
+}: PermissionGroupCreatePageProps) => {
   const intl = useIntl();
   const navigate = useNavigator();
-
   const formErrors = getFormErrors(["addPermissions"], errors || []);
-  const permissionsError = getPermissionGroupErrorMessage(
-    formErrors.addPermissions,
-    intl,
-  );
+  const permissionsError = getPermissionGroupErrorMessage(formErrors.addPermissions, intl);
 
   return (
     <Form
@@ -91,7 +80,6 @@ export const PermissionGroupCreatePage: React.FC<
             },
           });
         };
-
         const handleHasAllChannelsChange = () => {
           change({
             target: {
@@ -146,12 +134,15 @@ export const PermissionGroupCreatePage: React.FC<
                 })}
               />
             </DetailPageLayout.RightSidebar>
-            <Savebar
-              onCancel={() => navigate(permissionGroupListUrl())}
-              onSubmit={submit}
-              state={saveButtonBarState}
-              disabled={!!isSaveDisabled}
-            />
+            <Savebar>
+              <Savebar.Spacer />
+              <Savebar.CancelButton onClick={() => navigate(permissionGroupListUrl())} />
+              <Savebar.ConfirmButton
+                transitionState={saveButtonBarState}
+                onClick={submit}
+                disabled={!!isSaveDisabled}
+              />
+            </Savebar>
           </DetailPageLayout>
         );
       }}
